@@ -294,7 +294,6 @@ uintptr_t hero_dev_l3_malloc(HeroDev *dev, unsigned size_b, uintptr_t *p_addr) {
 
 void hero_dev_l2_free(HeroDev *dev, uintptr_t v_addr, uintptr_t p_addr) {
     pr_trace("%p - %p\n", l2_heap_manager, v_addr);
-    fflush(stdout);
     o1heapFree(l2_heap_manager, v_addr);
 }
 

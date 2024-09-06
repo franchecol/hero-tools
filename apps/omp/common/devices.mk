@@ -11,9 +11,10 @@ NUM_DEVICES := 0
 define add_device =
 # Increment NUM_DEVICES
 $(eval NUM_DEVICES=$(shell echo $$(($(NUM_DEVICES)+1))))
-# Define __HERO_DEV __HERO_[DEIVCE_NUM] and __HERO_[DEVICE_NAME]
+# Define __HERO_DEV __HERO_[DEVICE_NUM] and __HERO_[DEVICE_NAME]
 CFLAGS   += -hero$(NUM_DEVICES)-D__HERO_$(NUM_DEVICES) -hero$(NUM_DEVICES)-D__HERO_DEV
 CFLAGS   += -hero$(NUM_DEVICES)-D__HERO_$(shell echo $(1) | tr  '[:lower:]' '[:upper:]')
+CFLAGS   += -D__HERO_$(shell echo $(1) | tr  '[:lower:]' '[:upper:]')
 # Common device linker args
 LDFLAGS  += -hero$(NUM_DEVICES)-I../common
 LDFLAGS  += --hero$(NUM_DEVICES)-ld-path=$(HERO_INSTALL)/bin/ld.lld
@@ -57,7 +58,7 @@ LDFLAGS  += -hero$(NUM_DEVICES)-T$(CARFIELD_ROOT)/sw/tests/bare-metal/snitchd/de
 LDFLAGS  += -hero$(NUM_DEVICES)-L$(CARFIELD_ROOT)/sw/tests/bare-metal/snitchd/bin
 LDFLAGS  += -hero$(NUM_DEVICES)-lomptarget_device
 # Host flags
-LDFLAGS  += -lhero_spatz_cluster
+LDFLAGS  += -lhero_snitch_cluster
 endif
 
 ifeq ($(1),spatz_cluster)

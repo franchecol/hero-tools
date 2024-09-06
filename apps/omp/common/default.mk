@@ -61,7 +61,7 @@ COBJS_UNBUNDLED = $(foreach dev,host $(HERO_DEVICES),$(patsubst %.c, %-$(dev).ll
 COBJS_BUNDLED = $(patsubst %.c, %-out.ll, $(CSRCS))
 
 # Targets
-all: $(DEPS) $(EXE)
+all: $(DEPS) $(EXE) $(EXE).dis $(EXE).dev.dis
 
 # Compile heterogeneous C source and get a bundled .ll
 %.ll: %.c $(DEPDIR)/%.d | $(DEPDIR)

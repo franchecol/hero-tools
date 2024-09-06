@@ -236,6 +236,13 @@ int card_platform_driver_probe(struct platform_device *pdev) {
         }
     }
 
+    // Probe and activate LLC
+    // probe_node(pdev, dev_data, &dev_data->llc_mem, "axi_llc");
+    // if(dev_data->llc_mem.vbase) {
+    //     *((uint32_t *)(dev_data->llc_mem.vbase + 0x0)) = (uint32_t)0x0;
+    //     *((uint32_t *)(dev_data->llc_mem.vbase + 0x10)) = (uint32_t)0x1;
+    // }
+
     // Probe L2
     probe_node(pdev, dev_data, &dev_data->l2_intl_0_mem, "l2-intl-0");
     probe_node(pdev, dev_data, &dev_data->l2_cont_0_mem, "l2-cont-0");
