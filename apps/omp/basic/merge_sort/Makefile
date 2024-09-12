@@ -9,6 +9,6 @@ DEVICES ?= spatz_cluster
 CSRCS = main.c
 
 CFLAGS   += -O3
-CFLAGS   += -v -debug -save-temps=obj
+CFLAGS   += -v -debug -save-temps=obj -g
 
 -include ../../common/default.mk

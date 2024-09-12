@@ -6,10 +6,10 @@
 
 #pragma once
 
-#define DTYPE double
+#define DTYPE float
 
 #define MIN(A, B) (A < B ? A : B)
-#define BUF_SIZE (256)
+#define BUF_SIZE (512)
 
 #ifdef __HERO_DEV
 
@@ -40,7 +40,7 @@ __device uint64_t buf_1_addr  [8]  __attribute__((section(".noinit_l1")));
 __device uint64_t buf_2_addr  [8]  __attribute__((section(".noinit_l1")));
 __device uint64_t buf_out_addr[8]  __attribute__((section(".noinit_l1")));
 
-__attribute__((section(".noinit_l1"))) volatile uint32_t dma_timer = 0, dma_time = 0, all_timer = 0, all_time = 0;
+__attribute__((section(".noinit_l1"))) volatile uint32_t dma_timer = 0, dma_time = 0, all_timer = 0, all_time = 0, issue_timer = 0, issue_time = 0, compute_timer = 0, compute_time = 0;
 
 #ifdef __HERO_DEV
 
@@ -60,6 +60,7 @@ uint32_t dma_fill_buf(DTYPE *buf_l1, uint32_t buf_l1_size, uint32_t head, uint32
         tx_size = l3_elems_left;
     if(tx_size == 0)
         return 0;
+    issue_timer = pulp_get_timer();
     if(tail > head) {
         uint32_t tx_1_size = 2*buf_l1_size - tail;
         // First transfer from tail to the end of the buffer
@@ -71,7 +72,20 @@ uint32_t dma_fill_buf(DTYPE *buf_l1, uint32_t buf_l1_size, uint32_t head, uint32
         // One transfer from head to tail
         __dma_start_1d_wideptr_base((uint64_t) &buf_l1[tail], buf_l3_addr + off*sizeof(DTYPE), tx_size*sizeof(DTYPE), 0);
     }
+    issue_time += pulp_get_timer() - issue_timer;
     return tx_size;
+}
+
+static inline void simple_l1_merge(DTYPE *buf_1, DTYPE *buf_2, DTYPE *buf_out, int bufs_size) {
+    int buf_1_off = 0;
+    int buf_2_off = 0;
+    for(int k = 0; k < 2*bufs_size; k++) {
+        if((buf_1_off != bufs_size) && (buf_2_off == bufs_size || buf_1[buf_1_off] <= buf_2[buf_2_off])) {
+            buf_out[k] = buf_1[buf_1_off++];
+        } else {
+            buf_out[k] = buf_2[buf_2_off++];
+        }
+    }
 }
 
 static inline void merge_bufs(uint64_t buf_1_addr[8], uint64_t buf_2_addr[8], uint64_t buf_out_addr[8], uint64_t l3_buf_size) {
@@ -99,6 +113,7 @@ static inline void merge_bufs(uint64_t buf_1_addr[8], uint64_t buf_2_addr[8], ui
         buf_1_off[core_idx] = buf_size;
         buf_2_off[core_idx] = buf_size;
     } else if (core_idx == 8) {
+        issue_timer = pulp_get_timer();
         for(int core = 0; core < 8; core++) {
             //if(core == 0)
             //        printf("%x -> %x -> %x (%x)\n\r", (uint32_t)(buf_1_addr[core]), &l1_buf_1[core][0], buf_size);
@@ -107,6 +122,7 @@ static inline void merge_bufs(uint64_t buf_1_addr[8], uint64_t buf_2_addr[8], ui
             __dma_start_1d_wideptr_base((uint64_t) &l1_buf_1[core][0], buf_1_addr[core], buf_size*sizeof(DTYPE), 0);
             __dma_start_1d_wideptr_base((uint64_t) &l1_buf_2[core][0], buf_2_addr[core], buf_size*sizeof(DTYPE), 0);
         }
+        issue_time += pulp_get_timer() - issue_timer;
     }
 
 
@@ -118,9 +134,12 @@ static inline void merge_bufs(uint64_t buf_1_addr[8], uint64_t buf_2_addr[8], ui
             asm volatile ("fence");
             dma_timer = pulp_get_timer();
             #if PREFETCHING
-            volatile uint8_t prefetching;
-            prefetching = *(uint8_t*)(l1_buf_1[0] + buf_1_off[0]*sizeof(DTYPE));
-            prefetching = *(uint8_t*)(l1_buf_2[0] + buf_2_off[0]*sizeof(DTYPE));
+            //volatile uint8_t prefetching;
+            //if(buf_1_addr[0] != 0) {
+            //prefetching = *(uint8_t*)(buf_1_addr[0] + buf_1_off[0]*sizeof(DTYPE));
+            //prefetching = *(uint8_t*)(buf_2_addr[0] + buf_2_off[0]*sizeof(DTYPE));
+            //prefetching = *(uint8_t*)(buf_2_addr[0] + buf_2_off[0]*sizeof(DTYPE));
+            //}
             #endif
             dma_wait_all();
             dma_time += pulp_get_timer() - dma_timer;
@@ -130,10 +149,10 @@ static inline void merge_bufs(uint64_t buf_1_addr[8], uint64_t buf_2_addr[8], ui
             pulp_barrier();
 
             for(int core = 0; core < 8; core++) {
+                // We might not need to work in the last steps of the algorithm
                 if(buf_1_addr[core] == 0)
                     continue;
-                //if(core == 0)
-                //    printf("%x -> %x (%x)\n\r", (uint32_t)buf_1_addr[core] + (buf_1_off[core]), buf_size);
+                // Fetch next buffers
                 buf_1_off[core] += dma_fill_buf(&l1_buf_1[core][0], buf_size, buf_1_head[core], buf_1_tail[core], buf_1_off[core], buf_1_addr[core], l3_buf_size-buf_1_off[core], core);
                 buf_2_off[core] += dma_fill_buf(&l1_buf_2[core][0], buf_size, buf_2_head[core], buf_2_tail[core], buf_2_off[core], buf_2_addr[core], l3_buf_size-buf_2_off[core], core);
 
@@ -143,9 +162,12 @@ static inline void merge_bufs(uint64_t buf_1_addr[8], uint64_t buf_2_addr[8], ui
         // Compare L1 buffers (only what have been filled from last iteration) and fill output buffer
         if(core_idx < 8) {
             // Synch with after the dma wait all
+            if(core_idx == 0)
+                compute_timer = pulp_get_timer();
             pulp_barrier();
             if(buf_1_addr[core_idx] != 0) {
                 for(int k = 0; k < buf_size; k++) {
+                    // Make sure we decrease the buffer size
                     if((!buf_2_size || l1_buf_1[core_idx][next_buf_1_head] <= l1_buf_2[core_idx][next_buf_2_head]) && buf_1_size) {
                         l1_buf_out[core_idx][k] = l1_buf_1[core_idx][next_buf_1_head];
                         next_buf_1_head = (next_buf_1_head+1) % (2*buf_size);
@@ -160,6 +182,9 @@ static inline void merge_bufs(uint64_t buf_1_addr[8], uint64_t buf_2_addr[8], ui
         }
 
         pulp_barrier();
+
+        if(core_idx == 0)
+            compute_time += pulp_get_timer() - compute_timer;
 
         // Now that dma have been issued we can update heads and tails
         if(core_idx < 8 && buf_1_addr[core_idx] != 0) {
@@ -203,10 +228,6 @@ static inline void merge_bufs(uint64_t buf_1_addr[8], uint64_t buf_2_addr[8], ui
 int merge_sort(DTYPE *xin_, uint32_t xin_p_, DTYPE *xout_, uint32_t xout_p_, int n_)
 {
 
-    char toprint[128];
-    snprintf(toprint, 128, "enter_omp_mergesort-%u", n_);
-    hero_add_timestamp(toprint, __func__, 0);
-
 #pragma omp target device(1) map(to : n_, xout_p_, xin_p_)
     {
         // Avoid argument optimization
@@ -224,6 +245,8 @@ int merge_sort(DTYPE *xin_, uint32_t xin_p_, DTYPE *xout_, uint32_t xout_p_, int
 
         dma_time = 0;
         all_time = 0;
+        compute_time = 0;
+        issue_time = 0;
 
         if (!n || !xout_p || !xin_p ) {
             goto omp_exit;
@@ -241,21 +264,57 @@ int merge_sort(DTYPE *xin_, uint32_t xin_p_, DTYPE *xout_, uint32_t xout_p_, int
             all_timer = pulp_get_timer();
 
         while(log_counter > 1) {
-            
-            for (int i = 0; i < n / 8; i += (itr_counter*2)) {
-                if(core_idx < 8) {
-                    buf_1_addr[core_idx]   = xin_p + (global_itr%2)*n*sizeof(DTYPE)     + core_idx*(n/8)*sizeof(DTYPE) + i*sizeof(DTYPE);
-                    buf_2_addr[core_idx]   = xin_p + (global_itr%2)*n*sizeof(DTYPE)     + core_idx*(n/8)*sizeof(DTYPE) + (i+itr_counter)*sizeof(DTYPE);
-                    buf_out_addr[core_idx] = xin_p + ((global_itr+1)%2)*n*sizeof(DTYPE) + core_idx*(n/8)*sizeof(DTYPE) + i*sizeof(DTYPE);
+            // If we don't need double buffering to merge two buffers
+            if(itr_counter <= BUF_SIZE) {
+                for(int I = 0; I < n; I += BUF_SIZE*2*8) {
+                    int len = MIN(BUF_SIZE*2*8, n);
+                    if(core_idx == 8) {
+                        // printf("%u core_idx %u %x %u %u\n\r", core_idx, xin_p + (global_itr%2)*n*sizeof(DTYPE) + I*sizeof(DTYPE), I, len);
+                        issue_timer = pulp_get_timer();
+                        __dma_start_1d_wideptr_base(l1_buf_1, xin_p + (global_itr%2)*n*sizeof(DTYPE) + I*sizeof(DTYPE), len*sizeof(DTYPE), 0);
+                        issue_time += pulp_get_timer() - issue_timer;
+                        dma_timer = pulp_get_timer();
+                        dma_wait_all();
+                        dma_time += pulp_get_timer() - dma_timer;
+                    }
+                    pulp_barrier();
+                    if(core_idx == 0)
+                        compute_timer = pulp_get_timer();
+                    for (int i = 0; i < len; i += (itr_counter*2*8)) {
+                        if(i >= n)
+                            break;
+                        if(core_idx < 8) {
+                            __device DTYPE* buf_1   = (__device DTYPE*) ((void *)l1_buf_1 + (i+core_idx*2*itr_counter)*sizeof(DTYPE));
+                            __device DTYPE* buf_2   = (__device DTYPE*) ((void *)l1_buf_1 + (i+core_idx*2*itr_counter+itr_counter)*sizeof(DTYPE));
+                            __device DTYPE* buf_out = (__device DTYPE*) ((void *)l1_buf_2 + (i+core_idx*2*itr_counter)*sizeof(DTYPE));
+                            simple_l1_merge(buf_1, buf_2, buf_out, itr_counter);
+                        }
+                    }
+                    pulp_barrier();
+                    if(core_idx == 0)
+                        compute_time += pulp_get_timer() - compute_timer;
+
+                    if(core_idx == 8) {
+                        // printf("%u core_idx %u %x %u %u\n\r", core_idx, xin_p + ((global_itr+1)%2)*n*sizeof(DTYPE) + I*sizeof(DTYPE), I, len);
+                        issue_timer = pulp_get_timer();
+                        __dma_start_1d_wideptr_base(xin_p + ((global_itr+1)%2)*n*sizeof(DTYPE) + I*sizeof(DTYPE), l1_buf_2, len*sizeof(DTYPE), 0);
+                        issue_time += pulp_get_timer() - issue_timer;
+                    }
                 }
-
-                //if(core_idx == 0)
-                //    printf("\n\r%x (%u %u) // %u - %u to %u\n\r\n\r", log_counter, itr_counter, (global_itr%2)*n + core_idx*(n/8) + i, (global_itr%2)*n + core_idx*(n/8) + (i+itr_counter), ((global_itr+1)%2)*n + core_idx*(n/8) + i);
-
-                pulp_barrier();
-                merge_bufs(buf_1_addr, buf_2_addr, buf_out_addr, itr_counter);
-                pulp_barrier();
+            // If we need double buffering to merge two buffers
+            } else {
+                for (int i = 0; i < n / 8; i += (itr_counter*2)) {
+                    if(core_idx < 8) {
+                        buf_1_addr[core_idx]   = xin_p + (global_itr%2)*n*sizeof(DTYPE)     + core_idx*(n/8)*sizeof(DTYPE) + i*sizeof(DTYPE);
+                        buf_2_addr[core_idx]   = xin_p + (global_itr%2)*n*sizeof(DTYPE)     + core_idx*(n/8)*sizeof(DTYPE) + (i+itr_counter)*sizeof(DTYPE);
+                        buf_out_addr[core_idx] = xin_p + ((global_itr+1)%2)*n*sizeof(DTYPE) + core_idx*(n/8)*sizeof(DTYPE) + i*sizeof(DTYPE);
+                    }
+                    pulp_barrier();
+                    merge_bufs(buf_1_addr, buf_2_addr, buf_out_addr, itr_counter);
+                    pulp_barrier();
+                }
             }
+
             global_itr++;
             itr_counter = itr_counter << 1;
             log_counter = log_counter >> 1;
@@ -291,7 +350,7 @@ int merge_sort(DTYPE *xin_, uint32_t xin_p_, DTYPE *xout_, uint32_t xout_p_, int
 
     if(core_idx == 8) {
         all_time = pulp_get_timer() - all_timer;
-        printf("%x Time : %u (dma : %u)\n\r", all_time, dma_time);
+        printf("%x Tot : %u Dma : %u Issue : %u Compute : %u\n\r", all_time, dma_time, issue_time, compute_time);
     }
 omp_exit:
         ;
