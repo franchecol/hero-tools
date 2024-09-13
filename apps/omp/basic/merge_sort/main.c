@@ -34,6 +34,8 @@ static inline void fence()
 #include "merge_sort_host.h"
 ///// END includes /////
 
+#define ALIGN_UP(size, align) ((size%align==0) ? size : size + align - (size%align))
+
 void kernel_1()
 {
 #pragma omp target device(1)
@@ -46,8 +48,9 @@ int main(int argc, char *argv[])
     uintptr_t in_phys, out_phys;
     // Virtual addresses
     DTYPE *in = NULL, *out = NULL, *in_iommu = NULL, *out_iommu = NULL;
-    // Verification matrices
+    // Verification arrays
     DTYPE *in_test, *out_test = NULL;
+    int do_map = 0;
     // Return
     int ret;
 
@@ -55,10 +58,12 @@ int main(int argc, char *argv[])
 
     if (argc > 1)
         width = strtol(argv[1], NULL, 10);
+    if (argc > 2)
+        do_map = strtol(argv[1], NULL, 10);
 
-    // Verification matrices
-    in_test = malloc(width * sizeof(DTYPE));
-    out_test = malloc(width * sizeof(DTYPE));
+    // Verification arrays
+    in_test =  aligned_alloc(0x1000, ALIGN_UP(width * sizeof(DTYPE), 0x1000));
+    out_test = aligned_alloc(0x1000, ALIGN_UP(width * sizeof(DTYPE), 0x1000));
 
     hero_add_timestamp("enter_omp_init", __func__, 0);
     // Init Hero OpenMP runtime
@@ -70,6 +75,7 @@ int main(int argc, char *argv[])
     }
 
     hero_add_timestamp("enter_alloc_data", __func__, 0);
+    // Note we only allocate 2*width so it can be used by an intermediary buffer by the device
     in = hero_dev_l3_malloc(NULL, 2 * width * sizeof(DTYPE), &in_phys);
     out = hero_dev_l3_malloc(NULL, width * sizeof(DTYPE), &out_phys);
 
@@ -77,8 +83,10 @@ int main(int argc, char *argv[])
     memcpy(in, in_test, width*sizeof(DTYPE));
 
     hero_add_timestamp("enter_map_data", __func__, 0);
-    in_iommu  =  (DTYPE *)hero_iommu_map_virt(NULL, width * sizeof(DTYPE), in_iommu);
-    out_iommu =  (DTYPE *)hero_iommu_map_virt(NULL, width * sizeof(DTYPE)  , out_iommu);
+    if(!do_map) {
+        in_iommu  =  (DTYPE *)hero_iommu_map_virt(NULL, width * sizeof(DTYPE), in_test);
+        out_iommu =  (DTYPE *)hero_iommu_map_virt(NULL, width * sizeof(DTYPE), out_test);
+    }
     asm volatile("fence");
 
     char toprint[128];

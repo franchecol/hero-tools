@@ -17,13 +17,22 @@ int hero_iommu_region_add(struct iommu_domain *iommu_domain,
     unsigned long nr_pages = length >> PAGE_SHIFT;
     struct page **pages;
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(6,5,0)
+
+    if(user_addr & ~PAGE_MASK || length & ~PAGE_MASK || iova & ~PAGE_MASK) {
+        pr_err("unaligned address or size (%llx %llx %llx)\n", user_addr, length, iova);
+    }
+
     pages =
         (struct page **)kcalloc(nr_pages, sizeof(struct page *), GFP_KERNEL);
+    if (!pages) {
+        pr_err("no memory available\n\r");
+		return -ENOMEM;
+	}
 
-    pr_debug("pin_user_pages_fast %llx %llx %x %llx\n", user_addr, nr_pages,
-            FOLL_WRITE, pages);
+    //pr_info("pin_user_pages_fast %llx %llx %x %llx\n", user_addr, nr_pages,
+    //        FOLL_WRITE, pages);
 
-    ret = get_user_pages_fast(user_addr, nr_pages, 0, pages);
+    ret = pin_user_pages_fast(user_addr, nr_pages, FOLL_WRITE, pages);
 
     if (ret < nr_pages || nr_pages == 0) {
         pr_err("pin_pages failed (%u)\n", ret);
@@ -37,13 +46,13 @@ int hero_iommu_region_add(struct iommu_domain *iommu_domain,
     }
 
     // Add to the buffer list
-    struct hero_iommu_region_node *new =
-        kmalloc(sizeof(struct hero_iommu_region_node), GFP_KERNEL);
-    new->data = kmalloc(sizeof(struct hero_iommu_region), GFP_KERNEL);
-    new->data->user_addr = user_addr;
-    new->data->length = length;
-    new->data->iova = user_addr;
-    list_add_tail(&new->list, iommu_region_list);
+    // struct hero_iommu_region_node *new =
+    //     kmalloc(sizeof(struct hero_iommu_region_node), GFP_KERNEL);
+    // new->data = kmalloc(sizeof(struct hero_iommu_region), GFP_KERNEL);
+    // new->data->user_addr = user_addr;
+    // new->data->length = length;
+    // new->data->iova = user_addr;
+    // list_add_tail(&new->list, iommu_region_list);
     return nr_pages;
 #else
     return -1;

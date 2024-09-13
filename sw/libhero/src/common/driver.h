@@ -91,6 +91,10 @@ uintptr_t hero_host_l3_malloc(HeroDev *dev, unsigned size_b, uintptr_t *p_addr) 
 uintptr_t hero_iommu_map_virt(HeroDev *dev, unsigned size_b, void *v_addr) {
     struct driver_ioctl_arg chunk;
     int err;
+    if((uint32_t)v_addr & (uint32_t)0x1000 != 0 || (uint32_t)size_b & (uint32_t)0x1000 != 0) {
+        pr_error("%s unaligned address or size to map\n", __func__);
+        return NULL;
+    }
     // MMAP requires page granularity
     chunk.size = size_b;
     chunk.result_phys_addr = 0;
