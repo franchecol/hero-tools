@@ -108,6 +108,8 @@ int main(int argc, char *argv[])
         alpha = atof(argv[4]);
     if (argc > 5)
         beta = atof(argv[5]);
+    if (argc > 6)
+        do_map = strtol(argv[6], NULL, 10);
 
     // Verification matrices
     A_test   = aligned_alloc(0x1000, ALIGN_UP(m * n *     sizeof(DTYPE), 0x1000));
