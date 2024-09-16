@@ -124,6 +124,31 @@ PULP_NOINLINE float fdotp_opti_32b(const float *a, const float *b, float *c, con
                  : "ft1", "ft2", "ft3", "t0");
 }
 
+static inline float fdotp_opti_return_32b(const float *a, const float *b, const unsigned int K)
+{
+    const register float zero = 0.0;
+    register float res;
+
+    // Don't accumulate in first iteration
+    asm volatile("mv t0, zero\n"
+                 "fmv.s ft3, %[zero]\n"
+                 // Don't accumulate in first iteration
+                 "addi t0, t0, 1\n\r"
+                 "flw ft1, 0(%[a]) \n"
+                 "add %[a], %[a], 4 \n"
+                 "flw ft2, 0(%[b]) \n"
+                 "add %[b], %[b], 4 \n"
+                 "fmadd.s ft3, ft1, ft2, ft3 \n"
+                 "blt   t0, %[K], -24 \n"
+                 // Store results
+                 "fmv.s %[res], ft3\n"
+                 : [a] "+r"(a), [b] "+r"(b), [res] "+f"(res)
+                 : [K] "r"(K), [zero] "f"(zero)
+                 : "ft1", "ft2", "ft3", "t0");
+
+    return res;
+}
+
 // 32-bit dot-product: a * b
 PULP_NOINLINE double fdotp_opti_64b(const double *a, const double *b, double *c, const unsigned int K)
 {
