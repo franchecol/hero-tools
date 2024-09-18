@@ -86,7 +86,7 @@ int main(int argc, char *argv[])
     // Device virtual addresses
     DTYPE *A_iommu = NULL, *B_iommu = NULL, *C_iommu = NULL, *out_iommu = NULL;
     // Do / Don't map IOMMU flag
-    int do_map;
+    int do_map = 0;
     // Return
     int ret;
     // sprintf buffer

@@ -77,6 +77,8 @@ int heat3d(uint32_t A_, uint32_t B_, int m_, int n_, int p_, DTYPE alpha_, int i
         const uint32_t B          = B_;
         const uint32_t core_idx   = pulp_get_core_id();
 
+        uint32_t issue_diff = 0;
+
         uint32_t M_in, M_out;
 
         if (!m || !n || !p || !A || !B || n > BUF_SIZE) {
@@ -212,7 +214,7 @@ int heat3d(uint32_t A_, uint32_t B_, int m_, int n_, int p_, DTYPE alpha_, int i
                                 dma_start_1d_wideptr(l1_buf[(itr+1)%2][2], ZERO_MEM, (CORES+2)*BUF_SIZE*sizeof(DTYPE));
                             }
 
-                            issue_time += pulp_get_timer() - issue_timer;
+                            issue_diff = pulp_get_timer() - issue_timer;
                         }
                     }
 
@@ -236,11 +238,14 @@ int heat3d(uint32_t A_, uint32_t B_, int m_, int n_, int p_, DTYPE alpha_, int i
                         asm volatile ("fence");
                     }
 
-                    pulp_barrier();
-
                     if(core_idx == 0) compute_time += pulp_get_timer() - compute_timer;
 
+                    pulp_barrier();
+
                     if(core_idx == 8) {
+                        uint32_t compute_diff = (pulp_get_timer() - compute_timer);
+                        if( compute_diff < issue_diff ) issue_time += issue_diff - compute_diff;
+
                         issue_timer = pulp_get_timer();
                         for (int c = 0; c < MIN(CORES, m - i); ++c){
                             dma_start_1d_wideptr(idx(M_out, m, n, p, i+c, 0, k), l1_res[c], n*sizeof(DTYPE));

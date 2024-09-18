@@ -39,7 +39,7 @@ class PTE:
         self.point_idx = point_idx
         self.ppn = ppn
         self.location = location
-        self.flags = 0b1 if level != 2 else 0b11111
+        self.flags = 0b1 if level != 2 else 0b11010111
     def __str__(self):
         return f'{self.point_idx}'
     def to_byte(self):
@@ -56,20 +56,26 @@ class MemRegion:
     def create_pages(self):
         assert self.begin % self.page_size == 0, "Non page aligned boundary region"
         assert self.end   % self.page_size == 0, "Non page aligned boundary region"
-        idx = 0
+        idx2 = 0
+        idx1 = 0
+        idx0 = 0
         # Allocate first pages
-        if ((self.begin >> 12) & 0b111111111) != 0:
-            self.pages[1].append(PTE(1, idx, -1))
+        assert((self.begin >> 12) & 0b111111111 == 0)
+
         if ((self.begin >> (12+9)) & 0b111111111) != 0:
-            self.pages[0].append(PTE(0, idx, -1))
+            self.pages[0].append(PTE(0, 0, -1))
+            for i in range((self.begin >> (12+9)) & 0b111111111):
+                self.pages[1].append(PTE(1, -1, -1))
+                idx1 += 1
 
         for addr in range(self.begin, self.end, self.page_size):
             if ((addr >> 12) & 0b111111111) == 0:
-                self.pages[1].append(PTE(1, idx, -1))    
+                self.pages[1].append(PTE(1, idx0, -1))    
+                idx1 += 1
                 if ((addr >> (12+9)) & 0b111111111) == 0:
-                    self.pages[0].append(PTE(0, idx, -1))
+                    self.pages[0].append(PTE(0, idx1, -1))
             self.pages[2].append(PTE(2, -1, addr >> 12))
-            idx += 1
+            idx0 += 1
 
     def place_ptes(self, address):
         res = bytearray()
@@ -81,7 +87,10 @@ class MemRegion:
         address, res = align_up(address, res)
         for pte in self.pages[1]:
             pte.location = address
-            pte.ppn = self.pages[2][pte.point_idx].location >> 12
+            if(pte.point_idx == -1):
+                pte.ppn = 0
+            else:
+                pte.ppn = self.pages[2][pte.point_idx].location >> 12
             address += 8
             res = res + pte.to_byte()
         for pte in self.pages[0]:

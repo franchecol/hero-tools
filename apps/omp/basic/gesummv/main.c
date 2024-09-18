@@ -82,7 +82,7 @@ int main(int argc, char *argv[])
     // Scalar coefficients
     DTYPE alpha = 1.0f, beta = 1.0f;
     // Do / Don't map IOMMU flag
-    int do_map;
+    int do_map = 0;
     // Return
     int ret;
     // sprintf buffer

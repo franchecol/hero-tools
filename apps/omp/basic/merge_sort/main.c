@@ -42,6 +42,21 @@ void kernel_1()
     asm volatile("nop");
 }
 
+inline int fast_rand(void) {
+    static int g_seed = 1999;
+    g_seed = (214013*g_seed+2531011);
+    return (g_seed>>16)&0x7FFF;
+}
+
+void __attribute__((optimize("O0"))) flush_caches() {
+    volatile uint8_t *A = malloc(256*1024*sizeof(uint8_t));
+    volatile register uint8_t b;
+    memset(A, 'e', 256*1024*sizeof(uint8_t));
+    for(int i = 0; i < 256*1024; i++)
+        b = A[i];
+    free(A);
+}
+
 int main(int argc, char *argv[])
 {
     // Physical addresses
@@ -50,7 +65,7 @@ int main(int argc, char *argv[])
     DTYPE *in = NULL, *out = NULL, *in_iommu = NULL, *out_iommu = NULL;
     // Verification arrays
     DTYPE *in_test, *out_test = NULL;
-    int do_map = 0;
+    int do_map = 0, do_flushes = 0;
     // Return
     int ret;
 
@@ -59,7 +74,9 @@ int main(int argc, char *argv[])
     if (argc > 1)
         width = strtol(argv[1], NULL, 10);
     if (argc > 2)
-        do_map = strtol(argv[1], NULL, 10);
+        do_map = strtol(argv[2], NULL, 10);
+    if (argc > 3)
+        do_flushes = strtol(argv[3], NULL, 10);
 
     // Verification arrays
     in_test =  aligned_alloc(0x1000, ALIGN_UP(width * sizeof(DTYPE), 0x1000));
@@ -71,7 +88,7 @@ int main(int argc, char *argv[])
 
     hero_add_timestamp("enter_prepare_data", __func__, 0);
     for (int i = 0; i < width; i++) {
-        in_test[i] = (DTYPE)(rand() % 20);
+        in_test[i] = (DTYPE)(fast_rand() % 1024);
     }
 
     hero_add_timestamp("enter_alloc_data", __func__, 0);
@@ -79,14 +96,25 @@ int main(int argc, char *argv[])
     in = hero_dev_l3_malloc(NULL, 2 * width * sizeof(DTYPE), &in_phys);
     out = hero_dev_l3_malloc(NULL, width * sizeof(DTYPE), &out_phys);
 
+    if(do_flushes) {
+    hero_add_timestamp("flush_data_1", __func__, 0);
+    flush_caches();
+    }
+
     hero_add_timestamp("enter_copy_data", __func__, 0);
     memcpy(in, in_test, width*sizeof(DTYPE));
 
-    hero_add_timestamp("enter_map_data", __func__, 0);
-    if(!do_map) {
-        in_iommu  =  (DTYPE *)hero_iommu_map_virt(NULL, width * sizeof(DTYPE), in_test);
-        out_iommu =  (DTYPE *)hero_iommu_map_virt(NULL, width * sizeof(DTYPE), out_test);
+    if(do_flushes) {
+    hero_add_timestamp("flush_data_2", __func__, 0);
+    flush_caches();
     }
+
+    hero_add_timestamp("enter_map_data", __func__, 0);
+    if(do_map) {
+        in_iommu  =  (DTYPE *)hero_iommu_map_virt(NULL, ALIGN_UP(width * sizeof(DTYPE), 0x1000), in_test);
+        //out_iommu =  (DTYPE *)hero_iommu_map_virt(NULL, ALIGN_UP(width * sizeof(DTYPE), 0x1000), out_test);
+    }
+    hero_add_timestamp("end_map_data", __func__, 0);
     asm volatile("fence");
 
     char toprint[128];
