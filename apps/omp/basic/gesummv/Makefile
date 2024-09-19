@@ -4,7 +4,7 @@
 #
 # Cyril Koenig <cykoenig@iis.ee.ethz.ch>
 
-DEVICES ?= spatz_cluster
+DEVICES ?= snitch_cluster
 
 CSRCS = main.c
 
