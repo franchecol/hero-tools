@@ -11,7 +11,7 @@ extern int* hero_device_cycles;
 extern int hero_num_device_cycles;
 #include "encoding.h"
 #include "runtime.h"
-#include "/scratch2/cykoenig/development/hero-tools/platforms/carfield/sw/tests/bare-metal/snitchd/common/printf.h"
+#include "/usr/scratch2/wuerzburg/cykoenig/development/hero-tools/platforms/carfield/sw/tests/bare-metal/snitchd/common/printf.h"
 
 #define BUF_SIZE 256
 ////// HOST includes /////
@@ -51,6 +51,15 @@ void kernel_1()
 
 int axpy(uint32_t x_phys, uint32_t y_phys, DTYPE alpha, uint32_t n);
 
+#define IOMMU_BASE           0x2000a000
+#define IOMMU_EVNT_OFFSET_L  0x00000160
+#define IOMMU_EVNT_OFFSET_H  0x00000164
+#define IOMMU_CNTR_OFFSET_L  0x00000068
+#define IOMMU_CNTR_OFFSET_H  0x0000006c
+#define IOMMU_DUMP_OFFSET_L  0x00000400
+#define IOMMU_DUMP_OFFSET_H  0x00000404
+#define IOMMU_INDX_OFFSET    0x00000800
+
 int main(int argc, char *argv[])
 {
     // Physical addresses
@@ -77,6 +86,38 @@ int main(int argc, char *argv[])
         alpha = atof(argv[2]);
     if (argc > 3)
         do_map = strtol(argv[3], NULL, 10);
+
+#ifndef __HERO_DEV
+    // Mmap counters
+    int fd = open("/dev/mem", O_RDWR | O_SYNC);
+    if (fd == -1){
+        printf("can not access /dev/mem\n" );
+        return -1;
+    }
+
+    uint8_t *mmap_iommu = (uint8_t*) mmap(NULL, 0x1000, PROT_READ | PROT_WRITE, MAP_SHARED, fd, IOMMU_BASE);
+    uint64_t iommu_base_virt = (uint64_t) mmap_iommu;
+
+    // Reset idx register to 0
+    *((uint32_t *)(iommu_base_virt + IOMMU_INDX_OFFSET)) = 0;
+
+    // Reset dumps to 0
+    for (int i = 0; i < 128; ++i) {
+        *((uint32_t *)(iommu_base_virt + IOMMU_DUMP_OFFSET_L + i * 8)) = 0;
+        *((uint32_t *)(iommu_base_virt + IOMMU_DUMP_OFFSET_H + i * 8)) = 0;
+    }
+
+    // Reset counters to 0
+    for (int i = 0; i < 8; ++i) {
+        *((uint32_t *)(iommu_base_virt + IOMMU_CNTR_OFFSET_L + i * 8)) = 0;
+        *((uint32_t *)(iommu_base_virt + IOMMU_CNTR_OFFSET_H + i * 8)) = 0;
+    }
+
+    // Set events appropriately (EVT_0 == s1_ptw, EVT_1 == tlb_miss)
+    *((uint32_t *)(iommu_base_virt + IOMMU_EVNT_OFFSET_L + 0 * 8)) = 0x7;
+    *((uint32_t *)(iommu_base_virt + IOMMU_EVNT_OFFSET_L + 1 * 8)) = 0x4;
+
+#endif
 
     // Verification matrices
     x_test   = aligned_alloc(0x1000, ALIGN_UP(n * sizeof(DTYPE), 0x1000));
@@ -136,6 +177,34 @@ int main(int argc, char *argv[])
             break;
         }
     }
+
+#ifndef __HERO_DEV
+
+    uint32_t tlb_misses = *((uint32_t *) (iommu_base_virt + IOMMU_CNTR_OFFSET_L + 1 * 8));
+    printf("TLB misses : %u\n", tlb_misses);
+
+    uint32_t n_measurements = *((uint32_t *) (iommu_base_virt + IOMMU_INDX_OFFSET));
+    printf("N times    : %u\n", n_measurements);
+
+
+    uint32_t start_idx = 0;
+    uint32_t n_iterations = n_measurements - 1;
+    if (tlb_misses > 128) {
+        start_idx = n_measurements + 1;
+        n_iterations = 127;
+    }
+
+    printf("PTW cycles : ");
+    uint32_t ptw_cycles, ptw_cycles_prev;
+    ptw_cycles_prev = *((uint32_t *) (iommu_base_virt + IOMMU_DUMP_OFFSET_L + start_idx * 8));
+    for (int i = start_idx + 1; i < start_idx + 1 + n_iterations; ++i) {
+        ptw_cycles = *((uint32_t *) (iommu_base_virt + IOMMU_DUMP_OFFSET_L + ((i % 128) * 8)));
+        printf("%u, ", ptw_cycles - ptw_cycles_prev);
+        ptw_cycles_prev = ptw_cycles;
+    }
+    printf("\n");
+
+#endif
 
     // Print all the recorded timestamps
     hero_print_timestamp();
