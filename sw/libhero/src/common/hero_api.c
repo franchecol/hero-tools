@@ -15,6 +15,7 @@
 
 int libhero_log_level = LOG_MAX;
 int device_fd;
+volatile int noise_amount;
 
 ///////////////////////
 ///// TIMESTAMPS //////
