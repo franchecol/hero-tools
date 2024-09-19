@@ -169,6 +169,7 @@ int heat3d(uint32_t A_, uint32_t B_, int m_, int n_, int p_, DTYPE alpha_, int i
                         // Data is ready
                         pulp_barrier();
 
+                        issue_timer = pulp_get_timer();
                         if(rows_covered < m) {
 
                             const int next_row  = rows_covered - 1;
@@ -180,7 +181,6 @@ int heat3d(uint32_t A_, uint32_t B_, int m_, int n_, int p_, DTYPE alpha_, int i
                                 rows_to_pad  = (CORES - rows_left) + 1;
                             }
 
-                            issue_timer = pulp_get_timer();
 
                             // Not padding columns, as already padded at the beginning
                             dma_start_2d_wideptr(&l1_buf[(itr+1)%2][1][0][1], idx(M_in, m, n, p, next_row, 0, k), n*sizeof(DTYPE), BUF_SIZE*sizeof(DTYPE), n*sizeof(DTYPE), rows_to_copy);
@@ -214,8 +214,8 @@ int heat3d(uint32_t A_, uint32_t B_, int m_, int n_, int p_, DTYPE alpha_, int i
                                 dma_start_1d_wideptr(l1_buf[(itr+1)%2][2], ZERO_MEM, (CORES+2)*BUF_SIZE*sizeof(DTYPE));
                             }
 
-                            issue_diff = pulp_get_timer() - issue_timer;
                         }
+                        issue_diff = pulp_get_timer() - issue_timer;
                     }
 
                     if(core_idx < 8) {

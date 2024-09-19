@@ -69,12 +69,12 @@ int matvec(const uint32_t out, const uint32_t x, const uint32_t A, const DTYPE a
             dma_wait_all();
             dma_time += pulp_get_timer() - dma_timer;
             pulp_barrier();
+            issue_timer = pulp_get_timer();
             if(rows_left > CORES){
-                issue_timer = pulp_get_timer();
                 dma_start_1d_wideptr(l1_buf[(itr+1)%2], A + n * sizeof(DTYPE) * (I + CORES), n * MIN(rows_left - CORES, CORES) * sizeof(DTYPE));
                 // issue_time += pulp_get_timer() - issue_timer;
-                issue_diff = pulp_get_timer() - issue_timer;
             }
+            issue_diff = pulp_get_timer() - issue_timer;
         }
 
         if(core_idx < 8) {

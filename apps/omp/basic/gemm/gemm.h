@@ -166,10 +166,11 @@ int gemm(uint32_t out_, uint32_t A_, uint32_t B_, uint32_t C_, int m_, int n_, i
 
                     pulp_barrier();
 
+                    issue_timer = pulp_get_timer();
+                    
                     // Next iteration of double buffering
                     if (cols_left > y) {
 
-                        issue_timer = pulp_get_timer();
 
                         // Copy next y columns (actually rows, but transposed) from B into l1_vecs[next]
                         dma_start_2d_wideptr(l1_colbuf[(itr+1)%2], B + (k + y) * n * sizeof(DTYPE), n * sizeof(DTYPE), BUF_SIZE * sizeof(DTYPE), n * sizeof(DTYPE), cols_to_process);
@@ -177,9 +178,10 @@ int gemm(uint32_t out_, uint32_t A_, uint32_t B_, uint32_t C_, int m_, int n_, i
                         // Copy next #cores rows of first y columns of C into l1_accbuf[next]
                         dma_start_2d_wideptr(l1_accbuf[(itr+1)%2], C + i * p * sizeof(DTYPE) + (k + y) * sizeof(DTYPE), cols_to_process * sizeof(DTYPE), MAX_COLS * sizeof(DTYPE), p * sizeof(DTYPE), rows_to_process);
                     
-                        // issue_time += pulp_get_timer() - issue_timer;
-                        issue_diff = pulp_get_timer() - issue_timer;
                     }
+                    
+                    // issue_time += pulp_get_timer() - issue_timer;
+                    issue_diff = pulp_get_timer() - issue_timer;
                 }
 
                 if (core_idx < 8) {

@@ -27,9 +27,12 @@ static inline void fence()
     asm volatile("fence" ::: "memory");
 }
 
+extern volatile int noise_amount;
+
 #endif
 ///// ALL includes /////
 #include "hero_64.h"
+#include "iommu.h"
 #include "merge_sort.h"
 #include "merge_sort_host.h"
 ///// END includes /////
@@ -42,11 +45,14 @@ void kernel_1()
     asm volatile("nop");
 }
 
-inline int fast_rand(void) {
-    static int g_seed = 1999;
+  static unsigned int g_seed;
+  inline int fast_rand(void) {
     g_seed = (214013*g_seed+2531011);
     return (g_seed>>16)&0x7FFF;
-}
+  }
+  inline void fast_srand(int seed) {
+    g_seed = seed;
+  }
 
 void __attribute__((optimize("O0"))) flush_caches() {
     volatile uint8_t *A = malloc(256*1024*sizeof(uint8_t));
@@ -69,6 +75,8 @@ int main(int argc, char *argv[])
     // Return
     int ret;
 
+    int noise = 0;
+
     int width = 16;
 
     if (argc > 1)
@@ -76,7 +84,19 @@ int main(int argc, char *argv[])
     if (argc > 2)
         do_map = strtol(argv[2], NULL, 10);
     if (argc > 3)
-        do_flushes = strtol(argv[3], NULL, 10);
+        noise = strtol(argv[3], NULL, 10);
+    
+    fast_srand(2025);
+
+#ifndef __HERO_DEV
+    noise_amount = noise;
+#endif
+
+    // Get access to IOMMU configuration registers (devmap)
+    uint64_t iommu_base_virt = iommu_devmap();
+
+    // Reset IOMMU counters
+    iommu_reset_counters(iommu_base_virt);
 
     // Verification arrays
     in_test =  aligned_alloc(0x1000, ALIGN_UP(width * sizeof(DTYPE), 0x1000));
@@ -117,8 +137,21 @@ int main(int argc, char *argv[])
     hero_add_timestamp("end_map_data", __func__, 0);
     asm volatile("fence");
 
+    // Offload 1 (pre-heat instruction caches)
     char toprint[128];
-    snprintf(toprint, 128, "enter_omp_mergesort-%u", width);
+    snprintf(toprint, 128, "enter_cold_omp_mergesort-%u", width);
+    hero_add_timestamp(toprint, __func__, 0);
+    ret = merge_sort(in, in_phys, out, out_phys, width);
+
+    // Print IOMMU stats and reset counters
+    hero_add_timestamp("reset_iommmu_counters", __func__, 0);
+    iommu_print_stats(iommu_base_virt);
+    iommu_reset_counters(iommu_base_virt);
+    // Also copy input data again 
+    memcpy(in, in_test, width*sizeof(DTYPE));
+
+    // Offload 2
+    snprintf(toprint, 128, "enter_hot_omp_mergesort-%u", width);
     hero_add_timestamp(toprint, __func__, 0);
     ret = merge_sort(in, in_phys, out, out_phys, width);
 
@@ -133,6 +166,9 @@ int main(int argc, char *argv[])
         if(out[i] != in_test[i])
             printf("oops %f != %f\n\r", out[i], in_test[i]);
     }
+
+    // Print IOMMU stats
+    iommu_print_stats(iommu_base_virt);
 
     // Print all the recorded timestamps
     hero_print_timestamp();

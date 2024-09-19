@@ -34,9 +34,12 @@ static inline void fence()
     asm volatile("fence" ::: "memory");
 }
 
+extern volatile int noise_amount;
+
 #endif
 ///// ALL includes /////
 #include "hero_64.h"
+#include "iommu.h"
 #define DTYPE float
 #define ALIGN_UP(size, align) ((size%align==0) ? size : size + align - (size%align))
 #define MIN(A, B) (((A)<(B))?(A):(B))
@@ -51,14 +54,6 @@ void kernel_1()
 
 int axpy(uint32_t x_phys, uint32_t y_phys, DTYPE alpha, uint32_t n);
 
-#define IOMMU_BASE           0x2000a000
-#define IOMMU_EVNT_OFFSET_L  0x00000160
-#define IOMMU_EVNT_OFFSET_H  0x00000164
-#define IOMMU_CNTR_OFFSET_L  0x00000068
-#define IOMMU_CNTR_OFFSET_H  0x0000006c
-#define IOMMU_DUMP_OFFSET_L  0x00000400
-#define IOMMU_DUMP_OFFSET_H  0x00000404
-#define IOMMU_INDX_OFFSET    0x00000800
 
 int main(int argc, char *argv[])
 {
@@ -77,6 +72,8 @@ int main(int argc, char *argv[])
     // sprintf buffer
     char toprint[128];
 
+    int noise = 0;
+
     int n       = 16;
     DTYPE alpha = 1.0f;
 
@@ -86,38 +83,18 @@ int main(int argc, char *argv[])
         alpha = atof(argv[2]);
     if (argc > 3)
         do_map = strtol(argv[3], NULL, 10);
+    if (argc > 4)
+        noise = strtol(argv[4], NULL, 10);
 
 #ifndef __HERO_DEV
-    // Mmap counters
-    int fd = open("/dev/mem", O_RDWR | O_SYNC);
-    if (fd == -1){
-        printf("can not access /dev/mem\n" );
-        return -1;
-    }
-
-    uint8_t *mmap_iommu = (uint8_t*) mmap(NULL, 0x1000, PROT_READ | PROT_WRITE, MAP_SHARED, fd, IOMMU_BASE);
-    uint64_t iommu_base_virt = (uint64_t) mmap_iommu;
-
-    // Reset idx register to 0
-    *((uint32_t *)(iommu_base_virt + IOMMU_INDX_OFFSET)) = 0;
-
-    // Reset dumps to 0
-    for (int i = 0; i < 128; ++i) {
-        *((uint32_t *)(iommu_base_virt + IOMMU_DUMP_OFFSET_L + i * 8)) = 0;
-        *((uint32_t *)(iommu_base_virt + IOMMU_DUMP_OFFSET_H + i * 8)) = 0;
-    }
-
-    // Reset counters to 0
-    for (int i = 0; i < 8; ++i) {
-        *((uint32_t *)(iommu_base_virt + IOMMU_CNTR_OFFSET_L + i * 8)) = 0;
-        *((uint32_t *)(iommu_base_virt + IOMMU_CNTR_OFFSET_H + i * 8)) = 0;
-    }
-
-    // Set events appropriately (EVT_0 == s1_ptw, EVT_1 == tlb_miss)
-    *((uint32_t *)(iommu_base_virt + IOMMU_EVNT_OFFSET_L + 0 * 8)) = 0x7;
-    *((uint32_t *)(iommu_base_virt + IOMMU_EVNT_OFFSET_L + 1 * 8)) = 0x4;
-
+    noise_amount = noise;
 #endif
+
+    // Get access to IOMMU configuration registers (devmap)
+    uint64_t iommu_base_virt = iommu_devmap();
+
+    // Reset IOMMU counters
+    iommu_reset_counters(iommu_base_virt);
 
     // Verification matrices
     x_test   = aligned_alloc(0x1000, ALIGN_UP(n * sizeof(DTYPE), 0x1000));
@@ -153,8 +130,21 @@ int main(int argc, char *argv[])
 
     asm volatile("fence");
 
-    // Offload
-    snprintf(toprint, 128, "enter_omp_axpy-%u", n);
+    // Offload 1 (pre-heat instruction caches)
+    snprintf(toprint, 128, "enter_cold_omp_axpy-%u", n);
+    hero_add_timestamp(toprint, __func__, 0);
+    ret = axpy((uint32_t)x_phys, (uint32_t)y_phys, alpha, (uint32_t)n);
+
+    // Print IOMMU stats and reset counters
+    hero_add_timestamp("reset_iommmu_counters", __func__, 0);
+    iommu_print_stats(iommu_base_virt);
+    iommu_reset_counters(iommu_base_virt);
+    // Also, copy input data again
+    memcpy(x_virt, x_test, n  * sizeof(DTYPE));
+    memcpy(y_virt, y_test, n  * sizeof(DTYPE));
+
+    // Offload 2
+    snprintf(toprint, 128, "enter_hot_omp_axpy-%u", n);
     hero_add_timestamp(toprint, __func__, 0);
     ret = axpy((uint32_t)x_phys, (uint32_t)y_phys, alpha, (uint32_t)n);
 
@@ -178,33 +168,8 @@ int main(int argc, char *argv[])
         }
     }
 
-#ifndef __HERO_DEV
-
-    uint32_t tlb_misses = *((uint32_t *) (iommu_base_virt + IOMMU_CNTR_OFFSET_L + 1 * 8));
-    printf("TLB misses : %u\n", tlb_misses);
-
-    uint32_t n_measurements = *((uint32_t *) (iommu_base_virt + IOMMU_INDX_OFFSET));
-    printf("Num times  : %u\n", n_measurements - 1);
-
-
-    uint32_t start_idx = 0;
-    uint32_t n_iterations = n_measurements - 1;
-    if (tlb_misses >= 128) {
-        start_idx = (n_measurements % 128);
-        n_iterations = 127;
-    }
-
-    printf("PTW cycles : ");
-    uint32_t ptw_cycles, ptw_cycles_prev;
-    ptw_cycles_prev = *((uint32_t *) (iommu_base_virt + IOMMU_DUMP_OFFSET_L + start_idx * 8));
-    for (int i = start_idx + 1; i < start_idx + 1 + n_iterations; ++i) {
-        ptw_cycles = *((uint32_t *) (iommu_base_virt + IOMMU_DUMP_OFFSET_L + ((i % 128) * 8)));
-        printf("%u, ", ptw_cycles - ptw_cycles_prev);
-        ptw_cycles_prev = ptw_cycles;
-    }
-    printf("\n");
-
-#endif
+    // Print IOMMU stats
+    iommu_print_stats(iommu_base_virt);
 
     // Print all the recorded timestamps
     hero_print_timestamp();
@@ -228,8 +193,13 @@ int main(int argc, char *argv[])
 __device DTYPE l1_buf_x  [2][8][BUF_SIZE] __attribute__((section(".noinit_l1")));
 __device DTYPE l1_buf_y  [2][8][BUF_SIZE] __attribute__((section(".noinit_l1")));
 
+__attribute__((section(".noinit_l1"))) volatile uint32_t dma_timer = 0, dma_time = 0, all_timer = 0, all_time = 0, issue_timer = 0, issue_time = 0, compute_timer = 0, compute_time = 0;
+
 void dev_axpy(uint32_t x_phys, uint32_t y_phys, DTYPE alpha, uint32_t n) {
+    
     const uint32_t core_idx = pulp_get_core_id();
+
+    uint32_t issue_diff = 0;
 
     //if(core_idx == 0)
     //    print("%x %x %x %f %x\n\r", x_phys, y_phys, alpha, n);
@@ -239,9 +209,23 @@ void dev_axpy(uint32_t x_phys, uint32_t y_phys, DTYPE alpha, uint32_t n) {
             printf("Error!\n\r");
         return;
     }
+
+    if (core_idx == 0) { compute_time = 0; }
+    if (core_idx == 8) { 
+        dma_time     = 0;
+        issue_time   = 0;
+        all_time     = 0;
+    }
+
+    pulp_barrier();
+
+    if(core_idx == 8) all_timer = pulp_get_timer();
+
     if(core_idx == 8) {
+        issue_timer = pulp_get_timer();
         __dma_start_1d_wideptr_base((uint64_t) l1_buf_x[0], (uint64_t) x_phys, 8*BUF_SIZE*sizeof(DTYPE), 0);
         __dma_start_1d_wideptr_base((uint64_t) l1_buf_y[0], (uint64_t) y_phys, 8*BUF_SIZE*sizeof(DTYPE), 0);
+        issue_time += pulp_get_timer() - issue_timer;
     }
 
     int itr = 0;
@@ -249,15 +233,23 @@ void dev_axpy(uint32_t x_phys, uint32_t y_phys, DTYPE alpha, uint32_t n) {
         int rest = n - 8*BUF_SIZE - i;
         
         if(core_idx == 8) {
+            dma_timer = pulp_get_timer();
             dma_wait_all();
+            dma_time += pulp_get_timer() - dma_timer;
+            
             pulp_barrier();
+            
+            issue_timer = pulp_get_timer();
             if(rest > 0) {
                 __dma_start_1d_wideptr_base((uint64_t) l1_buf_x[(itr+1)%2], x_phys + (i+8*BUF_SIZE)*sizeof(DTYPE), 8*BUF_SIZE*sizeof(DTYPE), 0);
                 __dma_start_1d_wideptr_base((uint64_t) l1_buf_y[(itr+1)%2], y_phys + (i+8*BUF_SIZE)*sizeof(DTYPE), 8*BUF_SIZE*sizeof(DTYPE), 0);
             }
+            issue_diff = pulp_get_timer() - issue_timer;
         } else {
+            
             pulp_barrier();
 
+            if(core_idx == 0) compute_timer = pulp_get_timer();
 
             // Don't accumulate in first iteration
             asm volatile("mv t0, zero\n"
@@ -277,12 +269,29 @@ void dev_axpy(uint32_t x_phys, uint32_t y_phys, DTYPE alpha, uint32_t n) {
             //for(int i = 0; i < BUF_SIZE; i++)
             //    l1_buf_y[itr%2][core_idx][i] = alpha * l1_buf_x[itr%2][core_idx][i] + l1_buf_y[itr%2][core_idx][i];
         }
+
         pulp_barrier();
+
+        if(core_idx == 0) compute_time += pulp_get_timer() - compute_timer;
+        
         if(core_idx == 8) {
+            uint32_t compute_diff = (pulp_get_timer() - compute_timer);
+             // Copy out data
+            issue_timer = pulp_get_timer();
             __dma_start_1d_wideptr_base(y_phys + i*sizeof(DTYPE), (uint64_t) &l1_buf_y[itr%2], 8*BUF_SIZE*sizeof(DTYPE), 0);
+            issue_time += pulp_get_timer() - issue_timer + (issue_diff - compute_diff) * (issue_diff > compute_diff);
         }
         itr++;
     }
+    
+    pulp_barrier();
+
+    if(core_idx == 8) {
+        all_time = pulp_get_timer() - all_timer;
+        printf("%x Tot : %u Dma : %u Issue : %u Compute : %u\n", all_time, dma_time, issue_time, compute_time);
+    }
+
+    pulp_barrier();
 }
 
 #endif

@@ -16,7 +16,7 @@
 #ifdef __HERO_SNITCH_CLUSTER
 #include "encoding.h"
 #include "runtime.h"
-#include "/scratch2/cykoenig/development/hero-tools/platforms/carfield/sw/tests/bare-metal/snitchd/common/printf.h"
+#include "/usr/scratch2/wuerzburg/cykoenig/development/hero-tools/platforms/carfield/sw/tests/bare-metal/snitchd/common/printf.h"
 #include "kernels/fdotp.h"
 #define CORES 8
 #define PREFETCHING 1
