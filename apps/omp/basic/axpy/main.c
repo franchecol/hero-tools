@@ -184,13 +184,13 @@ int main(int argc, char *argv[])
     printf("TLB misses : %u\n", tlb_misses);
 
     uint32_t n_measurements = *((uint32_t *) (iommu_base_virt + IOMMU_INDX_OFFSET));
-    printf("N times    : %u\n", n_measurements);
+    printf("Num times  : %u\n", n_measurements - 1);
 
 
     uint32_t start_idx = 0;
     uint32_t n_iterations = n_measurements - 1;
-    if (tlb_misses > 128) {
-        start_idx = n_measurements + 1;
+    if (tlb_misses >= 128) {
+        start_idx = (n_measurements % 128);
         n_iterations = 127;
     }
 
