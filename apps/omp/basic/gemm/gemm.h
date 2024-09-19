@@ -103,6 +103,8 @@ int gemm(uint32_t out_, uint32_t A_, uint32_t B_, uint32_t C_, int m_, int n_, i
         const DTYPE    beta       = beta_;
         const uint32_t core_idx   = pulp_get_core_id();
 
+        uint32_t issue_diff = 0;
+
         if (!m || !n || !p || !A || !B || !C || n > BUF_SIZE) {
             if(core_idx == 0) printf("Wrong parameters\r\n");
             goto omp_exit;
@@ -175,7 +177,8 @@ int gemm(uint32_t out_, uint32_t A_, uint32_t B_, uint32_t C_, int m_, int n_, i
                         // Copy next #cores rows of first y columns of C into l1_accbuf[next]
                         dma_start_2d_wideptr(l1_accbuf[(itr+1)%2], C + i * p * sizeof(DTYPE) + (k + y) * sizeof(DTYPE), cols_to_process * sizeof(DTYPE), MAX_COLS * sizeof(DTYPE), p * sizeof(DTYPE), rows_to_process);
                     
-                        issue_time += pulp_get_timer() - issue_timer;
+                        // issue_time += pulp_get_timer() - issue_timer;
+                        issue_diff = pulp_get_timer() - issue_timer;
                     }
                 }
 
@@ -200,13 +203,14 @@ int gemm(uint32_t out_, uint32_t A_, uint32_t B_, uint32_t C_, int m_, int n_, i
 
                 pulp_barrier();
 
-                if(core_idx == 0) compute_time += pulp_get_timer() - compute_timer;
+               if(core_idx == 0) compute_time += pulp_get_timer() - compute_timer;
 
                 if(core_idx == 8) {
+                   uint32_t compute_diff = (pulp_get_timer() - compute_timer);
                     // Copy out data
-                    issue_timer = pulp_get_timer();
+                   issue_timer = pulp_get_timer();
                     dma_start_2d_wideptr(out + i * p * sizeof(DTYPE) + k * sizeof(DTYPE), l1_res, cols_to_process * sizeof(DTYPE), p * sizeof(DTYPE), MAX_COLS * sizeof(DTYPE), rows_to_process);
-                    issue_time += pulp_get_timer() - issue_timer;
+                   issue_time += pulp_get_timer() - issue_timer + (issue_diff - compute_diff) * (issue_diff > compute_diff);
                 }
 
                 itr++;

@@ -49,6 +49,8 @@ int matvec(const uint32_t out, const uint32_t x, const uint32_t A, const DTYPE a
 {
     const uint32_t core_idx = pulp_get_core_id();
 
+    uint32_t issue_diff = 0;
+
     if(core_idx == 8) {
         issue_timer = pulp_get_timer();
         dma_start_1d_wideptr(&l1_vec[0], x, n * sizeof(DTYPE));
@@ -70,7 +72,8 @@ int matvec(const uint32_t out, const uint32_t x, const uint32_t A, const DTYPE a
             if(rows_left > CORES){
                 issue_timer = pulp_get_timer();
                 dma_start_1d_wideptr(l1_buf[(itr+1)%2], A + n * sizeof(DTYPE) * (I + CORES), n * MIN(rows_left - CORES, CORES) * sizeof(DTYPE));
-                issue_time += pulp_get_timer() - issue_timer;
+                // issue_time += pulp_get_timer() - issue_timer;
+                issue_diff = pulp_get_timer() - issue_timer;
             }
         }
 
@@ -84,6 +87,10 @@ int matvec(const uint32_t out, const uint32_t x, const uint32_t A, const DTYPE a
         }
         pulp_barrier();
         if(core_idx == 0) compute_time += pulp_get_timer() - compute_timer;
+        if(core_idx == 8) {
+            uint32_t compute_diff = pulp_get_timer() - compute_timer;
+            issue_time += (issue_diff - compute_diff) * (issue_diff > compute_diff);
+        }
         
         itr++;
     }
