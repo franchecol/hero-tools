@@ -8,7 +8,7 @@ DEVICES ?= snitch_cluster
 
 SRCDIR          = $(realpath $(HERO_ROOT)/apps/omp)
 
-CSRCS_HOST      = basic/axpy/axpy_main.c
+CSRCS_HOST      = basic/axpy/axpy_main.c common/iommu.c common/llc.c
 CSRCS           = common/utils.c basic/axpy/axpy_snitch.c
 
 CFLAGS   += -O3 -g

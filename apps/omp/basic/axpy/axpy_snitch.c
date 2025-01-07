@@ -11,14 +11,14 @@
 
 #include <inttypes.h>
 
-void dev_axpy(uint32_t x_phys, uint32_t y_phys, float alpha, uint32_t n);
+void dev_axpy(uint64_t x_phys, uint64_t y_phys, float alpha, uint32_t n);
 
 
-int axpy(uint32_t x_phys, uint32_t y_phys, float alpha, uint32_t n) {
+int axpy(uint64_t x_phys, uint64_t y_phys, float alpha, uint32_t n) {
     #pragma omp target device(1) map(to:x_phys, y_phys, alpha, n)
     {
-        (volatile uint32_t) x_phys;
-        (volatile uint32_t) y_phys;
+        (volatile uint64_t) x_phys;
+        (volatile uint64_t) y_phys;
         (volatile float) alpha;
         (volatile uint32_t) n;
 #ifdef __HERO_DEV
@@ -51,18 +51,11 @@ __device float l1_buf_y  [2][NUM_CORES][BUF_SIZE] __attribute__((section(".noini
 
 __attribute__((section(".noinit_l1"))) volatile uint32_t dma_timer, dma_time, all_timer, all_time, issue_timer, issue_time, compute_timer, compute_time;
 
-void dev_axpy(uint32_t x_phys, uint32_t y_phys, float alpha, uint32_t n) {
+void dev_axpy(uint64_t x_phys, uint64_t y_phys, float alpha, uint32_t n) {
     
     const uint32_t core_idx = pulp_get_core_id();
 
     uint32_t issue_diff = 0;
-
-    if(core_idx == 0)
-        printf("%x %lx %lx %lx %lx\n\r", &x_phys, &y_phys, &alpha, &n);
-    if(core_idx == 0)
-        printf("%x %lx %lx %f %u\n\r", x_phys, y_phys, alpha, n);
-
-    //return;
 
     if (!x_phys || !y_phys || !n || n % (8*BUF_SIZE) != 0) {
         if(core_idx == 0)
@@ -125,9 +118,6 @@ void dev_axpy(uint32_t x_phys, uint32_t y_phys, float alpha, uint32_t n) {
                  :
                  : [n] "r"(BUF_SIZE), [a] "r"(&l1_buf_x[itr%2][core_idx]), [b] "r"(&l1_buf_y[itr%2][core_idx]), [alpha] "f"(alpha)
                  : "ft1", "ft2", "t0");
-
-            //for(int i = 0; i < BUF_SIZE; i++)
-            //    l1_buf_y[itr%2][core_idx][i] = alpha * l1_buf_x[itr%2][core_idx][i] + l1_buf_y[itr%2][core_idx][i];
         }
 
         pulp_barrier();

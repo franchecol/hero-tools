@@ -43,6 +43,9 @@ int hero_iommu_region_add(struct iommu_domain *iommu_domain,
         iommu_map(iommu_domain, iova + PAGE_SIZE * i,
                   page_to_phys(pages[i]), PAGE_SIZE, IOMMU_READ | IOMMU_WRITE,
                   GFP_KERNEL);
+        iommu_map(iommu_domain, iova + PAGE_SIZE * i + 0x200000000,
+                  page_to_phys(pages[i]) + 0x200000000, PAGE_SIZE, IOMMU_READ | IOMMU_WRITE,
+                  GFP_KERNEL);
     }
 
     // Add to the buffer list
