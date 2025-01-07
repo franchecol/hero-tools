@@ -6,9 +6,12 @@
 
 DEVICES ?= snitch_cluster
 
-CSRCS = main.c
+SRCDIR          = $(realpath $(HERO_ROOT)/apps/omp)
+
+CSRCS_HOST      = basic/axpy/axpy_main.c
+CSRCS           = common/utils.c basic/axpy/axpy_snitch.c
 
 CFLAGS   += -O3 -g
-CFLAGS   += -v -debug -save-temps=obj
+# CFLAGS   += -v -debug -save-temps=obj
 
 -include ../../common/default.mk

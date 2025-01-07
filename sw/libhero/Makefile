@@ -33,7 +33,7 @@ CFLAGS_occamy := -I src/occamy -I $(HERO_ROOT)/sw/hero-driver/occamy
 SRCS_occamy := src/occamy/snitch_cluster.c
 
 # Host specific variables
-CFLAGS_cva6 := -DHOST_COHERENT_IO -DHOST_MBOX_CYCLES=200
+CFLAGS_cva6 := -DHOST_MBOX_CYCLES=50
 CFLAGS_sg2042 := -DHOST_COHERENT_IO -DHOST_MBOX_CYCLES="(1*2000000000/25000000)"
 
 # Final variables
