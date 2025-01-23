@@ -15,11 +15,14 @@ fi
 if [ -z "$CMAKE" ]; then
   export CMAKE=`which cmake`
 fi
+if [ -z "$ARCHBITS" ]; then
+  export ARCHBITS=32
+fi
 if [ -z "$MARCH" ]; then
-  export MARCH=rv32ima
+  export MARCH="rv${ARCHBITS}ima"
 fi
 if [ -z "$MABI" ]; then
-  export MABI=ilp32
+  export MABI=ilp${ARCHBITS}
 fi
 
 echo "Requesting C compiler $CC"
@@ -30,13 +33,13 @@ echo "Requesting cmake $CMAKE"
 # newlib
 ##############################
 
-[ ! -d newlib-rv32-${MARCH}-${MABI} ] && git clone --depth 1 -b newlib-3.3.0 https://sourceware.org/git/newlib-cygwin.git newlib-rv32-${MARCH}-${MABI}
+[ ! -d newlib-rv${ARCHBITS}-${MARCH}-${MABI} ] && git clone --depth 1 -b newlib-3.3.0 https://sourceware.org/git/newlib-cygwin.git newlib-rv${ARCHBITS}-${MARCH}-${MABI}
 
-# Newlib for rv32
-cd newlib-rv32-${MARCH}-${MABI}
+# Newlib for rv${ARCHBITS}
+cd newlib-rv${ARCHBITS}-${MARCH}-${MABI}
 
 ./configure                                           \
-    --target=riscv32-unknown-elf                      \
+    --target=riscv${ARCHBITS}-unknown-elf             \
     -nfp                                              \
     --prefix=${HERO_INSTALL}/${MARCH}-${MABI}/        \
     AR_FOR_TARGET=${HERO_INSTALL}/bin/llvm-ar         \
@@ -55,8 +58,8 @@ cd ..
 ##############################
 # compiler-rt
 ##############################
-mkdir -p compiler-rt32-${MARCH}-${MABI}
-cd compiler-rt32-${MARCH}-${MABI}
+mkdir -p compiler-rt${ARCHBITS}-${MARCH}-${MABI}
+cd compiler-rt${ARCHBITS}-${MARCH}-${MABI}
 # NOTE: CMAKE_SYSTEM_NAME is set to linux to allow the configure step to
 #       correctly validate that clang works for cross compiling
 
@@ -69,14 +72,14 @@ ${CMAKE} -G"Unix Makefiles"                                                  \
     -DCMAKE_AR=${HERO_INSTALL}/bin/llvm-ar                                   \
     -DCMAKE_NM=${HERO_INSTALL}/bin/llvm-nm                                   \
     -DCMAKE_RANLIB=${HERO_INSTALL}/bin/llvm-ranlib                           \
-    -DCMAKE_C_COMPILER_TARGET="riscv32-unknown-elf"                          \
-    -DCMAKE_CXX_COMPILER_TARGET="riscv32-unknown-elf"                        \
-    -DCMAKE_ASM_COMPILER_TARGET="riscv32-unknown-elf"                        \
+    -DCMAKE_C_COMPILER_TARGET="riscv${ARCHBITS}-unknown-elf"                 \
+    -DCMAKE_CXX_COMPILER_TARGET="riscv${ARCHBITS}-unknown-elf"               \
+    -DCMAKE_ASM_COMPILER_TARGET="riscv${ARCHBITS}-unknown-elf"               \
     -DCMAKE_C_FLAGS="-march=${MARCH} -mabi=${MABI} -mno-relax"               \
     -DCMAKE_CXX_FLAGS="-march=${MARCH} -mabi=${MABI} -mno-relax"             \
     -DCMAKE_ASM_FLAGS="-march=${MARCH} -mabi=${MABI} -mno-relax"             \
     -DCMAKE_EXE_LINKER_FLAGS="-nostartfiles -nostdlib -fuse-ld=lld"          \
-    -DCMAKE_SYSROOT="${HERO_INSTALL}/${MARCH}-${MABI}/riscv32-unknown-elf"   \
+    -DCMAKE_SYSROOT="${HERO_INSTALL}/${MARCH}-${MABI}/riscv${ARCHBITS}-unknown-elf"   \
     -DCOMPILER_RT_BAREMETAL_BUILD=ON                                         \
     -DCOMPILER_RT_BUILD_BUILTINS=ON                                          \
     -DCOMPILER_RT_BUILD_MEMPROF=OFF                                          \
@@ -99,7 +102,7 @@ cd ..
 
 # Add symlinks to LLVM tools
 cd ${HERO_INSTALL}/bin
-for TRIPLE in riscv32-unknown-elf; do
+for TRIPLE in riscv${ARCHBITS}-unknown-elf; do
   for TOOL in clang clang++ cc c++; do
     ln -fsv clang ${TRIPLE}-${TOOL}
   done
