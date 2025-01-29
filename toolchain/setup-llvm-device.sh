@@ -39,7 +39,7 @@ echo "Requesting cmake $CMAKE"
 cd newlib-rv${ARCHBITS}-${MARCH}-${MABI}
 
 ./configure                                           \
-    --target=riscv${ARCHBITS}-unknown-elf             \
+    --target=riscv${ARCHBITS}-unknown-elf                      \
     -nfp                                              \
     --prefix=${HERO_INSTALL}/${MARCH}-${MABI}/        \
     AR_FOR_TARGET=${HERO_INSTALL}/bin/llvm-ar         \
@@ -72,9 +72,9 @@ ${CMAKE} -G"Unix Makefiles"                                                  \
     -DCMAKE_AR=${HERO_INSTALL}/bin/llvm-ar                                   \
     -DCMAKE_NM=${HERO_INSTALL}/bin/llvm-nm                                   \
     -DCMAKE_RANLIB=${HERO_INSTALL}/bin/llvm-ranlib                           \
-    -DCMAKE_C_COMPILER_TARGET="riscv${ARCHBITS}-unknown-elf"                 \
-    -DCMAKE_CXX_COMPILER_TARGET="riscv${ARCHBITS}-unknown-elf"               \
-    -DCMAKE_ASM_COMPILER_TARGET="riscv${ARCHBITS}-unknown-elf"               \
+    -DCMAKE_C_COMPILER_TARGET="riscv${ARCHBITS}-unknown-elf"                          \
+    -DCMAKE_CXX_COMPILER_TARGET="riscv${ARCHBITS}-unknown-elf"                        \
+    -DCMAKE_ASM_COMPILER_TARGET="riscv${ARCHBITS}-unknown-elf"                        \
     -DCMAKE_C_FLAGS="-march=${MARCH} -mabi=${MABI} -mno-relax"               \
     -DCMAKE_CXX_FLAGS="-march=${MARCH} -mabi=${MABI} -mno-relax"             \
     -DCMAKE_ASM_FLAGS="-march=${MARCH} -mabi=${MABI} -mno-relax"             \
