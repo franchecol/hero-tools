@@ -6,9 +6,12 @@
 
 DEVICES ?= snitch_cluster
 
-CSRCS = main.c
+SRCDIR          = $(realpath $(HERO_ROOT)/apps/omp)
 
-CFLAGS   += -O3
-CFLAGS   += -v -debug -save-temps=obj
+CSRCS_HOST      =
+CSRCS           = basic/gemm/main.c
+
+CFLAGS   += -O3 -g
+# CFLAGS   += -v -debug -save-temps=obj
 
 -include ../../common/default.mk
