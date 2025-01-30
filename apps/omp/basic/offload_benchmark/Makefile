@@ -4,7 +4,7 @@
 #
 # Cyril Koenig <cykoenig@iis.ee.ethz.ch>
 
-DEVICES ?= snitch_cluster
+HERO_DEVICE ?= carfield_snitch_cluster
 
 SRCDIR          = $(realpath $(HERO_ROOT)/apps/omp)
 

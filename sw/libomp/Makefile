@@ -7,16 +7,20 @@
 # This file builds all the OpenMP target libraries on RV64
 # it requires ../libllvm to be compiled
 
-HERO_ROOT = $(realpath ../..)
+# Path to the root of the repository
+HERO_ROOT ?= $(realpath ../..)
 
-BR_OUTPUT_DIR ?= $(realpath ../../cva6-sdk/buildroot/output)
-RISCV          = $(BR_OUTPUT_DIR)/host
+# cva6 and sg2042 supported
+HERO_HOST   ?=
+# occamy_snitch_cluster carfield_safety_island carfield_spatz_cluster carfield_snitch_cluster
+HERO_DEVICE ?=
 
-# Note: Could this be compiled directly with the clang cross compiler?
-CC            := $(RISCV)/bin/riscv64-buildroot-linux-gnu-gcc
-CXX           := $(RISCV)/bin/riscv64-buildroot-linux-gnu-g++
-
-PLATFORM ?= SNITCH
+# Toolchain
+CROSS_COMPILE ?=
+CC      := $(CROSS_COMPILE)gcc
+CXX     := $(CROSS_COMPILE)g++
+AR      := $(CROSS_COMPILE)ar
+OBJDUMP := $(CROSS_COMPILE)objdump
 
 LLVM_DIR := $(realpath ../libllvm)
 LIBOMPTARGET_LLVM_INCLUDE_DIRS := $(realpath ../libllvm/include/llvm)
@@ -46,11 +50,11 @@ LLVM_COMPILE_FLAGS= \
 	-DLIBOMPTARGET_DEP_LIBFFI_INCLUDE_DIRS='$(RISCV)/riscv64-buildroot-linux-gnu/sysroot/usr/include/' \
 	-DLIBOMPTARGET_BUILD_CUDA_PLUGIN=0 \
 	-DLIBOMPTARGET_HERO_BUILD=ON \
-	-DLIBOMPTARGET_HERO_DEV_TYPE='$(PLATFORM)' \
+	-DLIBOMPTARGET_HERO_DEV_TYPE='$(HERO_DEVICE)' \
 	-DLIBOMPTARGET_LLVM_INCLUDE_DIRS=$(LIBOMPTARGET_LLVM_INCLUDE_DIRS) \
 	-DLIBOMPTARGET_ENABLE_DEBUG=1 \
 	-DLIBOMPTARGET_ENABLE_DEBUG=1 \
-	$(LLVM_COMPILE_FLAGS_$(HOST))
+	$(LLVM_COMPILE_FLAGS_$(HERO_HOST))
 
 # Outputs
 all: lib/libomp.so lib/libomptarget.so

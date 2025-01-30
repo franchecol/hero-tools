@@ -7,18 +7,17 @@
 # This file builds LLVM runtime librairies on RV64 as they are required
 # to build libomp.so on RV64
 
-HERO_ROOT = $(realpath ../..)
+HERO_ROOT ?= $(realpath ../..)
 
-BR_OUTPUT_DIR ?= $(realpath ../../cva6-sdk/buildroot/output)
-RISCV          = $(BR_OUTPUT_DIR)/host
+# Toolchain
+CROSS_COMPILE ?=
+CC      := $(CROSS_COMPILE)gcc
+CXX     := $(CROSS_COMPILE)g++
+AR      := $(CROSS_COMPILE)ar
+OBJDUMP := $(CROSS_COMPILE)objdump
 
-# Force using the RV 64 toolchain
-CC            := $(RISCV)/bin/riscv64-buildroot-linux-gnu-gcc
-CXX           := $(RISCV)/bin/riscv64-buildroot-linux-gnu-g++
-
-LLVM_DIR := $(realpath ../../install/lib/cmake/llvm)
-LIBOMPTARGET_LLVM_INCLUDE_DIRS := $(realpath ../../install/include/llvm)
-HERO_DEV_INC_DIR := $(realpath ../libsnitch/include)
+LLVM_DIR := $(HERO_INSTALL)/lib/cmake/llvm
+LIBOMPTARGET_LLVM_INCLUDE_DIRS := $(HERO_INSTALL)/include/llvm
 
 # Note LLVM_TABLEGEN may be replaced by LLVM_NATIVE_TOOL_DIR in newer LLVM
 
@@ -40,7 +39,7 @@ LLVM_COMPILE_FLAGS= \
 all: compile
 
 configure:
-	CC=$(CC) CXX=$(CXX) LLVM_BUILD_TOOLS=OFF cmake $(LLVM_COMPILE_FLAGS) -G Ninja ../../toolchain/llvm-project/llvm
+	CC=$(CC) CXX=$(CXX) LLVM_BUILD_TOOLS=OFF cmake $(LLVM_COMPILE_FLAGS) -G Ninja $(HERO_ROOT)/toolchain/llvm-project/llvm
 
 build.ninja: configure
 

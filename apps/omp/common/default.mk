@@ -28,11 +28,11 @@ DEV_OBJDUMP  := $(HERO_INSTALL)/bin/llvm-objdump
 # Device flags definitions
 -include $(HERO_ROOT)/apps/omp/common/devices.mk
 # Add device specific flags for each device in $(DEVICES)
-$(foreach dev, $(DEVICES), $(eval $(call add_device,$(dev))))
-HERO_DEVICES := $(foreach i,$(shell seq 1 $(NUM_DEVICES)),hero$(i))
+$(foreach dev, $(HERO_DEVICE), $(eval $(call add_device,$(dev))))
+RENAMED_DEVICES := $(foreach i,$(shell seq 1 $(NUM_DEVICES)),hero$(i))
 # Openmp host and device flags
 TARGET_HOST := riscv64-hero-linux-gnu
-TARGET_DEVS := $(foreach hero_dev,$(HERO_DEVICES),riscv32-hero-$(hero_dev)-elf)
+TARGET_DEVS := $(foreach hero_dev,$(RENAMED_DEVICES),riscv32-hero-$(hero_dev)-elf)
 # Bundler host and device flags
 COB_TARGETS = $(subst $(space),$(comma),host-$(TARGET_HOST) $(foreach target,$(TARGET_DEVS),openmp-$(target)))
 
@@ -53,18 +53,18 @@ LDFLAGS  += --ld-path=$(RISCV)/bin/riscv64-buildroot-linux-gnu-ld
 # Path to the OpenMP target RTL
 LDFLAGS  += -L$(HERO_ROOT)/sw/libomp/lib
 
-APP = $(shell basename `pwd`)$(foreach dev,$(DEVICES),_$(dev)).elf
+APP = $(shell basename `pwd`)$(foreach dev,$(HERO_DEVICE),_$(dev)).elf
 EXE = $(APP)
 
 # Unique object after bundling host/devices together
 COBJS_BUNDLED = $(addprefix $(BUILDDIR)/,$(patsubst %.c, %-out.ll, $(CSRCS)))
 # Objects for each host/devices
-COBJS_UNBUNDLED = $(foreach dev,host $(HERO_DEVICES),$(patsubst %-out.ll, %-$(dev).ll, $(COBJS_BUNDLED)))
+COBJS_UNBUNDLED = $(foreach dev,host $(RENAMED_DEVICES),$(patsubst %-out.ll, %-$(dev).ll, $(COBJS_BUNDLED)))
 # Objects for host only
 COBJS_HOST = $(addprefix $(BUILDDIR)/,$(patsubst %.c, %.o, $(CSRCS_HOST)))
 
 # Targets
-all: $(DEPS) $(EXE) $(EXE).dis $(EXE).dev.dis
+all: check_device $(DEPS) $(EXE) $(EXE).dis $(EXE).dev.dis
 
 # Compile C source
 $(BUILDDIR)/%.o: $(SRCDIR)/%.c $(DEPDIR)/%.d
@@ -82,14 +82,14 @@ $(BUILDDIR)/%.ll: $(SRCDIR)/%.c $(DEPDIR)/%.d
 # Note: We need to replace spaces by comma in COB_OUTPUTS
 %-host.ll: %.ll
 	@echo "COB    <= $<"
-	@COB_OUTPUTS="$(foreach tgt,host $(HERO_DEVICES),$(<:.ll=-$(tgt).ll))"; \
+	@COB_OUTPUTS="$(foreach tgt,host $(RENAMED_DEVICES),$(<:.ll=-$(tgt).ll))"; \
 	  COB_CMD="$(COB) -inputs=$< -outputs=\"$${COB_OUTPUTS// /,}\" -type=ll -targets=\"$(COB_TARGETS)\" -unbundle" ; \
 	  echo $$COB_CMD; \
 	  eval $$COB_CMD
 
 # Create dependance to %-host.ll for all %-heroX.ll (all created by the rule above)
 define add_host_dep =
-$(foreach tgt-dev,$(HERO_DEVICES),$(patsubst %-host.ll, %-$(tgt-dev).ll, $(1))): $(1)
+$(foreach tgt-dev,$(RENAMED_DEVICES),$(patsubst %-host.ll, %-$(tgt-dev).ll, $(1))): $(1)
 endef
 # Call add_cob_dep for all %-host.ll objects
 $(foreach host-obj, $(patsubst %-out.ll, %-host.ll, $(COBJS_BUNDLED)), $(eval $(call add_host_dep,$(host-obj))))
@@ -108,9 +108,9 @@ $(foreach host-obj, $(patsubst %-out.ll, %-host.ll, $(COBJS_BUNDLED)), $(eval $(
 	@cp $(@:.OMP.ll=.TMP.2.ll) $@
 
 # Use COB to re-gather all the targets.OMP.ll into a unique output
-%-out.ll: $(foreach dev,host $(HERO_DEVICES),%-$(dev).OMP.ll)
+%-out.ll: $(foreach dev,host $(RENAMED_DEVICES),%-$(dev).OMP.ll)
 	@echo "COB    <= $<"
-	@COB_INPUTS="$(foreach dev,host $(HERO_DEVICES),$(<:-host.OMP.ll=-$(dev).OMP.ll))"; \
+	@COB_INPUTS="$(foreach dev,host $(RENAMED_DEVICES),$(<:-host.OMP.ll=-$(dev).OMP.ll))"; \
 	COB_CMD="$(COB) -inputs=\"$${COB_INPUTS// /,}\" -outputs=$@ -type=ll -targets=\"$(COB_TARGETS)\""; \
 	echo $$COB_CMD; \
 	eval $$COB_CMD

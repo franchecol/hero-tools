@@ -23,7 +23,7 @@ LDFLAGS  +=  -L$(HERO_ROOT)/sw/libhero/lib
 # Common includes
 CFLAGS   += -hero$(NUM_DEVICES)-I$(HERO_ROOT)/apps/omp
 
-ifeq ($(1),occamy)
+ifeq ($(1),occamy_snitch_cluster)
 # ABI march
 CFLAGS   += --hero$(NUM_DEVICES)-sysroot=$(HERO_INSTALL)/rv32imafd-ilp32d/riscv32-unknown-elf
 CFLAGS   += -hero$(NUM_DEVICES)-march=rv32imafd_zfh1p0_xfrep0p1_xssr0p1_xdma0p1_xfalthalf0p1_xfquarter0p1_xfaltquarter0p1_xfvecsingle0p1_xfvechalf0p1_xfvecalthalf0p1_xfvecquarter0p1_xfvecaltquarter0p1_xfauxhalf0p1_xfauxalthalf0p1_xfauxquarter0p1_xfauxaltquarter0p1_xfauxvecsingle0p1_xfauxvechalf0p1_xfauxvecalthalf0p1_xfauxvecquarter0p1_xfauxvecaltquarter0p1_xfexpauxvechalf0p1_xfexpauxvecalthalf0p1_xfexpauxvecquarter0p1_xfexpauxvecaltquarter0p1
@@ -43,10 +43,9 @@ LDFLAGS  += -hero$(NUM_DEVICES)-T$(OCCAMY_ROOT)/target/sim/sw/device/apps/libomp
 LDFLAGS  += -hero$(NUM_DEVICES)-L$(OCCAMY_ROOT)/target/sim/sw/device/apps/libomptarget_device/build
 LDFLAGS  += -hero$(NUM_DEVICES)-lomptarget_device
 # Host flags
-LDFLAGS  += -lhero_occamy
-endif
+LDFLAGS  += -lhero_occamy_snitch_cluster
 
-ifeq ($(1),carfield_snitch)
+else ifeq ($(1),carfield_snitch_cluster)
 # ABI march
 CFLAGS   += --hero$(NUM_DEVICES)-sysroot=$(HERO_INSTALL)/rv32imafd-ilp32d/riscv32-unknown-elf
 CFLAGS   += -hero$(NUM_DEVICES)-march=rv32imafd_zfh1p0_xfrep0p1_xssr0p1_xdma0p1_xfalthalf0p1_xfquarter0p1_xfaltquarter0p1_xfvecsingle0p1_xfvechalf0p1_xfvecalthalf0p1_xfvecquarter0p1_xfvecaltquarter0p1_xfauxhalf0p1_xfauxalthalf0p1_xfauxquarter0p1_xfauxaltquarter0p1_xfauxvecsingle0p1_xfauxvechalf0p1_xfauxvecalthalf0p1_xfauxvecquarter0p1_xfauxvecaltquarter0p1_xfexpauxvechalf0p1_xfexpauxvecalthalf0p1_xfexpauxvecquarter0p1_xfexpauxvecaltquarter0p1
@@ -58,10 +57,9 @@ LDFLAGS  += -hero$(NUM_DEVICES)-T$(CARFIELD_ROOT)/sw/tests/bare-metal/snitchd/ru
 LDFLAGS  += -hero$(NUM_DEVICES)-L$(CARFIELD_ROOT)/sw/tests/bare-metal/snitchd/bin
 LDFLAGS  += -hero$(NUM_DEVICES)-lomptarget_device
 # Host flags
-LDFLAGS  += -lhero_snitch_cluster
-endif
+LDFLAGS  += -lhero_carfield_snitch_cluster
 
-ifeq ($(1),spatz_cluster)
+else ifeq ($(1),carfield_spatz_cluster)
 # ABI MARCH
 CFLAGS   += --hero$(NUM_DEVICES)-sysroot=$(HERO_INSTALL)/rv32imafdvzfh-ilp32d/riscv32-unknown-elf
 CFLAGS   += -hero$(NUM_DEVICES)-march=rv32imafdvzfh_xdma
@@ -77,10 +75,9 @@ LDFLAGS  += -hero$(NUM_DEVICES)-L$(CARFIELD_ROOT)/spatz/hw/system/spatz_cluster/
 LDFLAGS  += -hero$(NUM_DEVICES)-lsnRuntime-cluster
 LDFLAGS  += -hero$(NUM_DEVICES)-lomptarget
 # Host flags
-LDFLAGS  += -lhero_spatz_cluster
-endif
+LDFLAGS  += -lhero_carfield_spatz_cluster
 
-ifeq ($(1),safety_island)
+else ifeq ($(1),carfield_safety_island)
 # ABI MARCH
 CFLAGS   += --hero1-sysroot=$(HERO_INSTALL)/rv32ima-ilp32/riscv32-unknown-elf
 CFLAGS   += -hero1-march=rv32ima
@@ -91,7 +88,15 @@ LDFLAGS  += -hero1-T$(CARFIELD_ROOT)/safety_island/sw/tests/runtime_omp/link.ld
 LDFLAGS  += -hero1-L$(CARFIELD_ROOT)/safety_island/sw/tests/runtime_omp/build/
 LDFLAGS  += -hero$(NUM_DEVICES)-lomptarget_runtime
 # Host flags
-LDFLAGS  += -lhero_safety_island
-endif
+LDFLAGS  += -lhero_carfield_safety_island
 
-endef
+else
+
+HERO_WRONG_DEVICE := 1
+
+endif
+endef # add_device
+
+check_device:
+	$(if $(HERO_WRONG_DEVICE),@echo Unknown HERO_DEVICE=$(HERO_DEVICE),)
+.PHONY: check_device
