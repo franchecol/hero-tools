@@ -8,7 +8,7 @@ HeroSDK is developed as part of the [PULP project](https://pulp-platform.org/), 
 
 The HeroSDK contains compilers (riscv64-linux-gcc & riscv64/32-linux/elf-clang), Linux kernel modules, host and device runtimes. See the figure below:
 
-![image](docs/img/hero_sdk_stack.png)
+![image](https://pulp-platform.github.io/hero-tools/img/hero_sdk_stack.png)
 
 ## This repository
 
@@ -36,7 +36,7 @@ _* generated files_
 
 ## Getting started
 
-To build the software stack, compile a FPGA bitstream, get a Linux image, and more, go to [Getting Started](gs.md).
+To build the software stack, compile a FPGA bitstream, get a Linux image, and more, go to [Getting Started](https://pulp-platform.github.io/hero-tools/gs/).
 
 ## Submodules
 
