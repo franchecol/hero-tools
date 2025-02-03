@@ -129,6 +129,9 @@ int card_mmap(struct file *filp, struct vm_area_struct *vma) {
     case IDMA_MMAP_ID:
         MAP_DEVICE_REGION("idma", idma_mem);
         break;
+    case LLC_MMAP_ID:
+        MAP_DEVICE_REGION("axi_llc", idma_mem);
+        break;
     case DMA_BUFS_MMAP_ID:
         strncpy(type, "buffer", sizeof(type));
         pr_debug("Ready to map latest buffer\n");

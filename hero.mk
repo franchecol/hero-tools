@@ -80,14 +80,15 @@ $(HERO_INSTALL)/bin/clang:
 HERO_DEVS_NEWLIB :=
 define hero_devs_build_newlib =
 $(HERO_INSTALL)/$(1)-$(2): | $(HERO_INSTALL)/bin/clang
-	cd $(HERO_ROOT)/output/tc-llvm/ && MARCH=$(1) MABI=$(2) $(HERO_ROOT)/toolchain/setup-llvm-device.sh $(HERO_ROOT)/toolchain/llvm-project
+	cd $(HERO_ROOT)/output/tc-llvm/ && MARCH=$(1) MABI=$(2) ARCHBITS=$(3) $(HERO_ROOT)/toolchain/setup-llvm-device.sh $(HERO_ROOT)/toolchain/llvm-project
 HERO_DEVS_NEWLIB += $(HERO_INSTALL)/$(1)-$(2)
 .PRECIOUS: $(HERO_INSTALL)/$(1)-$(2)
 endef
 # Todo check for c(ompressed) support
-$(eval $(call hero_devs_build_newlib,rv32ima,ilp32))
-$(eval $(call hero_devs_build_newlib,rv32imafd,ilp32d))
-$(eval $(call hero_devs_build_newlib,rv32imafdvzfh,ilp32d))
+$(eval $(call hero_devs_build_newlib,rv32ima,ilp32,32))
+$(eval $(call hero_devs_build_newlib,rv32imafd,ilp32d,32))
+$(eval $(call hero_devs_build_newlib,rv32imafdvzfh,ilp32d,32))
+$(eval $(call hero_devs_build_newlib,rv64g,lp64d,64))
 
 hero-tc-llvm: $(HERO_INSTALL)/bin/clang $(HERO_DEVS_NEWLIB)
 hero-tc-llvm-artifacts: hero-load-artifacts-tc-llvm $(HERO_INSTALL)/bin/clang $(HERO_DEVS_NEWLIB) hero-save-artifacts-tc-llvm

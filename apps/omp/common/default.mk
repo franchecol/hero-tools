@@ -28,23 +28,24 @@ DEV_OBJDUMP  := $(HERO_INSTALL)/bin/llvm-objdump
 # Device flags definitions
 -include $(HERO_ROOT)/apps/omp/common/devices.mk
 # Add device specific flags for each device in $(DEVICES)
-$(foreach dev, $(DEVICES), $(eval $(call add_device,$(dev))))
-HERO_DEVICES := $(foreach i,$(shell seq 1 $(NUM_DEVICES)),hero$(i))
+$(foreach dev, $(HERO_DEVICE), $(eval $(call add_device,$(dev))))
+RENAMED_DEVICES := $(foreach i,$(shell seq 1 $(NUM_DEVICES)),hero$(i))
 # Openmp host and device flags
 TARGET_HOST := riscv64-hero-linux-gnu
-TARGET_DEVS := $(foreach hero_dev,$(HERO_DEVICES),riscv32-hero-$(hero_dev)-elf)
+TARGET_DEVS := $(foreach hero_dev,$(RENAMED_DEVICES),riscv32-hero-$(hero_dev)-elf)
 # Bundler host and device flags
 COB_TARGETS = $(subst $(space),$(comma),host-$(TARGET_HOST) $(foreach target,$(TARGET_DEVS),openmp-$(target)))
 
 # Toolchain(s) selection
-CFLAGS   += --gcc-toolchain=$(RISCV) --sysroot=$(RV64_SYSROOT)
-CFLAGS   += -target $(TARGET_HOST)
-CFLAGS   += -fopenmp=libomp -fopenmp-targets=$(subst $(space),$(comma),$(foreach target,$(TARGET_DEVS),$(target)))
+CFLAGS       += --gcc-toolchain=$(RISCV) --sysroot=$(RV64_SYSROOT)
+CFLAGS       += -target $(TARGET_HOST)
+CFLAGS_OMP   := -fopenmp=libomp -fopenmp-targets=$(subst $(space),$(comma),$(foreach target,$(TARGET_DEVS),$(target)))
 # Include files used by the OpenMP target RTL
 CFLAGS   += -I$(HERO_ROOT)/sw/libhero/include
 CFLAGS   += -I$(HERO_ROOT)/apps/omp/common
 # Dependancy managements
-DEPDIR   := .deps
+DEPDIR   := build
+BUILDDIR := build
 CFLAGS   += -MT $@ -MMD -MP -MF $(DEPDIR)/$*.d
 
 # Link flags
@@ -52,65 +53,72 @@ LDFLAGS  += --ld-path=$(RISCV)/bin/riscv64-buildroot-linux-gnu-ld
 # Path to the OpenMP target RTL
 LDFLAGS  += -L$(HERO_ROOT)/sw/libomp/lib
 
-APP = $(shell basename `pwd`)$(foreach dev,$(DEVICES),_$(dev)).elf
+APP = $(shell basename `pwd`)$(foreach dev,$(HERO_DEVICE),_$(dev)).elf
 EXE = $(APP)
 
-# Objects for each host/devices
-COBJS_UNBUNDLED = $(foreach dev,host $(HERO_DEVICES),$(patsubst %.c, %-$(dev).ll, $(CSRCS)))
 # Unique object after bundling host/devices together
-COBJS_BUNDLED = $(patsubst %.c, %-out.ll, $(CSRCS))
+COBJS_BUNDLED = $(addprefix $(BUILDDIR)/,$(patsubst %.c, %-out.ll, $(CSRCS)))
+# Objects for each host/devices
+COBJS_UNBUNDLED = $(foreach dev,host $(RENAMED_DEVICES),$(patsubst %-out.ll, %-$(dev).ll, $(COBJS_BUNDLED)))
+# Objects for host only
+COBJS_HOST = $(addprefix $(BUILDDIR)/,$(patsubst %.c, %.o, $(CSRCS_HOST)))
 
 # Targets
-all: $(DEPS) $(EXE)
+all: check_device $(DEPS) $(EXE) $(EXE).dis $(EXE).dev.dis
+
+# Compile C source
+$(BUILDDIR)/%.o: $(SRCDIR)/%.c $(DEPDIR)/%.d
+	mkdir -p $(dir $@)
+	@echo "CC(.o)   <= $<"
+	$(CC) $(debug) -c $(DEPFLAGS) $(CFLAGS) $< -o $@
 
 # Compile heterogeneous C source and get a bundled .ll
-%.ll: %.c $(DEPDIR)/%.d | $(DEPDIR)
-	@echo "CC     <= $<"
-	$(CC) $(debug) -c -emit-llvm -S $(DEPFLAGS) $(CFLAGS) $<
+$(BUILDDIR)/%.ll: $(SRCDIR)/%.c $(DEPDIR)/%.d
+	mkdir -p $(dir $@)
+	@echo "CC(.ll)  <= $@"
+	$(CC) $(debug) -c -emit-llvm -S $(DEPFLAGS) $(CFLAGS) $(CFLAGS_OMP) $< -o $@
 
 # De-bundle %-host.ll and %-heroX.ll
 # Note: We need to replace spaces by comma in COB_OUTPUTS
 %-host.ll: %.ll
 	@echo "COB    <= $<"
-	@COB_OUTPUTS="$(foreach tgt,host $(HERO_DEVICES),$(<:.ll=-$(tgt).ll))"; \
-	COB_CMD="$(COB) -inputs=$< -outputs=\"$${COB_OUTPUTS// /,}\" -type=ll -targets=\"$(COB_TARGETS)\" -unbundle" ; \
-	echo $$COB_CMD; \
-	eval $$COB_CMD
+	@COB_OUTPUTS="$(foreach tgt,host $(RENAMED_DEVICES),$(<:.ll=-$(tgt).ll))"; \
+	  COB_CMD="$(COB) -inputs=$< -outputs=\"$${COB_OUTPUTS// /,}\" -type=ll -targets=\"$(COB_TARGETS)\" -unbundle" ; \
+	  echo $$COB_CMD; \
+	  eval $$COB_CMD
 
 # Create dependance to %-host.ll for all %-heroX.ll (all created by the rule above)
 define add_host_dep =
-$(foreach tgt-dev,$(HERO_DEVICES),$(patsubst %-host.ll, %-$(tgt-dev).ll, $(1))): $(1)
+$(foreach tgt-dev,$(RENAMED_DEVICES),$(patsubst %-host.ll, %-$(tgt-dev).ll, $(1))): $(1)
 endef
 # Call add_cob_dep for all %-host.ll objects
-$(foreach host-obj, $(patsubst %.c, %-host.ll, $(CSRCS)), $(eval $(call add_host_dep,$(host-obj))))
+$(foreach host-obj, $(patsubst %-out.ll, %-host.ll, $(COBJS_BUNDLED)), $(eval $(call add_host_dep,$(host-obj))))
 
 # Different custom LLVMs passes to be applied on host regions
 %-host.OMP.ll: %-host.ll
-	echo "there"
 	@echo "HOP    <= $<"
-	@LLVM_INSTALL=$(HERO_INSTALL)/ $(HOP) $(<) OmpKernelWrapper "HERCULES-omp-kernel-wrapper" $(@:.OMP.ll=.TMP.1.ll)
+	LLVM_INSTALL=$(HERO_INSTALL)/ $(HOP) $(<) OmpKernelWrapper "HERCULES-omp-kernel-wrapper" $(@:.OMP.ll=.TMP.1.ll)
 	@cp $(@:.OMP.ll=.TMP.1.ll) $@
 
 # Different custom LLVMs passes to be applied on devices regions
 %.OMP.ll: %.ll
-	echo "here"
 	@echo "HOP    <= $<"
-	@LLVM_INSTALL=$(HERO_INSTALL) $(HOP) $(<) OmpKernelWrapper "HERCULES-omp-kernel-wrapper" $(@:.OMP.ll=.TMP.1.ll)
-	@LLVM_INSTALL=$(HERO_INSTALL) $(HOP) $(@:.OMP.ll=.TMP.1.ll) OmpHostPointerLegalizer "HERCULES-omp-host-pointer-legalizer" $(@:.OMP.ll=.TMP.2.ll)
+	LLVM_INSTALL=$(HERO_INSTALL) $(HOP) $(<) OmpKernelWrapper "HERCULES-omp-kernel-wrapper" $(@:.OMP.ll=.TMP.1.ll)
+	LLVM_INSTALL=$(HERO_INSTALL) $(HOP) $(@:.OMP.ll=.TMP.1.ll) OmpHostPointerLegalizer "HERCULES-omp-host-pointer-legalizer" $(@:.OMP.ll=.TMP.2.ll)
 	@cp $(@:.OMP.ll=.TMP.2.ll) $@
 
 # Use COB to re-gather all the targets.OMP.ll into a unique output
-%-out.ll: $(foreach dev,host $(HERO_DEVICES),%-$(dev).OMP.ll)
+%-out.ll: $(foreach dev,host $(RENAMED_DEVICES),%-$(dev).OMP.ll)
 	@echo "COB    <= $<"
-	@COB_INPUTS="$(foreach dev,host $(HERO_DEVICES),$(<:-host.OMP.ll=-$(dev).OMP.ll))"; \
+	@COB_INPUTS="$(foreach dev,host $(RENAMED_DEVICES),$(<:-host.OMP.ll=-$(dev).OMP.ll))"; \
 	COB_CMD="$(COB) -inputs=\"$${COB_INPUTS// /,}\" -outputs=$@ -type=ll -targets=\"$(COB_TARGETS)\""; \
 	echo $$COB_CMD; \
 	eval $$COB_CMD
 
 # Link the final application
-$(EXE): $(COBJS_BUNDLED)
+$(EXE): $(COBJS_BUNDLED) $(COBJS_HOST)
 	@echo "CCLD   <= $<"
-	$(CC) $(CFLAGS) $(COBJS_BUNDLED) $(LDFLAGS) -v -o $@
+	$(CC) $(CFLAGS) $(CFLAGS_OMP) $(COBJS_BUNDLED) $(COBJS_HOST) $(LDFLAGS) -o $@
 	echo "done"
 
 # Objdump
@@ -118,28 +126,28 @@ $(EXE).dis: $(EXE)
 	@echo "OBJDUMP <= $<"
 	@$(HOST_OBJDUMP) -d $^ > $@
 
-# $<.rodata_off in the skip argument to `dd` is the offset of the first section in the ELF file
-# determined by readelf -S $(EXE).
 $(EXE).dev.dis: $(EXE)
-	@echo "OBJDUMP (device) <= $<"
-	@llvm-readelf -S $(EXE) | grep '.rodata' | awk '{print "echo $$[0x"$$4" - 0x"$$5"]"}' | bash > $<.rodata_off
-	@llvm-readelf -S $^ | grep '\s\.omp_offloading.device_image\>' \
-			| awk '{print "dd if=$^ of=$^_riscv.elf bs=1 count=" $$3 " skip=$$[0x" $$2 " - $$(< $<.rodata_off)]"}' \
-			| bash \
-			&& $(DEV_OBJDUMP) -S $^_riscv.elf > $@
+	echo "OBJDUMP (device) <= $<"
+	device_addr=$$(llvm-readelf $(EXE) -Ws | grep '.omp_offloading.device_image\b' | awk '{print $$2}') \
+	device_size=$$(llvm-readelf $(EXE) -Ws | grep '.omp_offloading.device_image\b' | awk '{print $$3}') \
+	rodata_addr=$$(llvm-readelf $(EXE) -WS | grep '.rodata\b' | awk '{print $$4}') \
+	rodata_off=$$(llvm-readelf $(EXE) -WS | grep '.rodata\b' | awk '{print $$5}') && \
+	device_addr=$$((16#$$device_addr - 16#$$rodata_addr + 16#$$rodata_off)) && \
+	dd if=$(EXE) skip=$$device_addr bs=1 of=device.bin count=$$device_size && \
+	$(DEV_OBJDUMP) -S device.bin > $@
 
 # Dep
 $(DEPDIR):
 	@mkdir -p $@
 
-DEPFILES := $(CSRCS:%.c=$(DEPDIR)/%.d)
+DEPFILES := $(CSRCS:%.c=$(DEPDIR)/%.d) $(CSRCS_HOST:%.c=$(DEPDIR)/%.d)
 $(DEPFILES):
 
 include $(wildcard $(DEPFILES))
 
 # Phony
 clean:
-	-rm -vf __hmpp* $(EXE) *~ *.bc *.dis *.elf *.i *.lh *.lk *.ll *.o *.s *.slm a.out* *.dump
+	-rm -vf __hmpp* $(EXE) *~ *.bc *.dis *.elf *.i *.lh *.lk *.ll *.o *.s *.slm a.out* *.dump *.bin
 	-rm -rvf $(DEPDIR)
 	-rm -vf *-host-llvm *-host-gnu
 

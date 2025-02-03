@@ -24,6 +24,7 @@ struct k_list {
 struct cardev_private_data {
     struct platform_device *pdev;
     struct shared_mem idma_mem;
+    struct shared_mem llc_mem;
     struct shared_mem soc_ctrl_mem;
     struct shared_mem mboxes_mem;
     struct shared_mem ctrl_regs_mem;

@@ -18,7 +18,7 @@ CFLAGS=""
 
 # ============================= SANITY CHECK =============================== #
 
-BASENAME=$(basename "$1" .ll)
+BASENAME=${1%.ll}
 
 # Ensure that a file name was given as argument.
 if [ -z "$1" ]; then
@@ -36,7 +36,7 @@ if [ -z "$3" ]; then
   exit 1
 fi
 
-OUTPUT=$BASENAME.OMP.ll
+OUTPUT=${BASENAME}.OMP.ll
 if [ ! -z "$4" ]; then
   OUTPUT=$4
 fi

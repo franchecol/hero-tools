@@ -5,45 +5,50 @@
 # Cyril Koenig <cykoenig@iis.ee.ethz.ch>
 
 # Path to the root of the repository
-HERO_ROOT = $(realpath ../..)
+HERO_ROOT ?= $(realpath ../..)
 
-# Path to compiled buildroot
-BR_OUTPUT_DIR ?= $(realpath ../../cva6-sdk/buildroot/output/)
-CROSS_COMPILE ?= $(BR_OUTPUT_DIR)/host/bin/riscv64-buildroot-linux-gnu-
+# cva6 and sg2042 supported
+HERO_HOST   ?=
+# occamy_snitch_cluster carfield_safety_island carfield_spatz_cluster carfield_snitch_cluster
+HERO_DEVICE ?=
 
-PLATFORM ?=
-HOST     ?=
-
-# Binaries
-CC          := $(CROSS_COMPILE)gcc
-AR          := $(CROSS_COMPILE)ar
-OBJDUMP     := $(CROSS_COMPILE)objdump
-
-# Platform specific variables
-CFLAGS_safety_island := -I src/carfield -I $(HERO_ROOT)/sw/hero-driver/carfield
-SRCS_safety_island := src/carfield/safety_island.c
-
-CFLAGS_spatz_cluster := -I src/carfield -I $(HERO_ROOT)/sw/hero-driver/carfield -DDEVICE_IOMMU
-SRCS_spatz_cluster := src/carfield/spatz_cluster.c
-
-CFLAGS_occamy := -I src/occamy -I $(HERO_ROOT)/sw/hero-driver/occamy
-SRCS_occamy := src/occamy/snitch_cluster.c
+# Toolchain
+CROSS_COMPILE ?=
+CC      := $(CROSS_COMPILE)gcc
+AR      := $(CROSS_COMPILE)ar
+OBJDUMP := $(CROSS_COMPILE)objdump
 
 # Host specific variables
-CFLAGS_cva6 := -DHOST_MBOX_CYCLES=20
+CFLAGS_cva6   := -DHOST_MBOX_CYCLES=50
 CFLAGS_sg2042 := -DHOST_COHERENT_IO -DHOST_MBOX_CYCLES="(1*2000000000/25000000)"
 
-# Final variables
-CFLAGS := $(CFLAGS_$(PLATFORM)) $(CFLAGS_$(HOST))
-CFLAGS := $(CFLAGS) -Wall -O3 -g -fPIC -DPLATFORM=$(PLATFORM) -DLINUX_APP
-CFLAGS := $(CFLAGS) -Iinclude -Isrc/common -Ivendor/o1heap/o1heap
+# Device specific variables
+CFLAGS_carfield_safety_island := -I src/carfield -I $(HERO_ROOT)/sw/hero-driver/carfield
+SRCS_carfield_safety_island   := src/carfield/safety_island.c
 
-SRCS   := $(SRCS_$(PLATFORM)) src/common/hero_api.c vendor/o1heap/o1heap/o1heap.c
+CFLAGS_carfield_spatz_cluster := -I src/carfield -I $(HERO_ROOT)/sw/hero-driver/carfield -DDEVICE_IOMMU
+SRCS_carfield_spatz_cluster   := src/carfield/spatz_cluster.c
+
+CFLAGS_carfield_snitch_cluster := -I src/carfield -I $(HERO_ROOT)/sw/hero-driver/carfield -DDEVICE_IOMMU
+SRCS_carfield_snitch_cluster   := src/carfield/snitch_cluster.c
+
+CFLAGS_occamy_snitch_cluster := -I src/occamy -I $(HERO_ROOT)/sw/hero-driver/occamy
+SRCS_occamy_snitch_cluster   := src/occamy/snitch_cluster.c
+
+# Final variables
+CFLAGS := $(CFLAGS_$(HERO_HOST)) $(CFLAGS_$(HERO_DEVICE))
+
+# Normal CFLAGS
+CFLAGS += -Wall -O3 -g -fPIC
+CFLAGS += -Iinclude -Isrc/common -Ivendor/o1heap/o1heap
+
+SRCS   := $(SRCS_$(HERO_DEVICE)) src/common/hero_api.c vendor/o1heap/o1heap/o1heap.c
 OBJS   := $(SRCS:%.c=%.o)
 
-LIBDIR := lib
+INSTALL_DIR := lib
 
-all: lib/libhero_$(PLATFORM).so lib/libhero_$(PLATFORM).a lib/libhero_$(PLATFORM).dump
+# Outputs
+all: $(INSTALL_DIR)/libhero_$(HERO_DEVICE).so $(INSTALL_DIR)/libhero_$(HERO_DEVICE).a $(INSTALL_DIR)/libhero_$(HERO_DEVICE).dump
 
 %.o : %.c
 	$(CC) $(CFLAGS) $^ -c -o $@
@@ -52,23 +57,23 @@ all: lib/libhero_$(PLATFORM).so lib/libhero_$(PLATFORM).a lib/libhero_$(PLATFORM
 %.dump : %.a
 	$(OBJDUMP) -S $^ > $@
 
-check_platform:
-	@if [ -z "$(SRCS_$(PLATFORM))" ]; then echo "Incorrect PLATFORM selected"; exit 1; fi
-
-lib/libhero_$(PLATFORM).so: $(OBJS) | check_platform $(LIBDIR)
+%.so: $(OBJS) | check_platform $(INSTALL_DIR)
 	$(CC) $(CFLAGS) -shared -o $@ $^
 
-lib/libhero_$(PLATFORM).a: $(OBJS) | check_platform $(LIBDIR)
+%.a: $(OBJS) | check_platform $(INSTALL_DIR)
 	$(AR) rvs -o $@ $^
 
-$(LIBDIR):
+$(INSTALL_DIR):
 	mkdir -p $@
 
-.PHONY: clean deploy check_platform
+check_platform:
+	@if [ -z "$(CFLAGS_$(HERO_HOST))" ]; then echo "Incorrect HERO_HOST selected"; exit 1; fi
+	@if [ -z "$(CFLAGS_$(HERO_DEVICE))" ]; then echo "Incorrect HERO_DEVICE selected"; exit 1; fi
+
+.PHONY: clean check_platform
 
 clean:
-	rm -rf lib
 	find . -name "*.o" -delete
 	find . -name "*.d" -delete
-
-to_upper = $(shell echo '$*' | tr '[:upper:]' '[:lower:]')
+	find . -name "*.so" -delete
+	find . -name "*.a" -delete

@@ -6,6 +6,8 @@
 
 ////// HERO_1 includes /////
 #ifdef __HERO_1
+extern int* hero_device_cycles;
+extern int hero_num_device_cycles;
 ////// HOST includes /////
 #else
 #include <ctype.h>
@@ -38,9 +40,6 @@ void kernel_1()
     asm volatile("nop");
 }
 
-#define DTYPE float
-
-#ifndef __HERO_DEV
 int main(int argc, char *argv[])
 {
     // Physical addresses
@@ -61,8 +60,10 @@ int main(int argc, char *argv[])
         width = strtol(argv[2], NULL, 10);
 
     // Init Hero OpenMP runtime
+    hero_add_timestamp("enter_init_omp", __func__, 0);
     kernel_1();
 
+    hero_add_timestamp("enter_data", __func__, 0);
     // Device matrices
     C = hero_dev_l3_malloc(NULL, width * height * sizeof(DTYPE), &C_phys);
     D = hero_dev_l3_malloc(NULL, width * sizeof(DTYPE), &D_phys);
@@ -88,6 +89,7 @@ int main(int argc, char *argv[])
 
     // Offload
     ret = matvec(E, E_phys, D, D_phys, C, C_phys, width, height);
+    ret = matvec(E, E_phys, D, D_phys, C, C_phys, width, height);
     // if(ret)
     //     ret = matvec_large(E, E_phys, D, D_phys, C, C_phys, width, height);
 
@@ -109,7 +111,7 @@ int main(int argc, char *argv[])
     // Verify result
     for (int i = 0; i < height; i++) {
         if (E_test[i] != E[i])
-            printf("nope %i\n\r", i);
+            printf("nope %i (%f != %f)\n\r", i, E_test[i], E[i]);
     }
 
     // Print all the recorded timestamps
@@ -129,4 +131,3 @@ int main(int argc, char *argv[])
 
     return 0;
 }
-#endif

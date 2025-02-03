@@ -92,7 +92,7 @@ safety_island_apps:
     - export SAFETY_ROOT=$CI_PROJECT_DIR/platforms/carfield/safety_island
   script:
     - make hero-safety-sw-all
-    - make -C apps/omp/basic/offload_benchmark/ DEVICES=safety_island
+    - make -C apps/omp/basic/offload_benchmark/ HERO_DEVICE=carfield_safety_island
 
 spatz_apps:
   when: manual
@@ -102,16 +102,17 @@ spatz_apps:
     - source scripts/setenv.sh
   script:
     - make hero-spatz-sw-all
-    - make -C apps/omp/basic/offload_benchmark/ DEVICES=spatz_cluster
+    - make -C apps/omp/basic/offload_benchmark/ HERO_DEVICE=carfield_spatz_cluster
 
 occamy_apps:
   stage: apps
+  when: manual
   needs: [ init, cva6-sdk, llvm, all-sw ]
   before_script:
     - source scripts/setenv.sh
   script:
     - make hero-occamy-sw-all
-    - make -C apps/omp/basic/offload_benchmark/ DEVICES=occamy
+    - make -C apps/omp/basic/offload_benchmark/ HERO_DEVICE=occamy_snitch_cluster
 
 occamy_bit:
   stage: bitstreams

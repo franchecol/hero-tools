@@ -314,6 +314,8 @@ int hero_iommu_map_virt_to_phys(HeroDev *dev, unsigned size_b, void *v_addr, uin
  */
 void hero_dev_l3_free(HeroDev *dev, uintptr_t v_addr, uintptr_t p_addr);
 
+void hero_dev_l2_free(HeroDev *dev, uintptr_t v_addr, uintptr_t p_addr);
+
 //!@}
 
 /** @name Host DMA functions

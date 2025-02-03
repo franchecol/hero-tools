@@ -20,6 +20,7 @@
 #define L2_INTL_1_MMAP_ID 12
 #define L2_CONT_1_MMAP_ID 13
 #define IDMA_MMAP_ID 20
+#define LLC_MMAP_ID 30
 #define SAFETY_ISLAND_MMAP_ID 100
 #define INTEGER_CLUSTER_MMAP_ID 200
 #define SPATZ_CLUSTER_MMAP_ID 300
@@ -65,6 +66,9 @@ struct card_ioctl_arg {
         break;                                                                 \
     case (IDMA_MMAP_ID):                                                       \
         VAR = &DEVDATA->idma_mem;                                              \
+        break;                                                                 \
+    case (LLC_MMAP_ID):                                                        \
+        VAR = &DEVDATA->llc_mem;                                               \
         break;                                                                 \
     case (SAFETY_ISLAND_MMAP_ID):                                              \
         VAR = &DEVDATA->safety_island_mem;                                     \

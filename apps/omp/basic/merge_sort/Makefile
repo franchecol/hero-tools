@@ -9,7 +9,7 @@ HERO_DEVICE ?= carfield_snitch_cluster
 SRCDIR          = $(realpath $(HERO_ROOT)/apps/omp)
 
 CSRCS_HOST      =
-CSRCS           = basic/matvec/main.c
+CSRCS           = basic/merge_sort/main.c
 
 CFLAGS   += -O3 -g
 # CFLAGS   += -v -debug -save-temps=obj
