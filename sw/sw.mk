@@ -21,11 +21,11 @@ $(HERO_SW_DIR)/libllvm/lib/libLLVMSupport.a:
 
 # Compile libhero-[device] layer
 $(HERO_SW_DIR)/libhero/lib/libhero_%.so:
-	make HOST=$(HERO_HOST) PLATFORM=$* -C $(HERO_SW_DIR)/libhero
+	make HERO_HOST=$(HERO_HOST) HERO_DEVICE=$* -C $(HERO_SW_DIR)/libhero all
 
 # Compile libomp/libomptarget for rv64 and a specific libomptarget-hero-[device] runtime 
 $(HERO_SW_DIR)/libomp/lib/libomptarget.rtl.herodev_%.so: $(HERO_SW_DIR)/libllvm/lib/libLLVMSupport.a $(HERO_SW_DIR)/libhero/lib/libhero_%.so
-	make HOST=$(HERO_HOST) PLATFORM=$* -C $(HERO_SW_DIR)/libomp
+	make HERO_HOST=$(HERO_HOST) HERO_DEVICE=$* -C $(HERO_SW_DIR)/libomp
 
 #############
 # Device SW #
