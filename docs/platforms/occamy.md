@@ -2,7 +2,7 @@
 
 ## Platform
 
-...
+Occamy is a high-efficiency system-on-chip for floating-point compute workloads. You can find more informations on the [Github Repository](https://github.com/pulp-platform/occamy).
 
 ## Get started
 

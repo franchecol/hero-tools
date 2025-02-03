@@ -7,7 +7,7 @@
 site_name: Hero-Tools
 
 theme:
-  name: readthedocs
+  name: material
   icon:
     repo: fontawesome/brands/github
   features:

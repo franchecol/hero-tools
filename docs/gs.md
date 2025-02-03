@@ -87,15 +87,97 @@ This will create multiple files in `cva6-sdk/install64` including:
 - vmlinux: An intermediate result of the uImage, this can be used to obtain debug symbols
 
 
-## Building the runtimes for Linux
 
-The command below will compile the libhero (bridging between the hardware drivers and the OpenMP runtime), the libllvm (required for the OpenMP target runtime), and the the OpenMP target host runtime itself.
-All these libraries are compiled for the host (RV64) using the GCC compiler previously built.
+## Buiding the host software
+
+From now, you will need to select a platform to continue with, the platform is decided by the following variables:
+- HERO_HOST can be
+  - cva6
+  - sg2042
+- HERO_DEVICE can be
+  - occamy_snitch_cluster
+  - carfield_snitch_cluster
+  - carfield_spatz_cluster
+  - carfield_safety_island
+
+### Building the Linux kernel module
+
+The kernel modules are located in `sw/hero-driver`. The modules are shared for a platform. For instance, Carfield has a unique module that maps every island. If any island is not actually on-chip (on-FPGA) it will detect it and won't map it.
+
+To build a kernel module do:
 
 ```bash
-make HERO_HOST=cva6 HERO_DEVICE=[platform] hero-sw-all
+# Make sure that you have BR_LINUX_DIR set, otherwise re-source setenv.sh
+source scripts/setenv.sh
+echo $BR_LINUX_DIR
+
+# Go the the module's source and compile it
+cd sw/hero-driver/carfield
+make
+
+# Now you can copy your module into your Linux image rootfs
+cp *.ko $HERO_ROOT/cva6-sdk/rootfs/root/
+
 ```
 
-## Start your platform on an FPGA
+__Note:__ Everytime your change the rootfs, you must update the Linux image like so:
 
-Go to [Targets](platforms/index.md) and pick the architecture you want to use.
+```bash
+cd $HERO_ROOT/cva6-sdk
+make clean images
+# Your new image is in install64/uImage
+```
+
+
+### Building the runtimes for the host
+
+Now that you have the kernel module, you will need to build the host libraries that allow offloading.
+- libhero: It bridges between the hardware drivers and the OpenMP runtime. You can find its code in `sw/libhero`,
+- libomp: The OpenMP runtime. It is built in `sw/libomp` but its sources are in `toolchain/llvm-project/openmp`
+- libllvm: Auxiliaries libraries needed by the OpenMP runtime. It is built in `sw/libllvm`. You can find its code in `toolchain/llvm-project/llvm`
+
+All these libraries are compiled for the host (RV64) using the GCC compiler you previously built.
+
+You can compile all at once:
+
+```bash
+make HERO_HOST=[host] HERO_DEVICE=[device] hero-sw-all
+```
+
+Similarly, you can deploy the libraries to the `rootfs`:
+
+```bash
+make HERO_HOST=[host] HERO_DEVICE=[device] hero-sw-all hero-sw-deploy
+# Now you need to rebuild your Linux image
+```
+
+## Buiding the device software
+
+The device software does not reside in this repository but directly with the hardware.
+To build the device library, this repo will the hardware repos based on `platforms/platforms.mk`.
+
+For instance, you can build the device software for Carfield Snitch using
+
+```bash
+make hero-carfield-snitch-sw-all
+```
+
+Go to [Targets](platforms/index.md) for more informations.
+
+## Building the application
+
+Since now, you have built:
+
+- The GCC compiler for CVA6
+- The Linux image for CVA6
+- The kernel module to map the system's address map
+- The host libraries (libllvm, libomp, libhero)
+- The device library
+
+You can go and build an example application in `apps`.
+
+```bash
+cd apps/omp/basic/offload_benchmark
+# Attention to add the "all"
+make HERO_HOST=cva6 HERO_DEVICE=carfield_snitch_cluster all
+```
