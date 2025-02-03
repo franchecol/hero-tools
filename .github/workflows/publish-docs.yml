@@ -8,7 +8,7 @@ name: publish-docs
 
 on:
   push:
-    branches: [ carfield/main ]
+    branches: [ carfield/main, ck/carfield_docs ]
   workflow_dispatch:
 
 jobs:
@@ -20,7 +20,7 @@ jobs:
         name: Checkout
         uses: actions/checkout@v3
         with:
-          submodules: recursive
+          submodules: false
       -
         name: Install Python
         uses: actions/setup-python@v2

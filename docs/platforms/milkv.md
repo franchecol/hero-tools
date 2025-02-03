@@ -2,8 +2,6 @@
 
 ## Platform
 
-...
-
 The SG2042 can be used as an host to your PCIe accelerator. In this configuration CVA6 stays dormant, and SG2042 interracts with the accelerator directly.
 
 ## Get started

@@ -5,7 +5,6 @@
 # Cyril Koenig <cykoenig@iis.ee.ethz.ch>
 
 site_name: Hero-Tools
-site_dir: public
 
 theme:
   name: readthedocs
@@ -18,8 +17,8 @@ theme:
     - navigation.indexes
     - navigation.footer
 
-repo_url: https://iis-git.ee.ethz.ch/hero/hero-tools/
-repo_name: hero-tools
+repo_url: https://github.com/pulp-platform/hero-tools
+repo_name: pulp-platform/hero-tools
 
 nav:
 - Home:
