@@ -37,6 +37,7 @@ git switch occamy-minimal-bootstrap
 Supporting notes for that reduced path:
 
 - `LOCAL_OCCAMY_MINIMAL_ARCH.md` explains the full stock-Arch setup
+- `LOCAL_OCCAMY_MINIMAL_STATUS.md` records current status, boundaries, and milestones
 - `LOCAL_OCCAMY_MINIMAL.md`
 
 This note is specific to the fork branch above. For the broader upstream
