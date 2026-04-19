@@ -12,7 +12,20 @@ The branch `occamy-minimal-bootstrap` in the fork
 `franchecol/hero-tools` adds a reduced local Verilator flow for the minimal
 Occamy proof used in this checkout.
 
-If you want to use that branch-specific flow, the shortest path is:
+Those four commands below are only the repo-side path.
+The machine still needs the required system dependencies first.
+
+On a stock Arch Linux install, use:
+
+```bash
+sudo pacman -Syu
+sudo pacman -S --needed base-devel git python ripgrep bc dtc verilator bender riscv64-elf-gcc
+```
+
+On Debian/Ubuntu/Mint and similar distributions, install the equivalent tools
+first, then use the same repo-side commands.
+
+After the dependencies are in place, the shortest path is:
 
 ```bash
 git clone https://github.com/franchecol/hero-tools.git
@@ -23,7 +36,7 @@ git switch occamy-minimal-bootstrap
 
 Supporting notes for that reduced path:
 
-- `LOCAL_OCCAMY_MINIMAL_ARCH.md`
+- `LOCAL_OCCAMY_MINIMAL_ARCH.md` explains the full stock-Arch setup
 - `LOCAL_OCCAMY_MINIMAL.md`
 
 This note is specific to the fork branch above. For the broader upstream
