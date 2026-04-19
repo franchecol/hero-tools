@@ -6,6 +6,29 @@ __HeroSDK is a continuity of Hero and HeroV2 but both projects are not yet compa
 
 HeroSDK is developed as part of the [PULP project](https://pulp-platform.org/), a joint effort between ETH Zurich and the University of Bologna.
 
+## Fork-specific note
+
+The branch `occamy-minimal-bootstrap` in the fork
+`franchecol/hero-tools` adds a reduced local Verilator flow for the minimal
+Occamy proof used in this checkout.
+
+If you want to use that branch-specific flow, the shortest path is:
+
+```bash
+git clone https://github.com/franchecol/hero-tools.git
+cd hero-tools
+git switch occamy-minimal-bootstrap
+./scripts/bootstrap-local-occamy-minimal.sh
+```
+
+Supporting notes for that reduced path:
+
+- `LOCAL_OCCAMY_MINIMAL_ARCH.md`
+- `LOCAL_OCCAMY_MINIMAL.md`
+
+This note is specific to the fork branch above. For the broader upstream
+HeroSDK setup, keep following the normal documentation below.
+
 ## This repository
 
 The HeroSDK contains compilers (Linux GCC & Bare metal LLVM), Linux kernel modules, host and device runtimes. See the figure felow for more informations.
