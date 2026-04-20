@@ -68,13 +68,13 @@ Known-good artifacts:
 - roundtrip device binary:
   `platforms/occamy/target/sim/sw/device/apps/roundtrip/build/roundtrip.bin`
 
-Supporting local files added in this checkout:
+Required files provided by the matching Occamy fork branch:
 
 - `platforms/occamy/target/sim/sw/device/apps/minimal_irq/`
 - `platforms/occamy/target/sim/sw/device/apps/roundtrip/`
 - `platforms/occamy/target/sim/sw/host/apps/roundtrip/`
 
-Local simulator patch already present in this checkout:
+Required simulator compatibility fix provided by that Occamy branch:
 
 - `platforms/occamy/target/sim/Makefile`
   Adds `verilated_timing.o` and `verilated_threads.o` to the Verilator link.
@@ -83,7 +83,9 @@ Local simulator patch already present in this checkout:
 
 This local run used:
 
-- `platforms/occamy` on branch `ck/fpga2`
+- `hero-tools`: `franchecol/hero-tools` branch `occamy-minimal-bootstrap`
+- `platforms/occamy`: `franchecol/occamy` branch
+  `occamy-minimal-bootstrap`
 
 Notes:
 
@@ -91,7 +93,8 @@ Notes:
 - This reduced Verilator proof does not require `make hero-cva6-sdk-all` or a
   locally built `cva6-sdk`.
 - It still assumes you already cloned this `hero-tools` checkout.
-- The bootstrap script clones `platforms/occamy` for you if it is missing.
+- The bootstrap script clones `platforms/occamy` from the matching fork branch
+  if it is missing, or checks that the existing checkout already matches it.
 - The scripts are Linux-distro portable as long as equivalent tools exist in
   `PATH`; only the package-manager instructions are Arch-specific.
 

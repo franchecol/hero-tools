@@ -12,6 +12,12 @@ The branch `occamy-minimal-bootstrap` in the fork
 `franchecol/hero-tools` adds a reduced local Verilator flow for the minimal
 Occamy proof used in this checkout.
 
+That branch now expects the matching Occamy fork branch to carry the actual
+simulator and app changes:
+
+- `https://github.com/franchecol/occamy.git`
+- branch `occamy-minimal-bootstrap`
+
 Those four commands below are only the repo-side path.
 The machine still needs the required system dependencies first.
 
@@ -33,6 +39,14 @@ cd hero-tools
 git switch occamy-minimal-bootstrap
 ./scripts/bootstrap-local-occamy-minimal.sh
 ```
+
+What the bootstrap does now:
+
+- clones `platforms/occamy` from `franchecol/occamy` if it is missing
+- checks that the existing `platforms/occamy` checkout matches the expected
+  fork branch
+- then hands off to the runner script for environment setup, build, and trace
+  verification
 
 Supporting notes for that reduced path:
 

@@ -84,12 +84,21 @@ Repo-side additions on this branch:
 - `LOCAL_OCCAMY_MINIMAL_ARCH.md`
 - a branch-specific README note
 
+Matching Occamy fork branch contents:
+
+- `franchecol/occamy` branch `occamy-minimal-bootstrap`
+- Verilator compatibility fix in `target/sim/Makefile`
+- `target/sim/sw/device/apps/minimal_irq/`
+- `target/sim/sw/device/apps/roundtrip/`
+- `target/sim/sw/host/apps/roundtrip/`
+
 Runtime/workflow additions made by the bootstrap path:
 
-- clone `platforms/occamy` on branch `ck/fpga2` if missing
-- create the tiny `minimal_irq` Snitch payload if missing
-- create the `roundtrip` host/device data-path proof if missing
-- apply the local Verilator Makefile compatibility patch if needed
+- clone `platforms/occamy` from `franchecol/occamy` on branch
+  `occamy-minimal-bootstrap` if it is missing
+- check that an existing `platforms/occamy` checkout already matches that fork
+  branch
+- verify that the expected Occamy branch contents are present
 - create `.venv-occamy`
 - install Python generation dependencies
 - build the reduced simulator
@@ -162,7 +171,8 @@ What is still not true:
 
 - we have not yet proven a real HeroSDK runtime/offload path
 - we have not yet validated FPGA bring-up for this reduced path
-- this work is not upstreamed into `pulp-platform/hero-tools`
+- this work is not upstreamed into `pulp-platform/hero-tools` or
+  `pulp-platform/occamy`
 
 ## Milestones
 
@@ -272,10 +282,10 @@ Short version:
 
 ```text
 Current state:
-  interrupt/control-path proof works
+  control-path and minimal data-path proofs work
 
 Best next state:
-  tiny data-path proof works
+  a runtime-shaped simulation proof works
 
 Then:
   consider reduced FPGA bring-up
@@ -287,6 +297,8 @@ This work currently lives in:
 
 - fork: `franchecol/hero-tools`
 - branch: `occamy-minimal-bootstrap`
+- matching Occamy fork: `franchecol/occamy`
+- matching Occamy branch: `occamy-minimal-bootstrap`
 
 The fork default branch may remain close to upstream.
 The reduced path lives on the dedicated branch above.

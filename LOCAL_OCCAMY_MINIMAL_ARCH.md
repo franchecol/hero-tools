@@ -1,6 +1,6 @@
 # Stock Arch Linux Quickstart For The Minimal Occamy Run
 
-Status: validated against this local bootstrap flow on 2026-04-18.
+Status: validated against this local bootstrap flow on 2026-04-20.
 
 This note is for the reduced local proof only.
 
@@ -33,7 +33,7 @@ Why those packages are enough:
 ```text
 base-devel      -> host-side build tools used by the Verilator C++ build
 git             -> clone hero-tools and clone platforms/occamy from the bootstrap
-python          -> venv + local Python dependency install used by the bootstrap
+python          -> venv + local Python dependency install used by the runner
 ripgrep         -> provides rg, which the runner uses for trace checks
 bc              -> required by the simulator build
 dtc             -> provides the device-tree compiler used by the simulator flow
@@ -57,8 +57,9 @@ Notes:
 If you do not already have the checkout:
 
 ```bash
-git clone https://github.com/pulp-platform/hero-tools.git
+git clone https://github.com/franchecol/hero-tools.git
 cd hero-tools
+git switch occamy-minimal-bootstrap
 ```
 
 This quickstart assumes the checkout already contains:
@@ -86,9 +87,11 @@ From the repo root:
 
 That single command will:
 
-- clone `platforms/occamy` on branch `ck/fpga2` if it is missing
-- patch the local simulator Makefile for the current Verilator build
-- create the tiny `minimal_irq` Snitch payload if it is missing
+- clone `platforms/occamy` from `franchecol/occamy` on branch
+  `occamy-minimal-bootstrap` if it is missing
+- check that an existing `platforms/occamy` checkout already matches that fork
+  branch
+- verify that the expected Occamy branch contents are present
 - create `.venv-occamy`
 - install the required Python modules into that venv
 - create `~/bin/riscv64-unknown-elf-*` compatibility symlinks from Arch's
@@ -148,6 +151,8 @@ If the script says a command is missing:
 If it says the minimal payload is missing:
 
 - run `./scripts/bootstrap-local-occamy-minimal.sh`, not the rerun script
+- if that still fails, your `platforms/occamy` checkout is not on the expected
+  fork branch
 
 If it says the existing `platforms/occamy` checkout has the wrong origin or
 branch:
@@ -169,8 +174,7 @@ For faster reruns, use:
 That rerun path assumes:
 
 - `platforms/occamy` is already present
-- the local simulator patch is already applied
-- the `minimal_irq` app already exists
+- the expected Occamy fork branch is already checked out
 
 For the broader context and manual build details, see:
 

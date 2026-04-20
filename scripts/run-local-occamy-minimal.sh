@@ -189,9 +189,9 @@ ensure_riscv_aliases() {
 
 verify_local_patch() {
   grep -q 'verilated_timing.o' "${SIM_DIR}/Makefile" || \
-    die "missing local Verilator compatibility patch in ${SIM_DIR}/Makefile"
+    die "missing expected Verilator compatibility fix in ${SIM_DIR}/Makefile; run ./scripts/bootstrap-local-occamy-minimal.sh"
   grep -q 'verilated_threads.o' "${SIM_DIR}/Makefile" || \
-    die "missing local Verilator compatibility patch in ${SIM_DIR}/Makefile"
+    die "missing expected Verilator compatibility fix in ${SIM_DIR}/Makefile; run ./scripts/bootstrap-local-occamy-minimal.sh"
 }
 
 build_simulator() {
@@ -292,7 +292,7 @@ main() {
 
   [[ -d "${SIM_DIR}" ]] || die "missing Occamy simulator directory: ${SIM_DIR}"
   [[ -f "${DEVICE_APP_DIR}/Makefile" ]] || \
-    die "missing ${APP_MODE} device payload sources in ${DEVICE_APP_DIR}; run ./scripts/bootstrap-local-occamy-minimal.sh first"
+    die "missing ${APP_MODE} device payload sources in ${DEVICE_APP_DIR}; run ./scripts/bootstrap-local-occamy-minimal.sh to clone/check the expected Occamy branch"
 
   cd "${ROOT_DIR}"
 
