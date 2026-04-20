@@ -1,8 +1,9 @@
+#!/usr/bin/env bash
 # Copyright 2024 ETH Zurich and University of Bologna.
 # Licensed under the Apache License, Version 2.0, see LICENSE for details.
 # SPDX-License-Identifier: Apache-2.0
 
-#!/bin/bash -xe
+set -ex
 
 # This script is usually executed in output/tc-llvm
 # THIS_DIR holds the script's path (toolchain)
@@ -27,14 +28,14 @@ fi
 
 # If CC and CXX are unset, set them to default values.
 if [ -z "$CC" ]; then
-  if [-f /etc/iis.version]; then
+  if [ -f /etc/iis.version ]; then
     export CC=/usr/pack/gcc-9.2.0-af/linux-x64/bin/gcc
   else
     export CC=`which gcc`
   fi
 fi
 if [ -z "$CXX" ]; then
-  if [-f /etc/iis.version]; then
+  if [ -f /etc/iis.version ]; then
     export CXX=/usr/pack/gcc-9.2.0-af/linux-x64/bin/g++
   else
     export CXX=`which g++`
@@ -95,4 +96,5 @@ cd ..
 # Install wrapper script (this script invokes custom passes)
 # FIXME: this wrapper script should be transparantly included in the HC compiler
 echo "Installing hc-omp-pass wrapper script"
+mkdir -p "$HERO_INSTALL/bin"
 cp $THIS_DIR/llvm-support/hc-omp-pass $HERO_INSTALL/bin

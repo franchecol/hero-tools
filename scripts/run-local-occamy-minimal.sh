@@ -7,6 +7,7 @@ ROOT_DIR=$(cd -- "${SCRIPT_DIR}/.." && pwd)
 SIM_DIR="${ROOT_DIR}/platforms/occamy/target/sim"
 VENV_DIR="${ROOT_DIR}/.venv-occamy"
 USER_BIN_DIR="${HOME}/bin"
+HERO_INSTALL_DIR="${HERO_INSTALL:-${ROOT_DIR}/install}"
 CANONICAL_RISCV_PREFIX="riscv64-unknown-elf-"
 RISCV_SRC_PREFIX=""
 APP_MODE="${1:-minimal_irq}"
@@ -14,6 +15,8 @@ DEVICE_APP_DIR=""
 HOST_APP_DIR=""
 HOST_ELF=""
 DEVICE_BIN=""
+DEVICE_SYMBOL_ELF=""
+VERIFY_SCRIPT=""
 
 log() {
   printf '[occamy-minimal] %s\n' "$*"
@@ -35,15 +38,25 @@ configure_mode() {
       HOST_APP_DIR="${SIM_DIR}/sw/host/apps/offload"
       HOST_ELF="${HOST_APP_DIR}/build/offload-minimal_irq.elf"
       DEVICE_BIN="${DEVICE_APP_DIR}/build/minimal_irq.bin"
+      DEVICE_SYMBOL_ELF="${DEVICE_APP_DIR}/build/minimal_irq.elf"
       ;;
     roundtrip)
       DEVICE_APP_DIR="${SIM_DIR}/sw/device/apps/roundtrip"
       HOST_APP_DIR="${SIM_DIR}/sw/host/apps/roundtrip"
       HOST_ELF="${HOST_APP_DIR}/build/roundtrip.elf"
       DEVICE_BIN="${DEVICE_APP_DIR}/build/roundtrip.bin"
+      DEVICE_SYMBOL_ELF="${DEVICE_APP_DIR}/build/roundtrip.elf"
+      ;;
+    axpy)
+      DEVICE_APP_DIR="${SIM_DIR}/sw/device/apps/blas/axpy"
+      HOST_APP_DIR="${SIM_DIR}/sw/host/apps/offload"
+      HOST_ELF="${HOST_APP_DIR}/build/offload-axpy.elf"
+      DEVICE_BIN="${DEVICE_APP_DIR}/build/axpy.bin"
+      DEVICE_SYMBOL_ELF="${DEVICE_APP_DIR}/build/axpy.elf"
+      VERIFY_SCRIPT="${ROOT_DIR}/platforms/occamy/deps/snitch_cluster/sw/blas/axpy/verify.py"
       ;;
     *)
-      die "unsupported mode: ${APP_MODE} (expected minimal_irq or roundtrip)"
+      die "unsupported mode: ${APP_MODE} (expected minimal_irq, roundtrip, or axpy)"
       ;;
   esac
 }
@@ -72,6 +85,17 @@ PY
   then
     log "installing Python build dependencies into ${VENV_DIR}"
     python -m pip install hjson jsonref mako pyyaml tabulate jsonschema "setuptools<81"
+  fi
+
+  if [[ "${APP_MODE}" == "axpy" ]]; then
+    if ! python - <<'PY' >/dev/null 2>&1
+import importlib
+importlib.import_module("numpy")
+PY
+    then
+      log "installing numpy into ${VENV_DIR} for axpy verification"
+      python -m pip install numpy
+    fi
   fi
 }
 
@@ -187,6 +211,33 @@ ensure_riscv_aliases() {
   need_cmd "${CANONICAL_RISCV_PREFIX}readelf"
 }
 
+ensure_hero_install_env() {
+  export HERO_INSTALL="${HERO_INSTALL_DIR}"
+
+  if [[ -e "${HERO_INSTALL}/bin" && ! -d "${HERO_INSTALL}/bin" ]]; then
+    die "HERO_INSTALL/bin exists but is not a directory (${HERO_INSTALL}/bin); the HeroSDK LLVM install is incomplete"
+  fi
+
+  if [[ -d "${HERO_INSTALL}/bin" ]]; then
+    export PATH="${HERO_INSTALL}/bin:${PATH}"
+  fi
+}
+
+ensure_axpy_toolchain() {
+  [[ "${APP_MODE}" == "axpy" ]] || return 0
+
+  ensure_hero_install_env
+
+  [[ -d "${HERO_INSTALL}/bin" ]] || \
+    die "axpy requires the HeroSDK LLVM toolchain under ${HERO_INSTALL}; run: source scripts/setenv.sh && make hero-tc-llvm"
+  command -v riscv32-unknown-elf-clang >/dev/null 2>&1 || \
+    die "axpy requires riscv32-unknown-elf-clang from the HeroSDK LLVM toolchain; run: source scripts/setenv.sh && make hero-tc-llvm"
+  [[ -d "${HERO_INSTALL}/rv32imafd-ilp32d/riscv32-unknown-elf" ]] || \
+    die "axpy requires the rv32imafd-ilp32d device sysroot in ${HERO_INSTALL}; run: source scripts/setenv.sh && make hero-tc-llvm"
+  [[ -x "${VERIFY_SCRIPT}" ]] || [[ -f "${VERIFY_SCRIPT}" ]] || \
+    die "missing axpy verify script: ${VERIFY_SCRIPT}"
+}
+
 verify_local_patch() {
   grep -q 'verilated_timing.o' "${SIM_DIR}/Makefile" || \
     die "missing expected Verilator compatibility fix in ${SIM_DIR}/Makefile; run ./scripts/bootstrap-local-occamy-minimal.sh"
@@ -218,6 +269,9 @@ build_selected_payload() {
   if [[ "${APP_MODE}" == "minimal_irq" ]]; then
     make -C "${HOST_APP_DIR}" DEVICE_APPS=minimal_irq
     make -C "${HOST_APP_DIR}" finalize-build DEVICE_APPS=minimal_irq
+  elif [[ "${APP_MODE}" == "axpy" ]]; then
+    make -C "${HOST_APP_DIR}" DEVICE_APPS=blas/axpy
+    make -C "${HOST_APP_DIR}" finalize-build DEVICE_APPS=blas/axpy
   else
     make -C "${HOST_APP_DIR}" finalize-build
   fi
@@ -236,6 +290,23 @@ run_simulation() {
   (
     cd "${SIM_DIR}"
     "${sim_bin}" "${HOST_ELF}"
+  )
+}
+
+run_and_verify_axpy() {
+  local sim_bin="${SIM_DIR}/bin/occamy_top.vlt"
+
+  [[ -x "${sim_bin}" ]] || die "simulator missing: ${sim_bin}"
+  [[ -f "${HOST_ELF}" ]] || die "host ELF missing: ${HOST_ELF}"
+  [[ -f "${DEVICE_SYMBOL_ELF}" ]] || die "device ELF missing: ${DEVICE_SYMBOL_ELF}"
+
+  rm -f "${SIM_DIR}/uart0.log" "${SIM_DIR}/trace_hart_00.dasm"
+  rm -f "${SIM_DIR}/logs/trace_hart_0000"*.dasm
+
+  log "running ${APP_MODE} verification harness"
+  (
+    cd "${SIM_DIR}"
+    python "${VERIFY_SCRIPT}" --symbols-bin "${DEVICE_SYMBOL_ELF}" "${sim_bin}" "${HOST_ELF}"
   )
 }
 
@@ -297,13 +368,19 @@ main() {
   cd "${ROOT_DIR}"
 
   ensure_venv
+  ensure_axpy_toolchain
   resolve_verilator_root
   ensure_riscv_aliases
   verify_local_patch
   build_simulator
   build_selected_payload
-  run_simulation
-  verify_traces
+
+  if [[ "${APP_MODE}" == "axpy" ]]; then
+    run_and_verify_axpy
+  else
+    run_simulation
+    verify_traces
+  fi
 
   log "success"
   log "mode: ${APP_MODE}"

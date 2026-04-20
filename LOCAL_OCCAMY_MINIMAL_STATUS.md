@@ -242,6 +242,23 @@ Why this matters:
 - it tells us whether the next real blocker is in runtime integration,
   compilation, or platform assumptions
 
+Current candidate:
+
+- use the existing Occamy `offload` host path with `device/apps/blas/axpy`
+- this is stronger than the branch-local `roundtrip` proof because it uses the
+  existing BLAS device workload, `snrt`, DMA movement, and the offload
+  packaging flow
+
+Current observed blocker:
+
+- the reduced local branch can build and run M0/M1 with the GNU bare-metal
+  toolchain, but `axpy` requires the HeroSDK LLVM RV32 device toolchain and
+  sysroot under `install/`
+- the first failing symptom is the missing `riscv32-unknown-elf-clang` /
+  `rv32imafd-ilp32d` toolchain install, not a simulator failure
+- so the current M2 boundary is now concrete: finish `make hero-tc-llvm`, then
+  rerun the existing `axpy` offload path
+
 ### M3: Reduced FPGA Bring-Up
 
 Status: deferred until after more simulation confidence
