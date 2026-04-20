@@ -6,7 +6,7 @@ This note is for the reduced local proof only.
 
 It does not cover:
 
-- the full HeroSDK LLVM/OpenMP toolchain build
+- a full user-facing HeroSDK OpenMP target application flow
 - `make hero-cva6-sdk-all`
 - FPGA bitstreams
 - Linux image generation
@@ -127,20 +127,39 @@ The main output artifacts are:
 - `platforms/occamy/target/sim/trace_hart_00.dasm`
 - `platforms/occamy/target/sim/logs/trace_hart_00001.dasm`
 
-## Disk Budget
+For the optional `M2` `axpy` path, the validated follow-up sequence is:
 
-Observed sizes on this machine after a successful run:
+```bash
+source scripts/setenv.sh
+make hero-tc-llvm-axpy
+./scripts/run-local-occamy-minimal.sh axpy
+```
+
+Expected extra success lines:
 
 ```text
-.venv-occamy                         ≈  31M
-platforms/occamy                    ≈ 218M
-platforms/occamy/target/sim/work-vlt ≈ 2.0G
+[occamy-minimal] success
+[occamy-minimal] mode: axpy
+[occamy-minimal] host ELF: .../offload-axpy.elf
+[occamy-minimal] device binary: .../axpy.bin
+```
+
+## Disk Budget
+
+Observed sizes on this machine after the validated `M2` run:
+
+```text
+.venv-occamy  ≈ 101M
+install       ≈ 319M
+output        ≈ 1.1G
+platforms/occamy ≈ 2.2G
 ```
 
 Practical recommendation:
 
-- keep at least 4 GiB free for the reduced path
-- 6 GiB free is safer if you want room for rebuilds and package downloads
+- keep at least 4 GiB free for the baseline bootstrap and rerun path
+- keep about 8 GiB free if you also want the reduced `axpy` toolchain build and
+  verification flow
 
 ## Common Failure Cases
 
@@ -163,6 +182,12 @@ If your checkout does not have the bootstrap script at all:
 
 - you are on plain upstream `hero-tools`, not the locally extended checkout
 
+If `axpy` says the reduced LLVM device toolchain is missing:
+
+- run `source scripts/setenv.sh`
+- run `make hero-tc-llvm-axpy`
+- then rerun `./scripts/run-local-occamy-minimal.sh axpy`
+
 ## After The First Run
 
 For faster reruns, use:
@@ -175,6 +200,16 @@ That rerun path assumes:
 
 - `platforms/occamy` is already present
 - the expected Occamy fork branch is already checked out
+
+Useful reruns:
+
+```bash
+./scripts/run-local-occamy-minimal.sh
+./scripts/run-local-occamy-minimal.sh roundtrip
+source scripts/setenv.sh
+make hero-tc-llvm-axpy
+./scripts/run-local-occamy-minimal.sh axpy
+```
 
 For the broader context and manual build details, see:
 

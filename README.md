@@ -12,6 +12,12 @@ The branch `occamy-minimal-bootstrap` in the fork
 `franchecol/hero-tools` adds a reduced local Verilator flow for the minimal
 Occamy proof used in this checkout.
 
+Current validated state on that branch:
+
+- `M0`: `minimal_irq` control-path proof
+- `M1`: `roundtrip` shared-memory proof
+- `M2`: reduced `axpy` offload proof using the HeroSDK RV32 LLVM toolchain
+
 That branch now expects the matching Occamy fork branch to carry the actual
 simulator and app changes:
 
@@ -31,13 +37,24 @@ sudo pacman -S --needed base-devel git python ripgrep bc dtc verilator bender ri
 On Debian/Ubuntu/Mint and similar distributions, install the equivalent tools
 first, then use the same repo-side commands.
 
-After the dependencies are in place, the shortest path is:
+After the dependencies are in place, the shortest first run is:
 
 ```bash
 git clone https://github.com/franchecol/hero-tools.git
 cd hero-tools
 git switch occamy-minimal-bootstrap
 ./scripts/bootstrap-local-occamy-minimal.sh
+```
+
+That bootstrap validates the `M0` baseline.
+
+Useful follow-up reruns are:
+
+```bash
+./scripts/run-local-occamy-minimal.sh roundtrip
+source scripts/setenv.sh
+make hero-tc-llvm-axpy
+./scripts/run-local-occamy-minimal.sh axpy
 ```
 
 What the bootstrap does now:
@@ -52,7 +69,8 @@ Supporting notes for that reduced path:
 
 - `LOCAL_OCCAMY_MINIMAL_ARCH.md` explains the full stock-Arch setup
 - `LOCAL_OCCAMY_MINIMAL_STATUS.md` records current status, boundaries, and milestones
-- `LOCAL_OCCAMY_MINIMAL.md`
+- `LOCAL_OCCAMY_MINIMAL.md` gives the validated local runbook, including the
+  reduced `axpy` path
 
 This note is specific to the fork branch above. For the broader upstream
 HeroSDK setup, keep following the normal documentation below.

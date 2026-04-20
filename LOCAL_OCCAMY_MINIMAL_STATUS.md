@@ -68,11 +68,27 @@ M1 data path
     -> device trace shows stores into the shared buffer region
     -> host validates the modified buffer
     -> host writes tohost and exits with code 0
+
+M2 runtime-shaped proof
+  CVA6 host offload flow
+    -> performs the partial build and emits origin.ld
+    -> embeds axpy.bin into offload-axpy.elf
+    -> launches the existing verification harness
+
+  Snitch device payload
+    -> builds with the HeroSDK RV32 LLVM toolchain and sysroot
+    -> links against the required device runtime and math libraries
+    -> executes the reduced axpy workload
+
+  Simulator and verifier
+    -> run to completion through the upstream verify.py path
+    -> report success for the reduced offload proof
 ```
 
 This is now a real heterogeneous control-path plus data-path proof.
-It is stronger than "the simulator builds" but still smaller than a real
-HeroSDK runtime/OpenMP proof.
+It is stronger than "the simulator builds" and stronger than the branch-local
+roundtrip, but it is still smaller than a real user-facing HeroSDK OpenMP
+target proof.
 
 ## What Was Added
 
@@ -83,6 +99,9 @@ Repo-side additions on this branch:
 - `LOCAL_OCCAMY_MINIMAL.md`
 - `LOCAL_OCCAMY_MINIMAL_ARCH.md`
 - a branch-specific README note
+- `hero.mk` target `hero-tc-llvm-axpy`
+- `toolchain/setup-llvm-device.sh` fixes for the reduced RV32 LLVM path
+- `toolchain/llvm-support/CMakeLists.txt` fix for modern CMake/GCC behavior
 
 Matching Occamy fork branch contents:
 
@@ -91,6 +110,7 @@ Matching Occamy fork branch contents:
 - `target/sim/sw/device/apps/minimal_irq/`
 - `target/sim/sw/device/apps/roundtrip/`
 - `target/sim/sw/host/apps/roundtrip/`
+- `target/sim/sw/device/toolchain.mk` fix for the reduced `axpy` builtins path
 
 Runtime/workflow additions made by the bootstrap path:
 
@@ -101,6 +121,7 @@ Runtime/workflow additions made by the bootstrap path:
 - verify that the expected Occamy branch contents are present
 - create `.venv-occamy`
 - install Python generation dependencies
+- install `numpy` and `pyelftools` when the `axpy` verifier needs them
 - build the reduced simulator
 - build host/device binaries
 - run the simulation
@@ -118,10 +139,16 @@ Known-good output artifacts:
   `platforms/occamy/target/sim/sw/host/apps/roundtrip/build/roundtrip.elf`
 - roundtrip device binary:
   `platforms/occamy/target/sim/sw/device/apps/roundtrip/build/roundtrip.bin`
+- `axpy` host ELF:
+  `platforms/occamy/target/sim/sw/host/apps/offload/build/offload-axpy.elf`
+- `axpy` device binary:
+  `platforms/occamy/target/sim/sw/device/apps/blas/axpy/build/axpy.bin`
 - host trace:
   `platforms/occamy/target/sim/trace_hart_00.dasm`
 - device trace:
   `platforms/occamy/target/sim/logs/trace_hart_00001.dasm`
+- verifier outcome:
+  `[occamy-minimal] success` and `[occamy-minimal] mode: axpy`
 
 What the traces demonstrate:
 
@@ -129,6 +156,8 @@ What the traces demonstrate:
   the interrupt store
 - for `roundtrip`, the device trace also shows stores into the shared buffer
   region before the interrupt store
+- for `axpy`, the reduced offload flow produces both `offload-axpy.elf` and
+  `axpy.bin`, then completes through the upstream verification harness
 - the host trace shows the host clearing the software interrupt, validating the
   returned buffer, and reaching the final `tohost` exit write
 
@@ -163,13 +192,15 @@ What is true now:
 - the minimal heterogeneous simulation path works
 - the branch now contains both a control-path proof and a minimal data-path
   proof
+- the branch now also contains a reduced runtime-shaped `axpy` offload proof
 - the path is automated enough for reuse
 - the branch documents system prerequisites and machine setup
 - the scripts are more Linux-portable than the first local version
+- the reduced RV32 LLVM device toolchain path now works for `rv32imafd-ilp32d`
 
 What is still not true:
 
-- we have not yet proven a real HeroSDK runtime/offload path
+- we have not yet proven a real user-facing HeroSDK OpenMP target application
 - we have not yet validated FPGA bring-up for this reduced path
 - this work is not upstreamed into `pulp-platform/hero-tools` or
   `pulp-platform/occamy`
@@ -228,7 +259,7 @@ Delivered:
 
 ### M2: Runtime-Shaped Simulation Proof
 
-Status: next recommended milestone
+Status: completed
 
 Success criteria:
 
@@ -242,30 +273,51 @@ Why this matters:
 - it tells us whether the next real blocker is in runtime integration,
   compilation, or platform assumptions
 
-Current candidate:
+Validated candidate:
 
 - use the existing Occamy `offload` host path with `device/apps/blas/axpy`
 - this is stronger than the branch-local `roundtrip` proof because it uses the
   existing BLAS device workload, `snrt`, DMA movement, and the offload
   packaging flow
 
-Current observed blocker:
+Delivered:
 
-- the reduced local branch can build and run M0/M1 with the GNU bare-metal
-  toolchain, but `axpy` requires the HeroSDK LLVM RV32 device toolchain and
-  sysroot under `install/`
-- the first failing symptom is the missing `riscv32-unknown-elf-clang` /
-  `rv32imafd-ilp32d` toolchain install, not a simulator failure
-- so the current M2 boundary is now concrete: finish `make hero-tc-llvm`, then
-  rerun the existing `axpy` offload path
+- completed with the existing Occamy `offload` host path and
+  `device/apps/blas/axpy`
+- validated after building `make hero-tc-llvm-axpy`
+- reduced local flow now builds the device runtime and math libraries before
+  finalizing the host ELF
+- the verifier completes successfully and reports the reduced `axpy` proof as a
+  success
 
-### M3: Reduced FPGA Bring-Up
+### M3: HeroSDK-Shaped Software Proof
 
-Status: deferred until after more simulation confidence
+Status: next recommended milestone
 
 Success criteria:
 
-- move the reduced path onto FPGA only after M1 or M2 gives higher confidence
+- execute one small user-facing software case that is closer to the intended
+  HeroSDK value than the current Occamy-specific harnesses
+- exercise more of the heterogeneous compiler/runtime path than the current
+  handwritten `minimal_irq` / `roundtrip` pair
+- identify whether the next blocker is in OpenMP/plugin/runtime integration or
+  in platform assumptions
+
+Why this is the immediate next step:
+
+- it answers the actual "why HeroSDK instead of pure Occamy?" question more
+  directly
+- it keeps debugging in simulation, where failures are still attributable and
+  cheap to reproduce
+
+### M4: Reduced FPGA Bring-Up
+
+Status: deferred until after M3
+
+Success criteria:
+
+- move the reduced path onto FPGA only after the simulation-side software proof
+  is stronger
 - keep the experiment narrow enough that failures can be attributed to board,
   boot, or hardware effects rather than basic host/device contract issues
 
@@ -274,7 +326,7 @@ Why this is not the immediate next step:
 - FPGA adds boot images, board-specific flow, bitstream generation, and
   hardware debugging on top of the existing software uncertainty
 
-### M4: Upstream-Oriented Cleanup
+### M5: Upstream-Oriented Cleanup
 
 Status: optional future milestone
 
@@ -286,23 +338,23 @@ Success criteria:
 
 ## Recommended Next Step
 
-The best next technical step is now M2, not FPGA.
+The best next technical step is now M3, not FPGA.
 
 That means:
 
 - stay in simulation
 - keep the reduced Occamy single-cluster configuration
-- move one step closer to the intended HeroSDK software shape
+- move one step closer to the actual HeroSDK compiler/runtime value
 - keep the workload tiny enough that failures are still attributable
 
 Short version:
 
 ```text
 Current state:
-  control-path and minimal data-path proofs work
+  M0, M1, and M2 work in simulation
 
 Best next state:
-  a runtime-shaped simulation proof works
+  a more HeroSDK-shaped software proof works
 
 Then:
   consider reduced FPGA bring-up

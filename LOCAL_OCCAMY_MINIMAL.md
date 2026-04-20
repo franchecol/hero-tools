@@ -1,6 +1,6 @@
 # Local Occamy Minimal Heterogeneous Runbook
 
-Status: validated on this machine on 2026-04-18.
+Status: validated on this machine through `M2` on 2026-04-20.
 
 This note documents the smallest heterogeneous simulation path that was
 actually proven in this checkout.
@@ -27,15 +27,26 @@ Optional M1 data-path rerun:
 ./scripts/run-local-occamy-minimal.sh roundtrip
 ```
 
-It does not try to cover the full HeroSDK LLVM/OpenMP flow.
+Optional M2 reduced offload rerun:
+
+```bash
+source scripts/setenv.sh
+make hero-tc-llvm-axpy
+./scripts/run-local-occamy-minimal.sh axpy
+```
+
+It does not try to cover a full user-facing HeroSDK OpenMP target application
+or the broader Linux/FPGA bring-up flow.
 It only covers:
 
 - reduced `occamy` configuration
 - open-source Verilator simulator
 - host-side CVA6 apps for a control-path proof and a tiny data-path proof
+- the existing Occamy `offload` host path for a reduced runtime-shaped proof
 - tiny RV32 device payloads on Snitch
 - host <- device completion via software interrupt
 - one minimal shared-memory roundtrip
+- one reduced `axpy` offload proof using the HeroSDK RV32 LLVM device toolchain
 
 ## Scope
 
@@ -67,6 +78,10 @@ Known-good artifacts:
   `platforms/occamy/target/sim/sw/host/apps/roundtrip/build/roundtrip.elf`
 - roundtrip device binary:
   `platforms/occamy/target/sim/sw/device/apps/roundtrip/build/roundtrip.bin`
+- `axpy` host ELF:
+  `platforms/occamy/target/sim/sw/host/apps/offload/build/offload-axpy.elf`
+- `axpy` device binary:
+  `platforms/occamy/target/sim/sw/device/apps/blas/axpy/build/axpy.bin`
 
 Required files provided by the matching Occamy fork branch:
 
@@ -78,6 +93,8 @@ Required simulator compatibility fix provided by that Occamy branch:
 
 - `platforms/occamy/target/sim/Makefile`
   Adds `verilated_timing.o` and `verilated_threads.o` to the Verilator link.
+- `platforms/occamy/target/sim/sw/device/toolchain.mk`
+  Points the reduced `axpy` path at the `rv32imafd-ilp32d` builtins directory.
 
 ## Branches
 
@@ -109,6 +126,14 @@ The following must exist on the machine:
 - `bender`
 - a bare-metal RISC-V GNU toolchain
 - Python 3 with `venv`
+
+For the optional `axpy` proof, this machine also needed the reduced HeroSDK
+RV32 LLVM toolchain and sysroot built with:
+
+```bash
+source scripts/setenv.sh
+make hero-tc-llvm-axpy
+```
 
 For a stock Arch Linux package-level setup, see:
 
@@ -152,6 +177,12 @@ Why the setuptools pin exists:
 
 - the vendored `regtool.py` path still relies on `pkg_resources`
 
+For the optional `axpy` verification harness, the venv also needed:
+
+```bash
+pip install numpy pyelftools
+```
+
 ## Environment Setup
 
 Use this setup in every terminal used for the manual minimal path:
@@ -160,6 +191,12 @@ Use this setup in every terminal used for the manual minimal path:
 cd /home/ftv/builds/hero-tools
 source .venv-occamy/bin/activate
 export PATH=/home/ftv/bin:$PATH
+```
+
+For the optional `axpy` path, also load the HeroSDK environment:
+
+```bash
+source scripts/setenv.sh
 ```
 
 ## Build The Reduced Occamy Simulator
@@ -310,6 +347,53 @@ What it proves:
 - the Snitch payload increments the 16 words in place
 - the host validates the returned buffer before exiting
 
+## Run The Reduced `axpy` Offload Proof
+
+This third proof stays in the same reduced single-cluster simulation, but it
+uses the existing Occamy `offload` host path together with the upstream
+`device/apps/blas/axpy` workload and the reduced HeroSDK RV32 LLVM toolchain.
+
+Build the reduced LLVM RV32 device toolchain pieces first:
+
+```bash
+cd /home/ftv/builds/hero-tools
+source scripts/setenv.sh
+make hero-tc-llvm-axpy
+```
+
+Then run the validated branch-local flow:
+
+```bash
+cd /home/ftv/builds/hero-tools
+./scripts/run-local-occamy-minimal.sh axpy
+```
+
+What this run does:
+
+- builds the reduced single-cluster simulator if needed
+- builds the device runtime and math libraries required by `axpy`
+- performs the host partial build to emit `origin.ld`
+- builds `axpy.elf` and `axpy.bin`
+- finalizes `offload-axpy.elf`
+- runs the upstream `verify.py` harness against the simulator
+
+Expected success lines:
+
+```text
+[occamy-minimal] success
+[occamy-minimal] mode: axpy
+[occamy-minimal] host ELF: .../offload-axpy.elf
+[occamy-minimal] device binary: .../axpy.bin
+```
+
+What it proves:
+
+- the reduced HeroSDK RV32 LLVM toolchain and sysroot build are usable here
+- the existing Occamy offload packaging flow works in this reduced simulator
+- the richer `axpy` device workload builds and links against the required
+  runtime libraries
+- the simulation reaches the verification harness successfully
+
 ## What To Verify
 
 Host-side proof:
@@ -331,15 +415,24 @@ Device-side proof:
 
 This is enough to say the host/device control path works.
 
+For `axpy`, the main proof is different:
+
+- the reduced flow emits both `offload-axpy.elf` and `axpy.bin`
+- the upstream verification harness completes and the runner reports
+  `[occamy-minimal] success`
+
 ## Known Good Smoke Tests
 
-Two simple tests are currently useful:
+Three simple tests are currently useful:
 
 - host-only boot/exit smoke:
   `platforms/occamy/target/sim/sw/host/apps/exit_only`
 - minimal heterogeneous smoke:
   `platforms/occamy/target/sim/sw/host/apps/offload` +
   `platforms/occamy/target/sim/sw/device/apps/minimal_irq`
+- reduced runtime-shaped smoke:
+  `platforms/occamy/target/sim/sw/host/apps/offload` +
+  `platforms/occamy/target/sim/sw/device/apps/blas/axpy`
 
 ## Known Bad Or Incomplete Paths
 
@@ -347,8 +440,9 @@ Current caveats in this checkout:
 
 - `hello_world` built, but did not produce UART output and did not terminate in
   the expected way during earlier testing.
-- The full HeroSDK LLVM/OpenMP toolchain path is not stabilized on this
-  machine yet.
+- the reduced HeroSDK RV32 LLVM toolchain and the `axpy` proof now work on this
+  machine, but a real user-facing OpenMP target application is still unproven
+  in this reduced branch flow.
 - The repo docs are not enough by themselves for modern local bring-up on this
   machine; they assume older pinned tools and a more curated environment.
 
