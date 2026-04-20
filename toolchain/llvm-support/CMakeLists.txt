@@ -7,7 +7,7 @@
 #
 # [1] https://github.com/delcypher/srg-llvm-pass-tutorial
 #  
-cmake_minimum_required(VERSION 3.5)
+cmake_minimum_required(VERSION 3.10)
 project(hero-llvm-support)
 
 #------------------------------------------------------------------------------
@@ -40,7 +40,7 @@ add_definitions(${LLVM_DEFINITIONS})
 include(CheckCXXCompilerFlag)
 macro(add_cxx_flag flag name)
     CHECK_CXX_COMPILER_FLAG(${flag} "${name}_SUPPORTED")
-    if("${name}_SUPPORTED")
+    if(${name}_SUPPORTED)
         add_definitions(${flag})
     else()
         message(FATAL_ERROR "${flag} flag is not supported by ${CMAKE_CXX_COMPILER}")

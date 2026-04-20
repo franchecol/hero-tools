@@ -6,6 +6,8 @@
 set -ex
 
 THIS_DIR=$(dirname "$(readlink -f "$0")")
+LLVM_BIN_DIR="${HERO_INSTALL}/bin"
+LLVM_LD="${LLVM_BIN_DIR}/ld.lld"
 
 if [ -z "$CC" ]; then
   export CC=`which gcc`
@@ -27,6 +29,15 @@ echo "Requesting C compiler $CC"
 echo "Requesting CXX compiler $CXX"
 echo "Requesting cmake $CMAKE"
 
+if [ ! -x "${LLVM_BIN_DIR}/clang" ]; then
+  echo "Fatal error: missing LLVM host toolchain under ${LLVM_BIN_DIR}"
+  exit 1
+fi
+if [ ! -x "${LLVM_LD}" ]; then
+  echo "Fatal error: missing ld.lld under ${LLVM_BIN_DIR}"
+  exit 1
+fi
+
 ##############################
 # newlib
 ##############################
@@ -40,11 +51,16 @@ cd newlib-rv32-${MARCH}-${MABI}
     --target=riscv32-unknown-elf                      \
     -nfp                                              \
     --prefix=${HERO_INSTALL}/${MARCH}-${MABI}/        \
-    AR_FOR_TARGET=${HERO_INSTALL}/bin/llvm-ar         \
-    AS_FOR_TARGET=${HERO_INSTALL}/bin/llvm-as         \
-    LD_FOR_TARGET=${HERO_INSTALL}/bin/llvm-ld         \
-    RANLIB_FOR_TARGET=${HERO_INSTALL}/bin/llvm-ranlib \
-    CC_FOR_TARGET="${HERO_INSTALL}/bin/clang -march=${MARCH} -mabi=${MABI}" \
+    AR_FOR_TARGET=${LLVM_BIN_DIR}/llvm-ar             \
+    AS_FOR_TARGET=${LLVM_BIN_DIR}/llvm-as             \
+    LD_FOR_TARGET=${LLVM_LD}                          \
+    NM_FOR_TARGET=${LLVM_BIN_DIR}/llvm-nm             \
+    OBJCOPY_FOR_TARGET=${LLVM_BIN_DIR}/llvm-objcopy   \
+    OBJDUMP_FOR_TARGET=${LLVM_BIN_DIR}/llvm-objdump   \
+    READELF_FOR_TARGET=${LLVM_BIN_DIR}/llvm-readelf   \
+    RANLIB_FOR_TARGET=${LLVM_BIN_DIR}/llvm-ranlib     \
+    STRIP_FOR_TARGET=${LLVM_BIN_DIR}/llvm-strip       \
+    CC_FOR_TARGET="${LLVM_BIN_DIR}/clang -march=${MARCH} -mabi=${MABI}" \
     CFLAGS_FOR_TARGET="-mno-relax -DMALLOC_PROVIDED=1"
 
 # Build newlib
@@ -64,12 +80,12 @@ cd compiler-rt32-${MARCH}-${MABI}
 ls ../llvm_build/bin/
 ${CMAKE} -G"Unix Makefiles"                                                  \
     -DCMAKE_SYSTEM_NAME=Linux                                                \
-    -DCMAKE_INSTALL_PREFIX=$(${HERO_INSTALL}/bin/clang -print-resource-dir)/${MARCH}-${MABI}/  \
-    -DCMAKE_C_COMPILER=${HERO_INSTALL}/bin/clang                             \
-    -DCMAKE_CXX_COMPILER=${HERO_INSTALL}/bin/clang                           \
-    -DCMAKE_AR=${HERO_INSTALL}/bin/llvm-ar                                   \
-    -DCMAKE_NM=${HERO_INSTALL}/bin/llvm-nm                                   \
-    -DCMAKE_RANLIB=${HERO_INSTALL}/bin/llvm-ranlib                           \
+    -DCMAKE_INSTALL_PREFIX=$(${LLVM_BIN_DIR}/clang -print-resource-dir)/${MARCH}-${MABI}/  \
+    -DCMAKE_C_COMPILER=${LLVM_BIN_DIR}/clang                             \
+    -DCMAKE_CXX_COMPILER=${LLVM_BIN_DIR}/clang                           \
+    -DCMAKE_AR=${LLVM_BIN_DIR}/llvm-ar                                   \
+    -DCMAKE_NM=${LLVM_BIN_DIR}/llvm-nm                                   \
+    -DCMAKE_RANLIB=${LLVM_BIN_DIR}/llvm-ranlib                           \
     -DCMAKE_C_COMPILER_TARGET="riscv32-unknown-elf"                          \
     -DCMAKE_CXX_COMPILER_TARGET="riscv32-unknown-elf"                        \
     -DCMAKE_ASM_COMPILER_TARGET="riscv32-unknown-elf"                        \
@@ -100,11 +116,16 @@ cd ..
 
 # Add symlinks to LLVM tools
 cd ${HERO_INSTALL}/bin
+ln -fsv ld.lld llvm-ld
 for TRIPLE in riscv32-unknown-elf; do
   for TOOL in clang clang++ cc c++; do
     ln -fsv clang ${TRIPLE}-${TOOL}
   done
   ln -fsv llvm-ar ${TRIPLE}-ar
+  ln -fsv ld.lld ${TRIPLE}-ld
+  ln -fsv llvm-nm ${TRIPLE}-nm
+  ln -fsv llvm-objcopy ${TRIPLE}-objcopy
   ln -fsv llvm-objdump ${TRIPLE}-objdump
   ln -fsv llvm-readelf ${TRIPLE}-readelf
+  ln -fsv llvm-strip ${TRIPLE}-strip
 done

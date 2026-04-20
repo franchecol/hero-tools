@@ -5,6 +5,8 @@ set -euo pipefail
 SCRIPT_DIR=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)
 ROOT_DIR=$(cd -- "${SCRIPT_DIR}/.." && pwd)
 SIM_DIR="${ROOT_DIR}/platforms/occamy/target/sim"
+DEVICE_RUNTIME_DIR="${SIM_DIR}/sw/device/runtime"
+DEVICE_MATH_DIR="${SIM_DIR}/sw/device/math"
 VENV_DIR="${ROOT_DIR}/.venv-occamy"
 USER_BIN_DIR="${HOME}/bin"
 HERO_INSTALL_DIR="${HERO_INSTALL:-${ROOT_DIR}/install}"
@@ -90,11 +92,12 @@ PY
   if [[ "${APP_MODE}" == "axpy" ]]; then
     if ! python - <<'PY' >/dev/null 2>&1
 import importlib
-importlib.import_module("numpy")
+for mod in ("numpy", "elftools"):
+    importlib.import_module(mod)
 PY
     then
-      log "installing numpy into ${VENV_DIR} for axpy verification"
-      python -m pip install numpy
+      log "installing axpy verification dependencies into ${VENV_DIR}"
+      python -m pip install numpy pyelftools
     fi
   fi
 }
@@ -229,11 +232,11 @@ ensure_axpy_toolchain() {
   ensure_hero_install_env
 
   [[ -d "${HERO_INSTALL}/bin" ]] || \
-    die "axpy requires the HeroSDK LLVM toolchain under ${HERO_INSTALL}; run: source scripts/setenv.sh && make hero-tc-llvm"
+    die "axpy requires the HeroSDK LLVM toolchain under ${HERO_INSTALL}; run: source scripts/setenv.sh && make hero-tc-llvm-axpy"
   command -v riscv32-unknown-elf-clang >/dev/null 2>&1 || \
-    die "axpy requires riscv32-unknown-elf-clang from the HeroSDK LLVM toolchain; run: source scripts/setenv.sh && make hero-tc-llvm"
+    die "axpy requires riscv32-unknown-elf-clang from the HeroSDK LLVM toolchain; run: source scripts/setenv.sh && make hero-tc-llvm-axpy"
   [[ -d "${HERO_INSTALL}/rv32imafd-ilp32d/riscv32-unknown-elf" ]] || \
-    die "axpy requires the rv32imafd-ilp32d device sysroot in ${HERO_INSTALL}; run: source scripts/setenv.sh && make hero-tc-llvm"
+    die "axpy requires the rv32imafd-ilp32d device sysroot in ${HERO_INSTALL}; run: source scripts/setenv.sh && make hero-tc-llvm-axpy"
   [[ -x "${VERIFY_SCRIPT}" ]] || [[ -f "${VERIFY_SCRIPT}" ]] || \
     die "missing axpy verify script: ${VERIFY_SCRIPT}"
 }
@@ -259,20 +262,40 @@ build_simulator() {
 }
 
 build_selected_payload() {
-  log "building ${APP_MODE} device payload"
-  make -C "${DEVICE_APP_DIR}" clean
-  make -C "${DEVICE_APP_DIR}"
+  if [[ "${APP_MODE}" == "axpy" ]]; then
+    log "cleaning ${APP_MODE} device payload"
+    make -C "${DEVICE_APP_DIR}" clean
 
-  log "building ${APP_MODE} host application"
-  make -C "${HOST_APP_DIR}" clean
+    log "cleaning ${APP_MODE} host application"
+    make -C "${HOST_APP_DIR}" clean
+
+    log "building device runtime library"
+    make -C "${DEVICE_RUNTIME_DIR}" all
+
+    log "building device math library"
+    make -C "${DEVICE_MATH_DIR}" all
+
+    log "building ${APP_MODE} host partial application"
+    make -C "${HOST_APP_DIR}" partial-build DEVICE_APPS=blas/axpy
+
+    log "building ${APP_MODE} device payload"
+    make -C "${DEVICE_APP_DIR}" all
+
+    log "finalizing ${APP_MODE} host application"
+    make -C "${HOST_APP_DIR}" finalize-build DEVICE_APPS=blas/axpy
+  else
+    log "building ${APP_MODE} device payload"
+    make -C "${DEVICE_APP_DIR}" clean
+    make -C "${DEVICE_APP_DIR}" all
+
+    log "building ${APP_MODE} host application"
+    make -C "${HOST_APP_DIR}" clean
+  fi
 
   if [[ "${APP_MODE}" == "minimal_irq" ]]; then
     make -C "${HOST_APP_DIR}" DEVICE_APPS=minimal_irq
     make -C "${HOST_APP_DIR}" finalize-build DEVICE_APPS=minimal_irq
-  elif [[ "${APP_MODE}" == "axpy" ]]; then
-    make -C "${HOST_APP_DIR}" DEVICE_APPS=blas/axpy
-    make -C "${HOST_APP_DIR}" finalize-build DEVICE_APPS=blas/axpy
-  else
+  elif [[ "${APP_MODE}" == "roundtrip" ]]; then
     make -C "${HOST_APP_DIR}" finalize-build
   fi
 }

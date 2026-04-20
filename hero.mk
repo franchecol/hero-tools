@@ -90,6 +90,7 @@ $(eval $(call hero_devs_build_newlib,rv32imafd,ilp32d))
 $(eval $(call hero_devs_build_newlib,rv32imafdvzfh,ilp32d))
 
 hero-tc-llvm: $(HERO_INSTALL)/bin/clang $(HERO_DEVS_NEWLIB)
+hero-tc-llvm-axpy: $(HERO_INSTALL)/bin/clang $(HERO_INSTALL)/rv32imafd-ilp32d
 hero-tc-llvm-artifacts: hero-load-artifacts-tc-llvm $(HERO_INSTALL)/bin/clang $(HERO_DEVS_NEWLIB) hero-save-artifacts-tc-llvm
     # $(HERO_DEVS_NEWLIB) should be more recent than clang for GNU Make
 	touch $(HERO_DEVS_NEWLIB)
@@ -104,7 +105,7 @@ include $(HERO_SW_DIR)/sw.mk
 # Footer #
 ##########
 
-.PHONY: all hero-tc-gcc hero-cva6-sdk-all hero-tc-llvm
+.PHONY: all hero-tc-gcc hero-cva6-sdk-all hero-tc-llvm hero-tc-llvm-axpy
 
 ifndef HERO_INSTALL
 $(error HERO_INSTALL is not set, please source scripts/setenv.sh from the the root)
