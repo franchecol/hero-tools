@@ -9,7 +9,8 @@ HERO_ROOT = $(realpath ../..)
 
 # Path to compiled buildroot
 BR_OUTPUT_DIR ?= $(realpath ../../cva6-sdk/buildroot/output/)
-CROSS_COMPILE ?= $(BR_OUTPUT_DIR)/host/bin/riscv64-buildroot-linux-gnu-
+include $(HERO_ROOT)/mk/buildroot-linux-toolchain.mk
+CROSS_COMPILE ?= $(HERO_LINUX_CROSS_COMPILE)
 
 PLATFORM ?=
 HOST     ?=

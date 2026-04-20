@@ -31,7 +31,7 @@ HERO_CVA6_SDK_DIR := $(HERO_ROOT)/cva6-sdk
 
 # Outputs of cva6-sdk/buildroot
 HERO_BR_OUTPUT_DIR := $(realpath $(HERO_CVA6_SDK_DIR)/buildroot/output/)
-HERO_LINUX_CROSS_COMPILE := $(HERO_BR_OUTPUT_DIR)/host/bin/riscv64-buildroot-linux-gnu-
+include $(HERO_ROOT)/mk/buildroot-linux-toolchain.mk
 HERO_KERNEL_DIR    := $(HERO_BR_OUTPUT_DIR)/build/linux-6.1.22
 
 HERO_ARTIFACTS_ROOT_tc-gcc := $(HERO_ARTIFACTS_ROOT)/tc_gcc

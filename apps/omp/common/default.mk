@@ -5,9 +5,9 @@
 # Cyril Koenig <cykoenig@iis.ee.ethz.ch>
 
 # Buildroot contains the GCC toolchain
-BR_OUTPUT_DIR ?= $(realpath $(HERO_ROOT)/cva6-sdk/buildroot/output/)
-RISCV          = $(BR_OUTPUT_DIR)/host
-RV64_SYSROOT   = $(RISCV)/riscv64-buildroot-linux-gnu/sysroot
+include $(HERO_ROOT)/mk/buildroot-linux-toolchain.mk
+RISCV          = $(HERO_BR_HOST_DIR)
+RV64_SYSROOT   = $(HERO_LINUX_SYSROOT)
 
 # Makefile hacks
 comma:= ,
@@ -22,7 +22,7 @@ COB  := $(HERO_INSTALL)/bin/clang-offload-bundler
 DIS  := $(HERO_INSTALL)/bin/llvm-dis
 HOP  := $(HERO_INSTALL)/bin/hc-omp-pass
 GCC  := $(HERO_INSTALL)/bin/$(TARGET_HOST)-gcc
-HOST_OBJDUMP := $(RISCV)/bin/riscv64-buildroot-linux-gnu-objdump
+HOST_OBJDUMP := $(HERO_LINUX_OBJDUMP)
 DEV_OBJDUMP  := $(HERO_INSTALL)/bin/llvm-objdump
 
 # Device flags definitions
@@ -48,7 +48,7 @@ DEPDIR   := .deps
 CFLAGS   += -MT $@ -MMD -MP -MF $(DEPDIR)/$*.d
 
 # Link flags
-LDFLAGS  += --ld-path=$(RISCV)/bin/riscv64-buildroot-linux-gnu-ld 
+LDFLAGS  += --ld-path=$(HERO_LINUX_LD)
 # Path to the OpenMP target RTL
 LDFLAGS  += -L$(HERO_ROOT)/sw/libomp/lib
 

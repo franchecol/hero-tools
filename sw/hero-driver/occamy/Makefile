@@ -3,6 +3,7 @@
 # SPDX-License-Identifier: SHL-0.51
 
 HERO_ROOT = $(realpath ../../..)
+include $(HERO_ROOT)/mk/buildroot-linux-toolchain.mk
 
 # Platform BUILDROOT : cross compile driver for the FPGA
 #          NATIVE    : compile driver for this machine
@@ -13,7 +14,7 @@ KERNEL_DIR_BUILDROOT := $(BR_LINUX_DIR)
 
 BR_OUTPUT_DIR ?= $(HERO_ROOT)/cva6-sdk/buildroot/output/
 CROSS_COMPILE_NATIVE ?=
-CROSS_COMPILE_BUILDROOT ?= $(BR_OUTPUT_DIR)/host/bin/riscv64-buildroot-linux-gnu-
+CROSS_COMPILE_BUILDROOT ?= $(HERO_LINUX_CROSS_COMPILE)
 
 obj-m := occamy.o
 occamy-objs := occamy_driver.o occamy_fops.o

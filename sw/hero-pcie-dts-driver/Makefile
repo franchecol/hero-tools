@@ -3,6 +3,7 @@
 # SPDX-License-Identifier: SHL-0.51
 
 HERO_ROOT = $(realpath ../..)
+include $(HERO_ROOT)/mk/buildroot-linux-toolchain.mk
 
 PLATFORM ?= BUILDROOT
 
@@ -12,7 +13,7 @@ KERNEL_DIR_NATIVE := /lib/modules/$(shell uname -r)/build
 KERNEL_DIR_BUILDROOT := $(BR_OUTPUT_DIR)/build/linux-5.16.9
 
 CROSS_COMPILE_NATIVE ?=
-CROSS_COMPILE_BUILDROOT ?= $(BR_OUTPUT_DIR)/host/bin/riscv64-buildroot-linux-gnu-
+CROSS_COMPILE_BUILDROOT ?= $(HERO_LINUX_CROSS_COMPILE)
 
 # Linux compilation arguments
 obj-m := hero_pcie_dts.o

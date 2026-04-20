@@ -10,11 +10,12 @@
 HERO_ROOT = $(realpath ../..)
 
 BR_OUTPUT_DIR ?= $(realpath ../../cva6-sdk/buildroot/output)
-RISCV          = $(BR_OUTPUT_DIR)/host
+include $(HERO_ROOT)/mk/buildroot-linux-toolchain.mk
+RISCV          = $(HERO_BR_HOST_DIR)
 
 # Note: Could this be compiled directly with the clang cross compiler?
-CC            := $(RISCV)/bin/riscv64-buildroot-linux-gnu-gcc
-CXX           := $(RISCV)/bin/riscv64-buildroot-linux-gnu-g++
+CC            := $(HERO_LINUX_GCC)
+CXX           := $(HERO_LINUX_GXX)
 
 PLATFORM ?= SNITCH
 
@@ -28,8 +29,8 @@ LLVM_COMPILE_FLAGS_sg2042:= \
        -DLIBOMPTARGET_DEP_LIBFFI_INCLUDE_DIRS='/usr/inlude'
 
 LLVM_COMPILE_FLAGS_cva6:= \
-       -DLIBOMPTARGET_DEP_LIBFFI_LIBRARIES='$(RISCV)/riscv64-buildroot-linux-gnu/sysroot/usr/lib/' \
-       -DLIBOMPTARGET_DEP_LIBFFI_INCLUDE_DIRS='$(RISCV)/riscv64-buildroot-linux-gnu/sysroot/usr/include'
+       -DLIBOMPTARGET_DEP_LIBFFI_LIBRARIES='$(HERO_LINUX_SYSROOT)/usr/lib/' \
+       -DLIBOMPTARGET_DEP_LIBFFI_INCLUDE_DIRS='$(HERO_LINUX_SYSROOT)/usr/include'
 
 LLVM_COMPILE_FLAGS := \
 LLVM_COMPILE_FLAGS= \
@@ -42,8 +43,8 @@ LLVM_COMPILE_FLAGS= \
 	-DLLVM_TARGETS_TO_BUILD=RISCV \
 	-DLLVM_ENABLE_ASSERTIONS=OFF \
 	-DLLVM_INCLUDE_TESTS=OFF \
-	-DLIBOMPTARGET_DEP_LIBFFI_LIBRARIES='$(RISCV)/riscv64-buildroot-linux-gnu/sysroot/usr/lib/' \
-	-DLIBOMPTARGET_DEP_LIBFFI_INCLUDE_DIRS='$(RISCV)/riscv64-buildroot-linux-gnu/sysroot/usr/include/' \
+	-DLIBOMPTARGET_DEP_LIBFFI_LIBRARIES='$(HERO_LINUX_SYSROOT)/usr/lib/' \
+	-DLIBOMPTARGET_DEP_LIBFFI_INCLUDE_DIRS='$(HERO_LINUX_SYSROOT)/usr/include/' \
 	-DLIBOMPTARGET_BUILD_CUDA_PLUGIN=0 \
 	-DLIBOMPTARGET_HERO_BUILD=ON \
 	-DLIBOMPTARGET_HERO_DEV_TYPE='$(PLATFORM)' \

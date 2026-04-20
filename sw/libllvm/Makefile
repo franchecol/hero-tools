@@ -10,11 +10,12 @@
 HERO_ROOT = $(realpath ../..)
 
 BR_OUTPUT_DIR ?= $(realpath ../../cva6-sdk/buildroot/output)
-RISCV          = $(BR_OUTPUT_DIR)/host
+include $(HERO_ROOT)/mk/buildroot-linux-toolchain.mk
+RISCV          = $(HERO_BR_HOST_DIR)
 
 # Force using the RV 64 toolchain
-CC            := $(RISCV)/bin/riscv64-buildroot-linux-gnu-gcc
-CXX           := $(RISCV)/bin/riscv64-buildroot-linux-gnu-g++
+CC            := $(HERO_LINUX_GCC)
+CXX           := $(HERO_LINUX_GXX)
 
 LLVM_DIR := $(realpath ../../install/lib/cmake/llvm)
 LIBOMPTARGET_LLVM_INCLUDE_DIRS := $(realpath ../../install/include/llvm)
