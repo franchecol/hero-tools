@@ -5,11 +5,13 @@ set -euo pipefail
 SCRIPT_DIR=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)
 ROOT_DIR=$(cd -- "${SCRIPT_DIR}/.." && pwd)
 OCCAMY_DIR="${ROOT_DIR}/platforms/occamy"
-OCCAMY_URL="https://github.com/pulp-platform/occamy.git"
-OCCAMY_BRANCH="ck/fpga2"
+OCCAMY_URL="${OCCAMY_URL:-https://github.com/pulp-platform/occamy.git}"
+OCCAMY_BRANCH="${OCCAMY_BRANCH:-ck/fpga2}"
 RUNNER="${ROOT_DIR}/scripts/run-local-occamy-minimal.sh"
 SIM_MAKEFILE="${OCCAMY_DIR}/target/sim/Makefile"
 DEVICE_APP_DIR="${OCCAMY_DIR}/target/sim/sw/device/apps/minimal_irq"
+ROUNDTRIP_DEVICE_APP_DIR="${OCCAMY_DIR}/target/sim/sw/device/apps/roundtrip"
+ROUNDTRIP_HOST_APP_DIR="${OCCAMY_DIR}/target/sim/sw/host/apps/roundtrip"
 
 log() {
   printf '[occamy-bootstrap] %s\n' "$*"
@@ -162,6 +164,152 @@ EOF
   fi
 }
 
+ensure_roundtrip_payload() {
+  local device_src_dir="${ROUNDTRIP_DEVICE_APP_DIR}/src"
+  local host_src_dir="${ROUNDTRIP_HOST_APP_DIR}/src"
+
+  mkdir -p "${device_src_dir}" "${host_src_dir}"
+
+  if [[ ! -f "${ROUNDTRIP_DEVICE_APP_DIR}/Makefile" ]]; then
+    log "creating roundtrip device app"
+    cat > "${ROUNDTRIP_DEVICE_APP_DIR}/Makefile" <<'EOF'
+# Copyright 2026
+
+APP                := roundtrip
+BUILDDIR           := $(abspath build)
+SRC                := $(abspath src/$(APP).S)
+RISCV_CC           ?= riscv64-unknown-elf-gcc
+RISCV_OBJCOPY      ?= riscv64-unknown-elf-objcopy
+RISCV_OBJDUMP      ?= riscv64-unknown-elf-objdump
+RISCV_CFLAGS       += -march=rv32im_zicsr
+RISCV_CFLAGS       += -mabi=ilp32
+RISCV_CFLAGS       += -mno-relax
+RISCV_CFLAGS       += -nostdlib
+RISCV_CFLAGS       += -nostartfiles
+RISCV_CFLAGS       += -static
+RISCV_CFLAGS       += -Wl,-Ttext=0
+RISCV_CFLAGS       += -Wl,--build-id=none
+
+ELF  := $(BUILDDIR)/$(APP).elf
+BIN  := $(BUILDDIR)/$(APP).bin
+DUMP := $(BUILDDIR)/$(APP).dump
+
+.PHONY: all clean
+
+all: $(BIN) $(DUMP)
+
+clean:
+	rm -rf $(BUILDDIR)
+
+$(BUILDDIR):
+	mkdir -p $@
+
+$(ELF): $(SRC) | $(BUILDDIR)
+	$(RISCV_CC) $(RISCV_CFLAGS) $< -o $@
+
+$(BIN): $(ELF)
+	$(RISCV_OBJCOPY) -O binary $< $@
+
+$(DUMP): $(ELF)
+	$(RISCV_OBJDUMP) -D $< > $@
+EOF
+  fi
+
+  if [[ ! -f "${device_src_dir}/roundtrip.S" ]]; then
+    cat > "${device_src_dir}/roundtrip.S" <<'EOF'
+// Minimal data-path proof for Occamy single-cluster simulation.
+// Hart 1 increments a 16-word host buffer whose pointer is passed
+// through comm_buffer.usr_data_ptr, then signals the host.
+
+.section .text
+.globl _start
+
+_start:
+    csrr    a0, mhartid
+    li      t0, 1
+    bne     a0, t0, park
+
+    // soc_ctrl_scratch_2 holds the host communication buffer pointer.
+    lui     t1, 0x2000
+    lw      t2, 0x1c(t1)
+    lw      t3, 4(t2)
+
+    li      t4, 16
+    li      t5, 1
+
+loop_words:
+    lw      t6, 0(t3)
+    add     t6, t6, t5
+    sw      t6, 0(t3)
+    addi    t3, t3, 4
+    addi    t4, t4, -1
+    bnez    t4, loop_words
+
+    li      t1, 0x04000000
+    li      t2, 1
+    sw      t2, 0(t1)
+    fence   iorw, iorw
+
+park:
+    wfi
+    j       park
+EOF
+  fi
+
+  if [[ ! -f "${ROUNDTRIP_HOST_APP_DIR}/Makefile" ]]; then
+    log "creating roundtrip host app"
+    cat > "${ROUNDTRIP_HOST_APP_DIR}/Makefile" <<'EOF'
+# Copyright 2026
+
+APP              = roundtrip
+SRCS             = src/roundtrip.c
+INCL_DEVICE_BINARY = true
+
+include ../common.mk
+EOF
+  fi
+
+  if [[ ! -f "${host_src_dir}/roundtrip.c" ]]; then
+    cat > "${host_src_dir}/roundtrip.c" <<'EOF'
+#include <stdint.h>
+
+#include "host.c"
+
+#define ROUNDTRIP_WORDS 16u
+
+static volatile uint32_t roundtrip_buffer[ROUNDTRIP_WORDS]
+    __attribute__((aligned(64)));
+
+static int validate_roundtrip(void) {
+    for (uint32_t i = 0; i < ROUNDTRIP_WORDS; ++i) {
+        if (roundtrip_buffer[i] != (i + 1u)) return 1;
+    }
+    return 0;
+}
+
+int main(void) {
+    for (uint32_t i = 0; i < ROUNDTRIP_WORDS; ++i) {
+        roundtrip_buffer[i] = i;
+    }
+
+    comm_buffer.usr_data_ptr = (uint32_t)(uintptr_t)&roundtrip_buffer[0];
+    fence();
+
+    // Shared-memory state must be globally visible before the cluster starts.
+    reset_and_ungate_quadrants();
+    deisolate_all();
+    enable_sw_interrupts();
+    program_snitches();
+    fence();
+    wakeup_snitches_cl();
+    wait_snitches_done();
+
+    return validate_roundtrip();
+}
+EOF
+  fi
+}
+
 main() {
   need_cmd git
   need_cmd python
@@ -170,6 +318,7 @@ main() {
   ensure_occamy_checkout
   ensure_verilator_patch
   ensure_minimal_payload
+  ensure_roundtrip_payload
 
   exec "${RUNNER}" "$@"
 }

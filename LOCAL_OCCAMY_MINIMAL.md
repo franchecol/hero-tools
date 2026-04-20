@@ -21,14 +21,21 @@ Fast rerun path after bootstrap:
 ./scripts/run-local-occamy-minimal.sh
 ```
 
+Optional M1 data-path rerun:
+
+```bash
+./scripts/run-local-occamy-minimal.sh roundtrip
+```
+
 It does not try to cover the full HeroSDK LLVM/OpenMP flow.
 It only covers:
 
 - reduced `occamy` configuration
 - open-source Verilator simulator
-- host-side `offload` app on CVA6
-- tiny RV32 device payload on Snitch
+- host-side CVA6 apps for a control-path proof and a tiny data-path proof
+- tiny RV32 device payloads on Snitch
 - host <- device completion via software interrupt
+- one minimal shared-memory roundtrip
 
 ## Scope
 
@@ -56,10 +63,16 @@ Known-good artifacts:
   `platforms/occamy/target/sim/sw/host/apps/offload/build/offload-minimal_irq.elf`
 - device binary:
   `platforms/occamy/target/sim/sw/device/apps/minimal_irq/build/minimal_irq.bin`
+- roundtrip host ELF:
+  `platforms/occamy/target/sim/sw/host/apps/roundtrip/build/roundtrip.elf`
+- roundtrip device binary:
+  `platforms/occamy/target/sim/sw/device/apps/roundtrip/build/roundtrip.bin`
 
 Supporting local files added in this checkout:
 
 - `platforms/occamy/target/sim/sw/device/apps/minimal_irq/`
+- `platforms/occamy/target/sim/sw/device/apps/roundtrip/`
+- `platforms/occamy/target/sim/sw/host/apps/roundtrip/`
 
 Local simulator patch already present in this checkout:
 
@@ -253,6 +266,46 @@ Files worth checking afterwards:
 - `trace_hart_00.dasm`
 - `logs/trace_hart_00001.dasm`
 - `logs/trace_hart_00009.dasm`
+
+## Run The Minimal Data-Path Roundtrip
+
+This second proof stays in the same reduced single-cluster simulation, but it
+verifies actual shared-memory exchange instead of only the interrupt handshake.
+
+Build the device payload:
+
+```bash
+cd /home/ftv/builds/hero-tools/platforms/occamy/target/sim/sw/device/apps/roundtrip
+make clean
+make
+```
+
+Build the host app:
+
+```bash
+cd /home/ftv/builds/hero-tools/platforms/occamy/target/sim/sw/host/apps/roundtrip
+make clean
+make finalize-build
+```
+
+Run it:
+
+```bash
+cd /home/ftv/builds/hero-tools/platforms/occamy/target/sim
+./bin/occamy_top.vlt ./sw/host/apps/roundtrip/build/roundtrip.elf
+```
+
+Expected behavior:
+
+- the simulator exits with code `0`
+- useful status comes from the exit code and traces, not UART output
+
+What it proves:
+
+- the host initializes a 16-word buffer
+- the host passes the shared buffer pointer through `comm_buffer.usr_data_ptr`
+- the Snitch payload increments the 16 words in place
+- the host validates the returned buffer before exiting
 
 ## What To Verify
 

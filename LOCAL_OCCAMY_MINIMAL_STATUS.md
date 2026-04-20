@@ -35,26 +35,44 @@ The reduced path is now validated end to end on this machine.
 What was proven:
 
 ```text
-CVA6 host ELF
-  -> programs Snitch entry point
-  -> wakes the cluster
-  -> waits for host software interrupt
+M0 control path
+  CVA6 host ELF
+    -> programs Snitch entry point
+    -> wakes the cluster
+    -> waits for host software interrupt
 
-Snitch device payload
-  -> hart 1 executes
-  -> writes CLINT host-MSIP
-  -> parks in WFI
+  Snitch device payload
+    -> hart 1 executes
+    -> writes CLINT host-MSIP
+    -> parks in WFI
 
-Simulator
-  -> host resumes
-  -> host reaches _exit
-  -> host writes tohost
-  -> simulation exits cleanly
+  Simulator
+    -> host resumes
+    -> host reaches _exit
+    -> host writes tohost
+    -> simulation exits cleanly
+
+M1 data path
+  CVA6 host ELF
+    -> initializes a 16-word shared buffer
+    -> passes the buffer pointer through comm_buffer.usr_data_ptr
+    -> wakes the cluster and waits for completion
+    -> validates the returned buffer contents
+
+  Snitch device payload
+    -> hart 1 reads the shared pointer
+    -> increments all 16 words in place
+    -> signals host completion through CLINT host-MSIP
+
+  Simulator
+    -> device trace shows stores into the shared buffer region
+    -> host validates the modified buffer
+    -> host writes tohost and exits with code 0
 ```
 
-This is a real heterogeneous control-path proof.
+This is now a real heterogeneous control-path plus data-path proof.
 It is stronger than "the simulator builds" but still smaller than a real
-HeroSDK offload/runtime proof.
+HeroSDK runtime/OpenMP proof.
 
 ## What Was Added
 
@@ -70,6 +88,7 @@ Runtime/workflow additions made by the bootstrap path:
 
 - clone `platforms/occamy` on branch `ck/fpga2` if missing
 - create the tiny `minimal_irq` Snitch payload if missing
+- create the `roundtrip` host/device data-path proof if missing
 - apply the local Verilator Makefile compatibility patch if needed
 - create `.venv-occamy`
 - install Python generation dependencies
@@ -86,6 +105,10 @@ Known-good output artifacts:
   `platforms/occamy/target/sim/sw/host/apps/offload/build/offload-minimal_irq.elf`
 - device binary:
   `platforms/occamy/target/sim/sw/device/apps/minimal_irq/build/minimal_irq.bin`
+- roundtrip host ELF:
+  `platforms/occamy/target/sim/sw/host/apps/roundtrip/build/roundtrip.elf`
+- roundtrip device binary:
+  `platforms/occamy/target/sim/sw/device/apps/roundtrip/build/roundtrip.bin`
 - host trace:
   `platforms/occamy/target/sim/trace_hart_00.dasm`
 - device trace:
@@ -95,8 +118,10 @@ What the traces demonstrate:
 
 - the device trace shows the Snitch payload reading `mhartid` and performing
   the interrupt store
-- the host trace shows the host clearing the software interrupt and reaching
-  the final `tohost` exit write
+- for `roundtrip`, the device trace also shows stores into the shared buffer
+  region before the interrupt store
+- the host trace shows the host clearing the software interrupt, validating the
+  returned buffer, and reaching the final `tohost` exit write
 
 ## What Made This Hard
 
@@ -127,6 +152,8 @@ So the work here was partly technical and partly integrative:
 What is true now:
 
 - the minimal heterogeneous simulation path works
+- the branch now contains both a control-path proof and a minimal data-path
+  proof
 - the path is automated enough for reuse
 - the branch documents system prerequisites and machine setup
 - the scripts are more Linux-portable than the first local version
@@ -134,7 +161,6 @@ What is true now:
 What is still not true:
 
 - we have not yet proven a real HeroSDK runtime/offload path
-- we have not yet proven a data-path computation, only a control-path proof
 - we have not yet validated FPGA bring-up for this reduced path
 - this work is not upstreamed into `pulp-platform/hero-tools`
 
@@ -161,7 +187,7 @@ Delivered:
 
 ### M1: Minimal Heterogeneous Data-Path Proof
 
-Status: next recommended milestone
+Status: completed
 
 Success criteria:
 
@@ -184,9 +210,15 @@ Suggested scope:
 - one simple transform such as increment, scale, xor, or reduction
 - keep the reduced single-cluster configuration
 
+Delivered:
+
+- completed with a 16-word in-place increment roundtrip
+- validated in simulation with host return code `0`
+- trace-backed proof that the device touched shared data, not only the IRQ path
+
 ### M2: Runtime-Shaped Simulation Proof
 
-Status: pending
+Status: next recommended milestone
 
 Success criteria:
 
@@ -227,14 +259,14 @@ Success criteria:
 
 ## Recommended Next Step
 
-The best next technical step is M1, not FPGA.
+The best next technical step is now M2, not FPGA.
 
 That means:
 
 - stay in simulation
 - keep the reduced Occamy single-cluster configuration
-- add one tiny host/device data-path test
-- verify a real returned result, not only an interrupt
+- move one step closer to the intended HeroSDK software shape
+- keep the workload tiny enough that failures are still attributable
 
 Short version:
 

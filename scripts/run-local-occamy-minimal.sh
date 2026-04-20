@@ -5,12 +5,15 @@ set -euo pipefail
 SCRIPT_DIR=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)
 ROOT_DIR=$(cd -- "${SCRIPT_DIR}/.." && pwd)
 SIM_DIR="${ROOT_DIR}/platforms/occamy/target/sim"
-DEVICE_APP_DIR="${SIM_DIR}/sw/device/apps/minimal_irq"
-HOST_APP_DIR="${SIM_DIR}/sw/host/apps/offload"
 VENV_DIR="${ROOT_DIR}/.venv-occamy"
 USER_BIN_DIR="${HOME}/bin"
 CANONICAL_RISCV_PREFIX="riscv64-unknown-elf-"
 RISCV_SRC_PREFIX=""
+APP_MODE="${1:-minimal_irq}"
+DEVICE_APP_DIR=""
+HOST_APP_DIR=""
+HOST_ELF=""
+DEVICE_BIN=""
 
 log() {
   printf '[occamy-minimal] %s\n' "$*"
@@ -23,6 +26,26 @@ die() {
 
 need_cmd() {
   command -v "$1" >/dev/null 2>&1 || die "missing command: $1"
+}
+
+configure_mode() {
+  case "${APP_MODE}" in
+    minimal_irq)
+      DEVICE_APP_DIR="${SIM_DIR}/sw/device/apps/minimal_irq"
+      HOST_APP_DIR="${SIM_DIR}/sw/host/apps/offload"
+      HOST_ELF="${HOST_APP_DIR}/build/offload-minimal_irq.elf"
+      DEVICE_BIN="${DEVICE_APP_DIR}/build/minimal_irq.bin"
+      ;;
+    roundtrip)
+      DEVICE_APP_DIR="${SIM_DIR}/sw/device/apps/roundtrip"
+      HOST_APP_DIR="${SIM_DIR}/sw/host/apps/roundtrip"
+      HOST_ELF="${HOST_APP_DIR}/build/roundtrip.elf"
+      DEVICE_BIN="${DEVICE_APP_DIR}/build/roundtrip.bin"
+      ;;
+    *)
+      die "unsupported mode: ${APP_MODE} (expected minimal_irq or roundtrip)"
+      ;;
+  esac
 }
 
 normalize_tool_prefix() {
@@ -184,45 +207,69 @@ build_simulator() {
     bin/occamy_top.vlt
 }
 
-build_minimal_payload() {
-  log "building minimal device payload"
+build_selected_payload() {
+  log "building ${APP_MODE} device payload"
   make -C "${DEVICE_APP_DIR}" clean
   make -C "${DEVICE_APP_DIR}"
 
-  log "building host offload wrapper"
+  log "building ${APP_MODE} host application"
   make -C "${HOST_APP_DIR}" clean
-  make -C "${HOST_APP_DIR}" DEVICE_APPS=minimal_irq
-  make -C "${HOST_APP_DIR}" finalize-build DEVICE_APPS=minimal_irq
+
+  if [[ "${APP_MODE}" == "minimal_irq" ]]; then
+    make -C "${HOST_APP_DIR}" DEVICE_APPS=minimal_irq
+    make -C "${HOST_APP_DIR}" finalize-build DEVICE_APPS=minimal_irq
+  else
+    make -C "${HOST_APP_DIR}" finalize-build
+  fi
 }
 
 run_simulation() {
   local sim_bin="${SIM_DIR}/bin/occamy_top.vlt"
-  local host_elf="${HOST_APP_DIR}/build/offload-minimal_irq.elf"
 
   [[ -x "${sim_bin}" ]] || die "simulator missing: ${sim_bin}"
-  [[ -f "${host_elf}" ]] || die "host ELF missing: ${host_elf}"
+  [[ -f "${HOST_ELF}" ]] || die "host ELF missing: ${HOST_ELF}"
 
   rm -f "${SIM_DIR}/uart0.log" "${SIM_DIR}/trace_hart_00.dasm"
-  rm -f "${SIM_DIR}/logs/trace_hart_00001.dasm" "${SIM_DIR}/logs/trace_hart_00009.dasm"
+  rm -f "${SIM_DIR}/logs/trace_hart_0000"*.dasm
 
-  log "running minimal heterogeneous simulation"
+  log "running ${APP_MODE} heterogeneous simulation"
   (
     cd "${SIM_DIR}"
-    "${sim_bin}" "${host_elf}"
+    "${sim_bin}" "${HOST_ELF}"
   )
 }
 
 verify_traces() {
   local host_trace="${SIM_DIR}/trace_hart_00.dasm"
   local dev_trace="${SIM_DIR}/logs/trace_hart_00001.dasm"
+  local roundtrip_base=""
 
   [[ -f "${host_trace}" ]] || die "missing host trace: ${host_trace}"
   [[ -f "${dev_trace}" ]] || die "missing device trace: ${dev_trace}"
 
-  rg -q '0x80000524.*00732023' "${dev_trace}" || \
-    die "device trace does not show the host interrupt store"
-  rg -q '0x80000464.*04000737' "${host_trace}" || \
-    die "host trace does not show the host SW interrupt clear path"
+  if [[ "${APP_MODE}" == "minimal_irq" ]]; then
+    rg -q '0x80000524.*00732023' "${dev_trace}" || \
+      die "device trace does not show the host interrupt store"
+    rg -q '0x80000464.*04000737' "${host_trace}" || \
+      die "host trace does not show the host SW interrupt clear path"
+  else
+    roundtrip_base=$("${CANONICAL_RISCV_PREFIX}nm" -n "${HOST_ELF}" | awk '
+      $NF == "roundtrip_buffer" {
+        print $1
+        exit
+      }
+    ')
+    [[ -n "${roundtrip_base}" ]] || die "could not locate roundtrip_buffer in ${HOST_ELF}"
+    roundtrip_base=$(printf '0x%x\n' "0x${roundtrip_base}")
+
+    rg -q "DASM\\(00732023\\).*opa': 0x4000000" "${dev_trace}" || \
+      die "device trace does not show the host interrupt store"
+    rg -q "opa': ${roundtrip_base}" "${dev_trace}" || \
+      die "device trace does not show stores into ${roundtrip_base}"
+    rg -q '0x80000068.*00a2a023' "${host_trace}" || \
+      die "host trace does not show the tohost exit write"
+  fi
+
   rg -q '0x80000068.*00a2a023' "${host_trace}" || \
     die "host trace does not show the tohost exit write"
 }
@@ -241,9 +288,11 @@ main() {
   need_cmd ar
   need_cmd ld
 
+  configure_mode
+
   [[ -d "${SIM_DIR}" ]] || die "missing Occamy simulator directory: ${SIM_DIR}"
   [[ -f "${DEVICE_APP_DIR}/Makefile" ]] || \
-    die "missing minimal device payload sources in ${DEVICE_APP_DIR}; run ./scripts/bootstrap-local-occamy-minimal.sh first"
+    die "missing ${APP_MODE} device payload sources in ${DEVICE_APP_DIR}; run ./scripts/bootstrap-local-occamy-minimal.sh first"
 
   cd "${ROOT_DIR}"
 
@@ -252,13 +301,14 @@ main() {
   ensure_riscv_aliases
   verify_local_patch
   build_simulator
-  build_minimal_payload
+  build_selected_payload
   run_simulation
   verify_traces
 
   log "success"
-  log "host ELF: ${HOST_APP_DIR}/build/offload-minimal_irq.elf"
-  log "device binary: ${DEVICE_APP_DIR}/build/minimal_irq.bin"
+  log "mode: ${APP_MODE}"
+  log "host ELF: ${HOST_ELF}"
+  log "device binary: ${DEVICE_BIN}"
   log "host trace: ${SIM_DIR}/trace_hart_00.dasm"
   log "device trace: ${SIM_DIR}/logs/trace_hart_00001.dasm"
 }
