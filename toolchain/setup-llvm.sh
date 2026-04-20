@@ -21,6 +21,8 @@ if [ ! -z "$1" ]; then
     BUILD_TYPE=$1
 fi
 
+LLVM_PROJECTS="${HERO_LLVM_PROJECTS:-clang;openmp;lld}"
+
 # Use all procs
 if [ "x${PARALLEL_JOBS}" == "x" ]; then
   PARALLEL_JOBS=$(nproc)
@@ -48,6 +50,8 @@ fi
 echo "Requesting C compiler $CC"
 echo "Requesting CXX compiler $CXX"
 echo "Requesting cmake $CMAKE"
+echo "Requesting LLVM projects $LLVM_PROJECTS"
+echo "Requesting LLVM build type $BUILD_TYPE"
 
 # clean environment when running together with an env source script
 unset HERO_PULP_INC_DIR
@@ -66,10 +70,11 @@ echo "Building LLVM project"
 # - Do not build PULP libomptarget offloading plugin as part of the LLVM build on the *development*
 #   machine.  That plugin will be compiled for each Host architecture through a Buildroot package.
 ${CMAKE} \
-    -DCMAKE_BUILD_TYPE="Debug" -DLLVM_ENABLE_ASSERTIONS=OFF \
+    -DCMAKE_BUILD_TYPE="${BUILD_TYPE}" -DLLVM_ENABLE_ASSERTIONS=OFF \
     -DBUILD_SHARED_LIBS=True \
     -DCMAKE_INSTALL_PREFIX=${HERO_INSTALL} \
-    -DLLVM_ENABLE_PROJECTS="clang;openmp;lld" \
+    -DCMAKE_CXX_FLAGS="-include cstdint" \
+    -DLLVM_ENABLE_PROJECTS="${LLVM_PROJECTS}" \
     -DLLVM_TARGETS_TO_BUILD="RISCV" \
     -DLLVM_DEFAULT_TARGET_TRIPLE="riscv32-unknown-elf" \
     -DLLVM_ENABLE_LLD=False -DLLVM_APPEND_VC_REV=ON \
