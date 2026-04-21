@@ -133,7 +133,7 @@ M3 HeroSDK-shaped build and runtime smoke proof
        from a concrete qemu-generated OpenMP launch
 
   captured-launch Verilator replay
-    -> consumes launch 1 from the qemu/fake-driver capture artifacts
+    -> consumes selected launches from the qemu/fake-driver capture artifacts
     -> builds a temporary bare-metal CVA6 replay host under
        output/occamy-openmp-replay
     -> rewrites the captured fake-driver mailbox state into L3 so both the
@@ -143,8 +143,12 @@ M3 HeroSDK-shaped build and runtime smoke proof
     -> wakes the real Snitch-side libomptarget_device mailbox manager
     -> sends the captured OpenMP launch words through the real ring-buffer
        mailbox path
-    -> reaches the captured RV32 OpenMP target entry point at 0xc000044c
+    -> reaches captured RV32 OpenMP target entry points through the real
+       mailbox dispatch path
     -> returns to the CVA6 host and exits Verilator successfully
+    -> has been validated for launch 1, launch 3, and launch 4; launch 3 is the
+       first mapped-argument launch and launch 4 is the first map(tofrom)-shaped
+       launch in offload_benchmark
 
   real mailbox-runtime smoke run
     -> builds a bare-metal CVA6 host app and RV32 Snitch payload
@@ -169,9 +173,9 @@ M3 HeroSDK-shaped build and runtime smoke proof
        but it is still an offline snapshot, not a live qemu-to-Verilator bridge
     -> the captured-launch Verilator replay is still an offline transformed
        snapshot replay, not a live qemu-to-Verilator bridge
-    -> the captured-launch Verilator replay has only proven launch 1, an empty
-       first OpenMP target region, not the full benchmark sequence or map(tofrom)
-       correctness
+    -> the captured-launch Verilator replay has proven selected launches only;
+       it is not yet a continuous replay of all 16 target launches and does not
+       prove qemu-host-visible map(tofrom) correctness after the full benchmark
     -> the real mailbox-runtime smoke is not yet wired to the Linux/qemu
        HeroSDK OpenMP host process; it proves the device-side protocol in
        Verilator, not the full user-facing OpenMP map/tofrom flow

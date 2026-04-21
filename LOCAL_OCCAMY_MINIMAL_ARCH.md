@@ -178,6 +178,8 @@ make -C apps/omp/basic/offload_benchmark DEVICES=occamy
 ./scripts/run-local-occamy-openmp-smoke.sh --capture-launch
 ./scripts/run-local-occamy-openmp-smoke.sh --capture-snapshot
 ./scripts/run-local-occamy-openmp-replay.sh --sequence 1
+./scripts/run-local-occamy-openmp-replay.sh --sequence 3
+./scripts/run-local-occamy-openmp-replay.sh --sequence 4
 ./scripts/run-local-occamy-minimal.sh omp_mailbox
 ```
 
@@ -231,6 +233,10 @@ Expected captured-launch Verilator replay result:
 [occamy-openmp-replay] success
 [occamy-openmp-replay] sequence: 1
 ```
+
+Sequences 3 and 4 are optional stronger spot checks. They should also end with
+`[occamy-openmp-replay] success`; they are slower than the qemu-only smoke
+because they run the traced Verilator model.
 
 Expected real mailbox-runtime smoke result:
 

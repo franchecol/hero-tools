@@ -83,6 +83,13 @@ Optional M3 captured-launch Verilator replay:
 ./scripts/run-local-occamy-openmp-replay.sh --sequence 1
 ```
 
+Optional stronger replay spot checks:
+
+```bash
+./scripts/run-local-occamy-openmp-replay.sh --sequence 3
+./scripts/run-local-occamy-openmp-replay.sh --sequence 4
+```
+
 Optional M3 real Snitch-side mailbox-runtime smoke:
 
 ```bash
@@ -145,6 +152,11 @@ Expected M3 captured-launch Verilator replay result on this machine:
 [occamy-openmp-replay] success
 [occamy-openmp-replay] sequence: 1
 ```
+
+Sequences 3 and 4 were also spot-checked successfully. Sequence 3 is the first
+captured launch with a mapped argument, and sequence 4 is the first
+`map(tofrom)`-shaped captured launch. These are still per-launch offline
+replays, not a continuous qemu-to-Verilator execution of the full benchmark.
 
 Known expected fake-completion log caveat:
 
@@ -231,7 +243,8 @@ It only covers:
 - one captured-launch Verilator replay proving that a qemu-generated OpenMP
   launch descriptor can be transformed into a bare-metal CVA6 replay harness,
   consumed by the real Snitch-side mailbox manager, and dispatched to the
-  captured RV32 OpenMP target entry point
+  captured RV32 OpenMP target entry point; sequences 1, 3, and 4 have been
+  validated locally
 - one real Verilator mailbox-runtime smoke proving that the Snitch-side
   `libomptarget_device` manager consumes the same four-word launch protocol,
   calls a target function, writes `0x12345679` back into host-visible memory,
