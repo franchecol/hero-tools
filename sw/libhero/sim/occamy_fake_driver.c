@@ -10,6 +10,7 @@
 
 #define _GNU_SOURCE
 
+#include <ctype.h>
 #include <dlfcn.h>
 #include <errno.h>
 #include <fcntl.h>
@@ -276,6 +277,51 @@ static uint32_t read_mapped_u32(uint64_t paddr, int *ok) {
     return value;
 }
 
+static int write_mapped_u32(uint64_t paddr, uint32_t value) {
+    void *ptr = mapped_ptr_from_paddr(paddr, sizeof(value));
+
+    if (!ptr) {
+        fprintf(stderr,
+                "[occamy-fake-driver] bridge W32 address 0x%llx is not mapped\n",
+                (unsigned long long)paddr);
+        return -1;
+    }
+
+    memcpy(ptr, &value, sizeof(value));
+    fprintf(stderr,
+            "[occamy-fake-driver] applied bridge W32 0x%08x -> 0x%llx\n",
+            value, (unsigned long long)paddr);
+    return 0;
+}
+
+static int apply_bridge_response_command(const char *line, unsigned sequence) {
+    char op[16];
+    unsigned long long paddr = 0;
+    unsigned long long value = 0;
+    const unsigned char *cursor = (const unsigned char *)line;
+    int fields;
+
+    while (*cursor && isspace(*cursor)) {
+        ++cursor;
+    }
+    if (*cursor == '\0' || *cursor == '#') {
+        return 0;
+    }
+
+    fields = sscanf((const char *)cursor, "%15s %llx %llx", op, &paddr, &value);
+    if (fields == EOF || fields == 0) {
+        return 0;
+    }
+    if (strcmp(op, "W32") == 0 && fields == 3 && value <= UINT32_MAX) {
+        return write_mapped_u32((uint64_t)paddr, (uint32_t)value);
+    }
+
+    fprintf(stderr,
+            "[occamy-fake-driver] invalid bridge response command for sequence #%u: %s",
+            sequence, line);
+    return -1;
+}
+
 static void json_region(FILE *f, const char *name, uint64_t paddr) {
     struct fake_region *region = lookup_region_by_paddr(paddr);
 
@@ -474,6 +520,7 @@ static int bridge_wait_for_replay(unsigned sequence) {
     char request_tmp[4096];
     char request_path[4096];
     char response_path[4096];
+    char line[256];
     unsigned timeout_s = fake_bridge_timeout_seconds();
     unsigned polls = timeout_s * 10;
     int status = 1;
@@ -535,8 +582,16 @@ static int bridge_wait_for_replay(unsigned sequence) {
                 response_path, strerror(errno));
         return -1;
     }
-    if (fscanf(f, "%d", &status) != 1) {
+    if (!fgets(line, sizeof(line), f) || sscanf(line, "%d", &status) != 1) {
         status = 1;
+    }
+    if (status == 0) {
+        while (fgets(line, sizeof(line), f)) {
+            if (apply_bridge_response_command(line, sequence) != 0) {
+                status = 1;
+                break;
+            }
+        }
     }
     fclose(f);
 

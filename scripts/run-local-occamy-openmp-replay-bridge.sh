@@ -9,6 +9,8 @@ REQUEST_DIR="${BRIDGE_DIR}/requests"
 RESPONSE_DIR="${BRIDGE_DIR}/responses"
 BRIDGE_LOG="${BRIDGE_DIR}/bridge.log"
 SMOKE_LOG="${BRIDGE_DIR}/smoke-wrapper.log"
+LAUNCHES_JSONL="${ROOT_DIR}/output/occamy-openmp-smoke/launches.jsonl"
+REPLAY_DIR="${ROOT_DIR}/output/occamy-openmp-replay"
 MAX_LAUNCHES=1
 REPLAY_TIMEOUT="${REPLAY_TIMEOUT:-600}"
 BRIDGE_TIMEOUT="${OCCAMY_FAKE_BRIDGE_TIMEOUT_SECONDS:-900}"
@@ -38,7 +40,9 @@ but each bridged launch is no longer completed immediately.  Instead:
   - the fake driver captures the launch and memory snapshot
   - the fake driver publishes a request and blocks
   - this native wrapper runs the Verilator replay for that launch
-  - the fake driver returns MBOX_DEVICE_DONE only if replay succeeds
+  - the wrapper may publish qemu-visible W32 data updates from the replay trace
+  - the fake driver returns MBOX_DEVICE_DONE only if replay succeeds and then
+    applies any W32 updates in the response
 
 By default only the first launch is bridged to keep the smoke bounded.  Use
 --all to bridge every captured launch.
@@ -127,14 +131,108 @@ request_sequence() {
   printf '%d\n' "$((10#${seq_text}))"
 }
 
+derive_copyback_updates() {
+  local sequence="$1"
+  local seq_text="$2"
+  local trace_path="${REPLAY_DIR}/sequence-${seq_text}/trace_hart_00001.dasm"
+
+  [[ -f "${trace_path}" ]] || return 0
+
+  python3 - "${sequence}" "${LAUNCHES_JSONL}" "${trace_path}" <<'PY'
+import json
+import re
+import sys
+from pathlib import Path
+
+sequence = int(sys.argv[1], 0)
+launches_path = Path(sys.argv[2])
+trace_path = Path(sys.argv[3])
+
+launch = None
+for line in launches_path.read_text(encoding="utf-8").splitlines():
+    if not line.strip():
+        continue
+    record = json.loads(line)
+    if int(record["sequence"]) == sequence:
+        launch = record
+        break
+
+if launch is None:
+    raise SystemExit(f"missing launch sequence {sequence} in {launches_path}")
+
+arg_ptrs = set()
+for word in launch.get("arg_words", []):
+    if not isinstance(word, str):
+        continue
+    try:
+        value = int(word, 16)
+    except ValueError:
+        continue
+    if value >= 0xC0000000:
+        arg_ptrs.add(value)
+
+if not arg_ptrs:
+    raise SystemExit(0)
+
+field_re = re.compile(r"'([^']+)': 0x([0-9a-fA-F]+)")
+writes = {}
+
+for line in trace_path.read_text(encoding="utf-8", errors="replace").splitlines():
+    if "'is_store': 0x1" not in line:
+        continue
+    fields = {name: int(value, 16) for name, value in field_re.findall(line)}
+    addr = fields.get("opa")
+    if addr not in arg_ptrs:
+        continue
+
+    candidates = []
+    for key in ("gpr_rdata_1", "ld_result_32"):
+        if key in fields:
+            candidates.append(fields[key])
+
+    selected = None
+    for value in candidates:
+        if value <= 0xFFFFFFFF and value not in arg_ptrs:
+            selected = value
+            break
+    if selected is None:
+        for value in candidates:
+            if value <= 0xFFFFFFFF:
+                selected = value
+                break
+    if selected is None:
+        continue
+
+    writes[addr] = selected
+
+for addr in sorted(writes):
+    print(f"W32 0x{addr:08x} 0x{writes[addr] & 0xFFFFFFFF:08x}")
+PY
+}
+
 publish_response() {
   local seq_text="$1"
   local status="$2"
+  local sequence="$3"
   local response_tmp="${RESPONSE_DIR}/response-${seq_text}.tmp"
+  local updates_tmp="${response_tmp}.updates"
   local response_path="${RESPONSE_DIR}/response-${seq_text}.status"
 
+  : > "${updates_tmp}"
+  if [[ "${status}" -eq 0 ]]; then
+    if ! derive_copyback_updates "${sequence}" "${seq_text}" > "${updates_tmp}"; then
+      status=1
+      : > "${updates_tmp}"
+      printf '[occamy-openmp-bridge] failed to derive copyback updates for launch %s\n' \
+        "${sequence}" >> "${BRIDGE_LOG}"
+    fi
+  fi
+
   printf '%s\n' "${status}" > "${response_tmp}"
+  cat "${updates_tmp}" >> "${response_tmp}"
+  rm -f "${updates_tmp}"
   mv -f "${response_tmp}" "${response_path}"
+  return "${status}"
 }
 
 handle_request() {
@@ -170,9 +268,17 @@ handle_request() {
   status=$?
   set -e
 
-  publish_response "${seq_text}" "${status}"
+  if ! publish_response "${seq_text}" "${status}" "${sequence}"; then
+    status=1
+  fi
   if [[ "${status}" -eq 0 ]]; then
-    log "bridged launch ${sequence}: success"
+    local update_count
+    update_count=$(grep -c '^W32 ' "${response_path}" || true)
+    if [[ "${update_count}" -gt 0 ]]; then
+      log "bridged launch ${sequence}: success (${update_count} copyback writes)"
+    else
+      log "bridged launch ${sequence}: success"
+    fi
   else
     log "bridged launch ${sequence}: failed with status ${status}"
   fi
@@ -220,9 +326,12 @@ verify_bridge() {
   if [[ "${MAX_LAUNCHES}" -ne 0 && "${responses}" -ne "${MAX_LAUNCHES}" ]]; then
     die "expected ${MAX_LAUNCHES} replay bridge responses, saw ${responses}"
   fi
-  if rg -qv '^0$' "${RESPONSE_DIR}"/response-*.status; then
-    die "one or more replay bridge responses failed; see ${BRIDGE_DIR}"
-  fi
+  while IFS= read -r response_path; do
+    local first_line
+    first_line=$(head -n 1 "${response_path}")
+    [[ "${first_line}" == "0" ]] || \
+      die "one or more replay bridge responses failed; see ${BRIDGE_DIR}"
+  done < <(find "${RESPONSE_DIR}" -maxdepth 1 -type f -name 'response-*.status' | sort)
 }
 
 main() {

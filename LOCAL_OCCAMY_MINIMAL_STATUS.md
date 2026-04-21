@@ -156,10 +156,16 @@ M3 HeroSDK-shaped build and runtime smoke proof
        the qemu host instead of immediately returning fake completion
     -> the native wrapper runs the Verilator captured-launch replay for that
        sequence and writes a response only after replay succeeds
+    -> bridge responses may include qemu-visible `W32 <addr> <value>` data
+       updates derived from the Verilator replay trace
+    -> the fake driver applies those W32 updates into the qemu fake memory maps
+       before completing the corresponding OpenMP target launch
     -> the fake driver returns MBOX_DEVICE_DONE to the qemu host only after
        that response
     -> has been validated for launches 1 through 4, covering the first no-op,
        mapped-argument, and map(tofrom)-shaped target launches
+    -> launch 4 now proves the first replay-derived host-visible copyback:
+       the bridge writes `0x0000000a` back to `0xc08003a0`
 
   real mailbox-runtime smoke run
     -> builds a bare-metal CVA6 host app and RV32 Snitch payload
@@ -189,8 +195,12 @@ M3 HeroSDK-shaped build and runtime smoke proof
        the Verilator device and does not prove qemu-host-visible map(tofrom)
        correctness after the full benchmark
     -> the online replay bridge makes qemu host progress depend on Verilator
-       replay success for selected launches, but it still does not copy
-       Verilator-side data updates back into the qemu process
+       replay success for selected launches and can apply selected
+       trace-derived W32 copyback writes, but it is still not a general
+       coherent qemu/Verilator memory system
+    -> the bounded `--max-launches 4` bridge run proves the first map(tofrom)
+       copyback only; later benchmark loop iterations still use fake
+       completions and can still report `Error: map to_from did not work`
     -> the real mailbox-runtime smoke is not yet wired to the Linux/qemu
        HeroSDK OpenMP host process; it proves the device-side protocol in
        Verilator, not the full user-facing OpenMP map/tofrom flow
@@ -342,7 +352,11 @@ What the traces demonstrate:
 - for the M3 online replay-bridge smoke, `output/occamy-openmp-smoke.log` shows
   the qemu host waiting for replay bridge sequences 1 through 4 and resuming
   only after the bridge reports completion; the response files under
-  `output/occamy-openmp-bridge/responses/` all contain status `0`
+  `output/occamy-openmp-bridge/responses/` all contain status `0`, and
+  `response-0004.status` contains `W32 0xc08003a0 0x0000000a`
+- the same M3 online replay-bridge log shows the fake driver applying that
+  write before completing sequence 4:
+  `applied bridge W32 0x0000000a -> 0xc08003a0`
 - for the M3 mailbox-runtime smoke, the device trace proves that the real
   Snitch-side `libomptarget_device` manager reads the launch sequence, jumps to
   `omp_mailbox_target`, reads `0x12345678` from host-visible memory, stores
@@ -584,6 +598,9 @@ Completed real mailbox-runtime subset:
 - `scripts/run-local-occamy-openmp-replay-bridge.sh --max-launches 4` now
   blocks the qemu host on the first four OpenMP launches until their Verilator
   replays succeed
+- the same bridge run applies the first trace-derived qemu-visible data
+  copyback for the first `map(tofrom)` target launch:
+  `W32 0xc08003a0 0x0000000a`
 
 Known build caveat:
 
@@ -602,8 +619,10 @@ Still missing for full M3:
 - prove that the generated `offload_benchmark` target regions reach the
   Snitch-side runtime through a live connected endpoint, not only through
   offline replay of captured launch descriptors
-- verify actual end-to-end `map(to)` and `map(tofrom)` behavior from
-  `offload_benchmark/main.c`
+- replace the current selected W32 trace-copyback path with a general memory
+  synchronization mechanism for qemu/Verilator
+- verify full-run end-to-end `map(to)` and `map(tofrom)` behavior from
+  `offload_benchmark/main.c`, not only the first bridged `map(tofrom)` launch
 
 Why this is the immediate next step:
 
@@ -664,6 +683,8 @@ Current state:
   real Snitch-side mailbox manager in Verilator
   M3 replay bridge makes qemu host progress wait on Verilator success for the
   first four captured launches
+  M3 replay bridge applies the first qemu-visible replay-derived W32 copyback
+  for the first map(tofrom) launch
   M3 omp_mailbox runs the real Snitch-side mailbox manager and target function
 
 Best next state:
