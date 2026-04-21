@@ -53,6 +53,24 @@ git switch occamy-minimal-bootstrap
 ./scripts/bootstrap-local-occamy-minimal.sh
 ```
 
+For full M0-through-M3 reproduction, initialize the HeroSDK submodules before
+the M2/M3 builds:
+
+```bash
+git submodule update --init --recursive cva6-sdk toolchain/llvm-project sw/libhero/vendor/o1heap
+```
+
+Current reproducibility scope:
+
+```text
+M0/M1: expected to reproduce from this branch, the matching Occamy fork, and
+       the listed Linux dependencies.
+M2:    expected to reproduce after the LLVM/o1heap submodules are initialized.
+M3:    validated on this checkout, but not yet sealed as a clean-machine proof
+       until the exact cva6-sdk state is pinned in the fork or patched by the
+       bootstrap flow.
+```
+
 Useful reruns:
 
 ```bash

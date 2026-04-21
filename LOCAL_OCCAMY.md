@@ -154,6 +154,13 @@ git switch occamy-minimal-bootstrap
 ./scripts/bootstrap-local-occamy-minimal.sh
 ```
 
+The bootstrap path is enough for the M0 baseline and prepares the matching
+Occamy fork checkout.  For M2/M3, initialize the HeroSDK submodules too:
+
+```bash
+git submodule update --init --recursive cva6-sdk toolchain/llvm-project sw/libhero/vendor/o1heap
+```
+
 The bootstrap script:
 
 - clones `platforms/occamy` from `franchecol/occamy` if missing
@@ -173,6 +180,31 @@ Expected M0 success:
 [occamy-minimal] host ELF: .../offload-minimal_irq.elf
 [occamy-minimal] device binary: .../minimal_irq.bin
 ```
+
+## Clean-Machine Reproducibility
+
+Current source-only status:
+
+```text
+M0: expected to reproduce from a fresh Linux checkout with the listed packages.
+M1: expected to reproduce after M0 bootstrap.
+M2: expected to reproduce after initializing toolchain/llvm-project and o1heap.
+M3: locally validated, but not yet fully sealed for a new machine.
+```
+
+The reason M3 is not yet sealed is `cva6-sdk`: the last successful M3 build on
+this machine used a local `cva6-sdk` state different from the submodule pointer
+currently committed in this branch.  That local state includes Buildroot
+configuration and nested submodule updates.
+
+To make M3 fully independent for a new machine, one of these must happen:
+
+- fork/pin `cva6-sdk` and update the top-level submodule pointer
+- or teach the bootstrap flow to apply the required `cva6-sdk` patch set
+- or revalidate that the committed `cva6-sdk` pointer works on a clean clone
+
+Until then, treat the M3 result as validated in this checkout, not as a
+guaranteed one-clone reproduction.
 
 ## Common Reruns
 
