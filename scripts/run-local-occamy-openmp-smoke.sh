@@ -11,6 +11,7 @@ SMOKE_LOG="${ROOT_DIR}/output/occamy-openmp-smoke.log"
 FAKE_DRIVER_SRC="${ROOT_DIR}/sw/libhero/sim/occamy_fake_driver.c"
 FAKE_DRIVER_SO="${ROOT_DIR}/output/occamy-openmp-smoke/liboccamy_fake_driver.so"
 CAPTURE_PATH="${ROOT_DIR}/output/occamy-openmp-smoke/launches.jsonl"
+SNAPSHOT_DIR="${ROOT_DIR}/output/occamy-openmp-smoke/snapshots"
 USER_TIMEOUT_SECONDS="${TIMEOUT_SECONDS:-}"
 TIMEOUT_SECONDS="${TIMEOUT_SECONDS:-30}"
 QEMU_RISCV64="${QEMU_RISCV64:-qemu-riscv64}"
@@ -18,6 +19,7 @@ DO_BUILD=0
 USE_FAKE_DRIVER=0
 USE_FAKE_COMPLETE=0
 CAPTURE_LAUNCH=0
+CAPTURE_SNAPSHOT=0
 DEVICE_NODE="${OCCAMY_DEVICE_NODE:-/dev/occamydev--1}"
 
 log() {
@@ -39,6 +41,7 @@ Usage: scripts/run-local-occamy-openmp-smoke.sh [--build]
        scripts/run-local-occamy-openmp-smoke.sh [--build] --fake-driver
        scripts/run-local-occamy-openmp-smoke.sh [--build] --fake-complete
        scripts/run-local-occamy-openmp-smoke.sh [--build] --capture-launch
+       scripts/run-local-occamy-openmp-smoke.sh [--build] --capture-snapshot
 
 Runs the HeroSDK/OpenMP Occamy benchmark host ELF under qemu-riscv64.
 
@@ -55,6 +58,8 @@ Options:
                  Also fake MBOX_DEVICE_DONE responses for target launches.
   --capture-launch
                  Fake completion and write JSONL launch/memory snapshots.
+  --capture-snapshot
+                 Also dump trimmed fake-region binaries for replay work.
 EOF
 }
 
@@ -78,6 +83,13 @@ parse_args() {
         USE_FAKE_DRIVER=1
         USE_FAKE_COMPLETE=1
         CAPTURE_LAUNCH=1
+        shift
+        ;;
+      --capture-snapshot)
+        USE_FAKE_DRIVER=1
+        USE_FAKE_COMPLETE=1
+        CAPTURE_LAUNCH=1
+        CAPTURE_SNAPSHOT=1
         shift
         ;;
       -h|--help)
@@ -190,6 +202,10 @@ run_smoke() {
     mkdir -p "$(dirname -- "${CAPTURE_PATH}")"
     : > "${CAPTURE_PATH}"
   fi
+  if [[ ${CAPTURE_SNAPSHOT} -eq 1 ]]; then
+    rm -rf "${SNAPSHOT_DIR}"
+    mkdir -p "${SNAPSHOT_DIR}"
+  fi
 
   guest_lib_path="${ROOT_DIR}/sw/libhero/lib:${ROOT_DIR}/sw/libomp/lib:${RV64_SYSROOT}/lib:${RV64_SYSROOT}/usr/lib"
 
@@ -199,12 +215,12 @@ run_smoke() {
   set +e
   python3 - "$QEMU_RISCV64" "$RV64_SYSROOT" "$APP_ELF" "$SMOKE_LOG" \
     "$TIMEOUT_SECONDS" "$guest_lib_path" "$preload_path" "$USE_FAKE_COMPLETE" \
-    "$CAPTURE_LAUNCH" "$CAPTURE_PATH" <<'PY'
+    "$CAPTURE_LAUNCH" "$CAPTURE_PATH" "$CAPTURE_SNAPSHOT" "$SNAPSHOT_DIR" <<'PY'
 import os
 import subprocess
 import sys
 
-qemu, sysroot, app, log_path, timeout_s, lib_path, preload_path, fake_complete, capture_launch, capture_path = sys.argv[1:11]
+qemu, sysroot, app, log_path, timeout_s, lib_path, preload_path, fake_complete, capture_launch, capture_path, capture_snapshot, snapshot_dir = sys.argv[1:13]
 env = os.environ.copy()
 env.pop("LD_PRELOAD", None)
 env.pop("LD_LIBRARY_PATH", None)
@@ -231,6 +247,8 @@ if preload_path:
         cmd.extend(["-E", f"OCCAMY_FAKE_CAPTURE_LAUNCH={capture_path}"])
         if "OCCAMY_FAKE_CAPTURE_BYTES" in env:
             cmd.extend(["-E", f"OCCAMY_FAKE_CAPTURE_BYTES={env['OCCAMY_FAKE_CAPTURE_BYTES']}"])
+        if capture_snapshot == "1":
+            cmd.extend(["-E", f"OCCAMY_FAKE_CAPTURE_DIR={snapshot_dir}"])
 cmd.append(app)
 try:
     with open(log_path, "w", encoding="utf-8") as log:
@@ -281,6 +299,11 @@ print(count)
 PY
 )
         log "captured ${launch_count} OpenMP launch snapshots to ${CAPTURE_PATH}"
+        if [[ ${CAPTURE_SNAPSHOT} -eq 1 ]]; then
+          [[ -s "${SNAPSHOT_DIR}/snapshots.jsonl" ]] || \
+            die "snapshot mode completed but wrote no snapshot manifest"
+          log "captured replay snapshots to ${SNAPSHOT_DIR}"
+        fi
       fi
       log "host OpenMP runtime completed with fake mailbox responses"
       log "target code and OpenMP map correctness are still not proven"

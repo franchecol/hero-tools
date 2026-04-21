@@ -124,6 +124,14 @@ M3 HeroSDK-shaped build and runtime smoke proof
     -> provides the first concrete bridge artifact between the qemu Linux
        OpenMP host path and the Verilator mailbox-runtime path
 
+  replay-snapshot smoke run
+    -> extends launch capture with per-launch binary dumps of fake mapped
+       Occamy regions
+    -> emits a snapshots.jsonl manifest plus trimmed region dumps such as
+       launch-0001-l3.bin and launch-0001-scratchpad_wide.bin
+    -> preserves the memory image needed to start a future Verilator replay
+       from a concrete qemu-generated OpenMP launch
+
   real mailbox-runtime smoke run
     -> builds a bare-metal CVA6 host app and RV32 Snitch payload
     -> runs the Snitch-side libomptarget_device mailbox manager in Verilator
@@ -145,6 +153,8 @@ M3 HeroSDK-shaped build and runtime smoke proof
        "Error: map to_from did not work"
     -> the launch-capture smoke records qemu-side launch and memory descriptors,
        but it is still an offline snapshot, not a live qemu-to-Verilator bridge
+    -> the replay-snapshot smoke writes replay inputs, but no Verilator harness
+       consumes those files yet
     -> the real mailbox-runtime smoke is not yet wired to the Linux/qemu
        HeroSDK OpenMP host process; it proves the device-side protocol in
        Verilator, not the full user-facing OpenMP map/tofrom flow
@@ -164,8 +174,11 @@ Repo-side additions on this branch:
 - `scripts/run-local-occamy-openmp-smoke.sh`
 - `scripts/run-local-occamy-openmp-smoke.sh --capture-launch` mode for
   qemu-side OpenMP launch snapshots
+- `scripts/run-local-occamy-openmp-smoke.sh --capture-snapshot` mode for
+  per-launch fake-region binary dumps
 - `sw/libhero/sim/occamy_fake_driver.c`
 - fake-driver `OCCAMY_FAKE_CAPTURE_LAUNCH` JSONL capture support
+- fake-driver `OCCAMY_FAKE_CAPTURE_DIR` replay-snapshot support
 - `scripts/run-local-occamy-minimal.sh omp_mailbox` mode for a real
   Snitch-side mailbox-runtime smoke
 - `LOCAL_OCCAMY_MINIMAL.md`
@@ -232,6 +245,8 @@ Known-good output artifacts:
   `output/occamy-openmp-smoke.log`
 - HeroSDK/OpenMP launch-capture JSONL:
   `output/occamy-openmp-smoke/launches.jsonl`
+- HeroSDK/OpenMP replay-snapshot manifest:
+  `output/occamy-openmp-smoke/snapshots/snapshots.jsonl`
 - RISC-V fake Occamy driver shim:
   `output/occamy-openmp-smoke/liboccamy_fake_driver.so`
 - M3 mailbox-runtime host ELF:
@@ -273,6 +288,10 @@ What the traces demonstrate:
   proves that the qemu OpenMP host emits 16 concrete launch descriptors for the
   benchmark and that the fake L3 map contains the expected target argument
   pointer arrays for the map(to) and map(tofrom) regions
+- for the M3 replay-snapshot smoke,
+  `output/occamy-openmp-smoke/snapshots/snapshots.jsonl` proves that each
+  launch descriptor has matching binary dumps for the fake mapped Occamy
+  regions needed by a future Verilator replay harness
 - for the M3 mailbox-runtime smoke, the device trace proves that the real
   Snitch-side `libomptarget_device` manager reads the launch sequence, jumps to
   `omp_mailbox_target`, reads `0x12345678` from host-visible memory, stores

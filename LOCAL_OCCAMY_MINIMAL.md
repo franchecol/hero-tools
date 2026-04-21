@@ -71,6 +71,12 @@ Optional M3 launch-capture smoke:
 ./scripts/run-local-occamy-openmp-smoke.sh --capture-launch
 ```
 
+Optional M3 replay-snapshot smoke:
+
+```bash
+./scripts/run-local-occamy-openmp-smoke.sh --capture-snapshot
+```
+
 Optional M3 real Snitch-side mailbox-runtime smoke:
 
 ```bash
@@ -118,6 +124,15 @@ Expected M3 launch-capture smoke result on this machine:
 [occamy-openmp-smoke] target code and OpenMP map correctness are still not proven
 ```
 
+Expected M3 replay-snapshot smoke result on this machine:
+
+```text
+[occamy-openmp-smoke] captured 16 OpenMP launch snapshots to .../output/occamy-openmp-smoke/launches.jsonl
+[occamy-openmp-smoke] captured replay snapshots to .../output/occamy-openmp-smoke/snapshots
+[occamy-openmp-smoke] host OpenMP runtime completed with fake mailbox responses
+[occamy-openmp-smoke] target code and OpenMP map correctness are still not proven
+```
+
 Known expected fake-completion log caveat:
 
 ```text
@@ -141,6 +156,15 @@ Detailed launch-capture artifact:
 
 ```text
 output/occamy-openmp-smoke/launches.jsonl
+```
+
+Detailed replay-snapshot artifacts:
+
+```text
+output/occamy-openmp-smoke/snapshots/snapshots.jsonl
+output/occamy-openmp-smoke/snapshots/launch-0001-l3.bin
+output/occamy-openmp-smoke/snapshots/launch-0001-scratchpad_wide.bin
+...
 ```
 
 Known M3 build caveat:
@@ -179,6 +203,9 @@ It only covers:
   target launch descriptors: target function address, device argument-buffer
   address, worker count, SoC scratch registers, mailbox-layout words, and
   argument-buffer words in the fake L3 map
+- one replay-snapshot smoke run proving that those qemu-side launch descriptors
+  can be paired with per-launch binary dumps of the fake Occamy regions needed
+  for Verilator replay work
 - one real Verilator mailbox-runtime smoke proving that the Snitch-side
   `libomptarget_device` manager consumes the same four-word launch protocol,
   calls a target function, writes `0x12345679` back into host-visible memory,
@@ -226,6 +253,8 @@ Known-good artifacts:
   `output/occamy-openmp-smoke.log`
 - HeroSDK/OpenMP launch-capture JSONL:
   `output/occamy-openmp-smoke/launches.jsonl`
+- HeroSDK/OpenMP replay-snapshot manifest:
+  `output/occamy-openmp-smoke/snapshots/snapshots.jsonl`
 - RISC-V fake Occamy driver shim source:
   `sw/libhero/sim/occamy_fake_driver.c`
 - M3 mailbox-runtime host ELF:

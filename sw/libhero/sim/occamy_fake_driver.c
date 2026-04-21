@@ -95,6 +95,11 @@ static const char *fake_capture_path(void) {
 
 static int fake_capture_enabled(void) { return fake_capture_path() != NULL; }
 
+static const char *fake_capture_dir(void) {
+    const char *env = getenv("OCCAMY_FAKE_CAPTURE_DIR");
+    return (fake_enabled() && env && env[0] != '\0') ? env : NULL;
+}
+
 static size_t fake_capture_bytes(void) {
     const char *env = getenv("OCCAMY_FAKE_CAPTURE_BYTES");
     char *end = NULL;
@@ -151,6 +156,27 @@ static struct fake_region *lookup_region(int mmap_id) {
         }
     }
     return NULL;
+}
+
+static const char *region_name(const struct fake_region *region) {
+    switch (region->mmap_id) {
+    case SOC_CTRL_MMAP_ID:
+        return "soc_ctrl";
+    case DMA_BUFS_MMAP_ID:
+        return "dma_bufs";
+    case L3_MMAP_ID:
+        return "l3";
+    case QUADRANT_CTRL_MMAP_ID:
+        return "quadrant_ctrl";
+    case CLINT_MMAP_ID:
+        return "clint";
+    case SCRATCHPAD_WIDE_MMAP_ID:
+        return "scratchpad_wide";
+    case SNITCH_CLUSTER_MMAP_ID:
+        return "snitch_cluster";
+    default:
+        return "unknown";
+    }
 }
 
 static struct fake_region *lookup_region_by_paddr(uint64_t paddr) {
@@ -248,6 +274,99 @@ static void json_word_array(FILE *f, const char *name, uint64_t paddr, size_t by
     fprintf(f, "]");
 }
 
+static size_t align_up_size(size_t value, size_t align) {
+    return (value + align - 1) & ~(align - 1);
+}
+
+static size_t region_used_size(const struct fake_region *region) {
+    const uint8_t *data = (const uint8_t *)region->mapping;
+    size_t used = region->size;
+
+    if (!data) {
+        return 0;
+    }
+
+    while (used > 0 && data[used - 1] == 0) {
+        --used;
+    }
+
+    if (used == 0) {
+        return 0;
+    }
+
+    used = align_up_size(used, 4096);
+    return used > region->size ? region->size : used;
+}
+
+static int write_region_dump(const char *path, const void *data, size_t size) {
+    FILE *f = fopen(path, "wb");
+
+    if (!f) {
+        return -1;
+    }
+    if (size && fwrite(data, 1, size, f) != size) {
+        fclose(f);
+        return -1;
+    }
+    return fclose(f);
+}
+
+static void dump_launch_snapshot(unsigned sequence) {
+    const char *dir = fake_capture_dir();
+    char manifest_path[4096];
+    FILE *manifest;
+
+    if (!dir) {
+        return;
+    }
+
+    snprintf(manifest_path, sizeof(manifest_path), "%s/snapshots.jsonl", dir);
+    manifest = fopen(manifest_path, "a");
+    if (!manifest) {
+        fprintf(stderr, "[occamy-fake-driver] failed to open snapshot manifest %s: %s\n",
+                manifest_path, strerror(errno));
+        return;
+    }
+
+    fprintf(manifest, "{\"sequence\":%u,\"regions\":[", sequence);
+    int emitted = 0;
+    for (size_t i = 0; i < sizeof(regions) / sizeof(regions[0]); ++i) {
+        struct fake_region *region = &regions[i];
+        const char *name = region_name(region);
+        char file_name[128];
+        char file_path[4096];
+        size_t used = region_used_size(region);
+
+        if (!region->mapping || used == 0) {
+            continue;
+        }
+
+        snprintf(file_name, sizeof(file_name), "launch-%04u-%s.bin", sequence, name);
+        snprintf(file_path, sizeof(file_path), "%s/%s", dir, file_name);
+
+        if (write_region_dump(file_path, region->mapping, used) != 0) {
+            fprintf(stderr, "[occamy-fake-driver] failed to write snapshot %s: %s\n",
+                    file_path, strerror(errno));
+            continue;
+        }
+
+        if (emitted) {
+            fprintf(manifest, ",");
+        }
+        fprintf(manifest,
+                "{\"name\":\"%s\",\"mmap_id\":%d,\"pbase\":\"0x%08llx\","
+                "\"dump_size\":\"0x%zx\",\"file\":\"%s\"}",
+                name, region->mmap_id, (unsigned long long)region->pbase, used,
+                file_name);
+        emitted = 1;
+    }
+    fprintf(manifest, "]}\n");
+    fclose(manifest);
+
+    fprintf(stderr, "[occamy-fake-driver] captured snapshot #%u to %s\n",
+            sequence, dir);
+}
+
 static void capture_launch_packet(void) {
     const char *path = fake_capture_path();
     size_t bytes = fake_capture_bytes();
@@ -273,10 +392,12 @@ static void capture_launch_packet(void) {
         return;
     }
 
+    unsigned sequence = ++fake_launch_sequence;
+
     fprintf(f,
             "{\"sequence\":%u,\"start\":\"0x%08x\",\"target_fn\":\"0x%08x\","
             "\"arg_ptr\":\"0x%08x\",\"workers\":%u",
-            ++fake_launch_sequence, fake_launch_words[0], fake_launch_words[1],
+            sequence, fake_launch_words[0], fake_launch_words[1],
             fake_launch_words[2], fake_launch_words[3]);
     json_region(f, "target_region", target_fn);
     json_region(f, "arg_region", arg_ptr);
@@ -296,7 +417,8 @@ static void capture_launch_packet(void) {
     fclose(f);
 
     fprintf(stderr, "[occamy-fake-driver] captured launch #%u to %s\n",
-            fake_launch_sequence, path);
+            sequence, path);
+    dump_launch_snapshot(sequence);
 }
 
 static void observe_mbox_write(uint32_t word, int complete_launch) {

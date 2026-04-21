@@ -173,6 +173,7 @@ make -C apps/omp/basic/offload_benchmark DEVICES=occamy
 ./scripts/run-local-occamy-openmp-smoke.sh --fake-driver
 ./scripts/run-local-occamy-openmp-smoke.sh --fake-complete
 ./scripts/run-local-occamy-openmp-smoke.sh --capture-launch
+./scripts/run-local-occamy-openmp-smoke.sh --capture-snapshot
 ./scripts/run-local-occamy-minimal.sh omp_mailbox
 ```
 
@@ -211,6 +212,15 @@ Expected launch-capture smoke result:
 [occamy-openmp-smoke] target code and OpenMP map correctness are still not proven
 ```
 
+Expected replay-snapshot smoke result:
+
+```text
+[occamy-openmp-smoke] captured 16 OpenMP launch snapshots to .../output/occamy-openmp-smoke/launches.jsonl
+[occamy-openmp-smoke] captured replay snapshots to .../output/occamy-openmp-smoke/snapshots
+[occamy-openmp-smoke] host OpenMP runtime completed with fake mailbox responses
+[occamy-openmp-smoke] target code and OpenMP map correctness are still not proven
+```
+
 Expected real mailbox-runtime smoke result:
 
 ```text
@@ -236,6 +246,12 @@ The launch-capture JSONL is written to:
 output/occamy-openmp-smoke/launches.jsonl
 ```
 
+The replay-snapshot manifest is written to:
+
+```text
+output/occamy-openmp-smoke/snapshots/snapshots.jsonl
+```
+
 Known caveat:
 
 ```text
@@ -251,6 +267,8 @@ device initialization, then stops because this local machine has no real
 `--fake-complete` adds fake mailbox completion words so the host OpenMP
 runtime can finish its control path, and `--capture-launch` records the
 qemu-side launch descriptors and selected fake-memory contents as JSONL.
+The heavier `--capture-snapshot` mode also writes per-launch trimmed binary
+dumps of the fake Occamy regions for later Verilator replay work.
 None of these fake modes executes the Snitch-side runtime or validates OpenMP
 data mapping correctness.
 
