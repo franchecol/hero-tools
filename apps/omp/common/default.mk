@@ -39,8 +39,11 @@ COB_TARGETS = $(subst $(space),$(comma),host-$(TARGET_HOST) $(foreach target,$(T
 # Toolchain(s) selection
 CFLAGS   += --gcc-toolchain=$(RISCV) --sysroot=$(RV64_SYSROOT)
 CFLAGS   += -target $(TARGET_HOST)
+CFLAGS   += -mno-relax
+CFLAGS   += -fno-asynchronous-unwind-tables -fno-unwind-tables
 CFLAGS   += -fopenmp=libomp -fopenmp-targets=$(subst $(space),$(comma),$(foreach target,$(TARGET_DEVS),$(target)))
 # Include files used by the OpenMP target RTL
+CFLAGS   += -I$(HERO_ROOT)/sw/libomp/include
 CFLAGS   += -I$(HERO_ROOT)/sw/libhero/include
 CFLAGS   += -I$(HERO_ROOT)/apps/omp/common
 # Dependancy managements
@@ -49,6 +52,7 @@ CFLAGS   += -MT $@ -MMD -MP -MF $(DEPDIR)/$*.d
 
 # Link flags
 LDFLAGS  += --ld-path=$(HERO_LINUX_LD)
+LDFLAGS  += -Wl,--noinhibit-exec
 # Path to the OpenMP target RTL
 LDFLAGS  += -L$(HERO_ROOT)/sw/libomp/lib
 

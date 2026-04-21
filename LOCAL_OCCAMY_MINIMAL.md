@@ -1,6 +1,7 @@
 # Local Occamy Minimal Heterogeneous Runbook
 
-Status: validated on this machine through `M2` on 2026-04-20.
+Status: validated on this machine through `M2` execution and `M3` build on
+2026-04-21.
 
 This note documents the smallest heterogeneous simulation path that was
 actually proven in this checkout.
@@ -35,8 +36,33 @@ make hero-tc-llvm-axpy
 ./scripts/run-local-occamy-minimal.sh axpy
 ```
 
-It does not try to cover a full user-facing HeroSDK OpenMP target application
-or the broader Linux/FPGA bring-up flow.
+Optional M3 HeroSDK/OpenMP build proof:
+
+```bash
+source scripts/setenv.sh
+make HERO_HOST=cva6 HERO_DEVICE=occamy hero-sw-all
+make -C platforms/occamy/target/sim/sw/device/apps/libomptarget_device all
+make -C apps/omp/basic/offload_benchmark clean
+make -C apps/omp/basic/offload_benchmark DEVICES=occamy
+```
+
+Expected M3 build artifact:
+
+```text
+apps/omp/basic/offload_benchmark/offload_benchmark_occamy.elf
+```
+
+Known M3 build caveat:
+
+```text
+dangerous relocation: Mismatched R_RISCV_SUB_ULEB128 ...
+```
+
+The current branch uses GNU ld with `--noinhibit-exec` so the local proof still
+emits the ELF. This is not yet an upstream-clean linker fix.
+
+It does not yet cover execution of a full user-facing HeroSDK OpenMP target
+application or the broader Linux/FPGA bring-up flow.
 It only covers:
 
 - reduced `occamy` configuration
@@ -47,6 +73,7 @@ It only covers:
 - host <- device completion via software interrupt
 - one minimal shared-memory roundtrip
 - one reduced `axpy` offload proof using the HeroSDK RV32 LLVM device toolchain
+- one HeroSDK/OpenMP `offload_benchmark` build proof for `DEVICES=occamy`
 
 ## Scope
 
@@ -82,6 +109,10 @@ Known-good artifacts:
   `platforms/occamy/target/sim/sw/host/apps/offload/build/offload-axpy.elf`
 - `axpy` device binary:
   `platforms/occamy/target/sim/sw/device/apps/blas/axpy/build/axpy.bin`
+- HeroSDK/OpenMP host ELF:
+  `apps/omp/basic/offload_benchmark/offload_benchmark_occamy.elf`
+- HeroSDK/OpenMP device runtime archive:
+  `platforms/occamy/target/sim/sw/device/apps/libomptarget_device/build/libomptarget_device.a`
 
 Required files provided by the matching Occamy fork branch:
 
@@ -95,6 +126,9 @@ Required simulator compatibility fix provided by that Occamy branch:
   Adds `verilated_timing.o` and `verilated_threads.o` to the Verilator link.
 - `platforms/occamy/target/sim/sw/device/toolchain.mk`
   Points the reduced `axpy` path at the `rv32imafd-ilp32d` builtins directory.
+- `platforms/occamy/target/sim/sw/device/apps/libomptarget_device/Makefile`
+  Makes plain `make` build the device-side archive instead of selecting the
+  empty `clean` target.
 
 ## Branches
 

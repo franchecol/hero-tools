@@ -295,6 +295,14 @@ uintptr_t hero_dev_l3_malloc(HeroDev *dev, unsigned size_b, uintptr_t *p_addr);
 
 uintptr_t hero_dev_l2_malloc(HeroDev *dev, unsigned size_b, uintptr_t *p_addr);
 
+int hero_dev_l2_init(HeroDev *dev);
+
+int hero_dev_l3_init(HeroDev *dev);
+
+int hero_dev_alloc_mboxes(HeroDev *dev);
+
+int hero_dev_free_mboxes(HeroDev *dev);
+
 /** Allocate a DMA-able buffer host L3.
   \param    pulp   pointer to the HeroDev structure
   \param    size_b size in Bytes of the requested chunk
@@ -313,6 +321,8 @@ int hero_iommu_map_virt_to_phys(HeroDev *dev, unsigned size_b, void *v_addr, uin
  \param    p_addr pointer to unsigned containing the physical address
  */
 void hero_dev_l3_free(HeroDev *dev, uintptr_t v_addr, uintptr_t p_addr);
+
+void hero_dev_l2_free(HeroDev *dev, uintptr_t v_addr, uintptr_t p_addr);
 
 //!@}
 

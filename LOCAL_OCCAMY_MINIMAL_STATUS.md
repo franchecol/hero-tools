@@ -83,12 +83,26 @@ M2 runtime-shaped proof
   Simulator and verifier
     -> run to completion through the upstream verify.py path
     -> report success for the reduced offload proof
+
+M3 HeroSDK-shaped build proof
+  HeroSDK OpenMP application flow
+    -> builds the cva6/occamy libhero and libomp runtime stack
+    -> builds the Occamy device-side libomptarget_device archive
+    -> compiles apps/omp/basic/offload_benchmark with DEVICES=occamy
+    -> runs the custom HERCULES LLVM passes
+    -> emits a RISC-V Linux host ELF with an embedded RV32 device image
+
+  Current caveat
+    -> final host link still relies on --noinhibit-exec for an .eh_frame
+       relocation diagnostic emitted by GNU ld
+    -> the resulting ELF has not yet been executed in a Linux/driver-backed
+       Occamy simulation environment
 ```
 
 This is now a real heterogeneous control-path plus data-path proof.
 It is stronger than "the simulator builds" and stronger than the branch-local
 roundtrip, but it is still smaller than a real user-facing HeroSDK OpenMP
-target proof.
+target proof that has executed end to end.
 
 ## What Was Added
 
@@ -102,6 +116,11 @@ Repo-side additions on this branch:
 - `hero.mk` target `hero-tc-llvm-axpy`
 - `toolchain/setup-llvm-device.sh` fixes for the reduced RV32 LLVM path
 - `toolchain/llvm-support/CMakeLists.txt` fix for modern CMake/GCC behavior
+- `apps/omp/common/default.mk` fixes for the Occamy OpenMP build path:
+  libomp headers, no-relax host compilation, and a temporary GNU ld
+  `--noinhibit-exec` workaround
+- `sw/libhero` type/API cleanup needed to build `libhero_occamy.so` against
+  the current headers and toolchain
 
 Matching Occamy fork branch contents:
 
@@ -111,6 +130,8 @@ Matching Occamy fork branch contents:
 - `target/sim/sw/device/apps/roundtrip/`
 - `target/sim/sw/host/apps/roundtrip/`
 - `target/sim/sw/device/toolchain.mk` fix for the reduced `axpy` builtins path
+- `target/sim/sw/device/apps/libomptarget_device/Makefile` default-goal fix so
+  plain `make` builds the device-side archive instead of selecting `clean`
 
 Runtime/workflow additions made by the bootstrap path:
 
@@ -143,6 +164,10 @@ Known-good output artifacts:
   `platforms/occamy/target/sim/sw/host/apps/offload/build/offload-axpy.elf`
 - `axpy` device binary:
   `platforms/occamy/target/sim/sw/device/apps/blas/axpy/build/axpy.bin`
+- HeroSDK/OpenMP host ELF:
+  `apps/omp/basic/offload_benchmark/offload_benchmark_occamy.elf`
+- HeroSDK/OpenMP device runtime archive:
+  `platforms/occamy/target/sim/sw/device/apps/libomptarget_device/build/libomptarget_device.a`
 - host trace:
   `platforms/occamy/target/sim/trace_hart_00.dasm`
 - device trace:
@@ -158,6 +183,9 @@ What the traces demonstrate:
   region before the interrupt store
 - for `axpy`, the reduced offload flow produces both `offload-axpy.elf` and
   `axpy.bin`, then completes through the upstream verification harness
+- for the M3 build proof, `offload_benchmark_occamy.elf` proves that the
+  HeroSDK OpenMP compiler flow can compile, unbundle, transform, rebundle, link
+  a device image, wrap that image, and emit a Linux host executable for Occamy
 - the host trace shows the host clearing the software interrupt, validating the
   returned buffer, and reaching the final `tohost` exit write
 
@@ -193,15 +221,21 @@ What is true now:
 - the branch now contains both a control-path proof and a minimal data-path
   proof
 - the branch now also contains a reduced runtime-shaped `axpy` offload proof
+- the branch can now build a user-facing HeroSDK OpenMP target application for
+  `DEVICES=occamy`
 - the path is automated enough for reuse
 - the branch documents system prerequisites and machine setup
 - the scripts are more Linux-portable than the first local version
 - the reduced RV32 LLVM device toolchain path now works for `rv32imafd-ilp32d`
+- the M3 OpenMP build currently emits an ELF only with the GNU ld
+  `--noinhibit-exec` workaround
 
 What is still not true:
 
-- we have not yet proven a real user-facing HeroSDK OpenMP target application
+- we have not yet executed the user-facing HeroSDK OpenMP target application
 - we have not yet validated FPGA bring-up for this reduced path
+- we do not yet have an upstream-clean linker solution for the `.eh_frame`
+  relocation diagnostic in the generated offload wrapper object
 - this work is not upstreamed into `pulp-platform/hero-tools` or
   `pulp-platform/occamy`
 
@@ -292,7 +326,7 @@ Delivered:
 
 ### M3: HeroSDK-Shaped Software Proof
 
-Status: next recommended milestone
+Status: partially completed
 
 Success criteria:
 
@@ -302,6 +336,38 @@ Success criteria:
   handwritten `minimal_irq` / `roundtrip` pair
 - identify whether the next blocker is in OpenMP/plugin/runtime integration or
   in platform assumptions
+
+Completed build-level subset:
+
+- `make HERO_HOST=cva6 HERO_DEVICE=occamy hero-sw-all` builds
+  `libhero_occamy.so`, `libomptarget.rtl.herodev_occamy.so`, and `omp.h`
+- the custom HERCULES LLVM pass wrapper and pass libraries are installed:
+  `hc-omp-pass`, `libOmpKernelWrapper.so`, and
+  `libOmpHostPointerLegalizer.so`
+- the Occamy device runtime archive builds:
+  `libomptarget_device.a`
+- `apps/omp/basic/offload_benchmark` builds with `DEVICES=occamy`
+- the build emits:
+  `apps/omp/basic/offload_benchmark/offload_benchmark_occamy.elf`
+
+Known build caveat:
+
+- the final host link uses GNU ld with `--noinhibit-exec`
+- GNU ld still reports a dangerous `.eh_frame` relocation in the generated
+  offload wrapper object
+- this is acceptable for the current local build proof, but it is not an
+  upstream-quality toolchain fix
+
+Still missing for full M3:
+
+- boot or emulate enough Linux/user-space environment to run the generated host
+  ELF
+- provide the HeroSDK shared libraries in that environment
+- provide the Occamy Linux driver interface expected by libhero
+- expose `/dev/occamydev--1` or an equivalent simulated driver endpoint
+- prove that the OpenMP target region reaches the Snitch-side device runtime
+- verify the `map(to)` and `map(tofrom)` behavior from
+  `offload_benchmark/main.c`
 
 Why this is the immediate next step:
 
@@ -338,13 +404,15 @@ Success criteria:
 
 ## Recommended Next Step
 
-The best next technical step is now M3, not FPGA.
+The best next technical step is now M3 execution, not FPGA.
 
 That means:
 
 - stay in simulation
 - keep the reduced Occamy single-cluster configuration
-- move one step closer to the actual HeroSDK compiler/runtime value
+- keep the M3 build proof frozen as the baseline
+- move from "the OpenMP ELF builds" to "the OpenMP ELF runs far enough to enter
+  the libomptarget/libhero path"
 - keep the workload tiny enough that failures are still attributable
 
 Short version:
@@ -352,9 +420,10 @@ Short version:
 ```text
 Current state:
   M0, M1, and M2 work in simulation
+  M3 builds a HeroSDK/OpenMP offload ELF for Occamy
 
 Best next state:
-  a more HeroSDK-shaped software proof works
+  that ELF runs far enough to prove the HeroSDK OpenMP runtime path
 
 Then:
   consider reduced FPGA bring-up

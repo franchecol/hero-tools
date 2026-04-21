@@ -16,23 +16,34 @@
 #include "driver.h"
 #include "snitch_cluster.h"
 
+static inline uintptr_t occamy_addr(const volatile void *base, uintptr_t offset) {
+    return (uintptr_t)base + offset;
+}
+
+static int occamy_lookup_mmap(int device_fd, int mmap_id, volatile void **res) {
+    void *mapped = NULL;
+    int err = driver_lookup_mmap(device_fd, mmap_id, &mapped);
+    *res = mapped;
+    return err;
+}
+
 static void occamy_set_isolation(int iso) {
     uint32_t mask, val;
     val = iso ? 1U : 0U;
     mask = (val << QCTL_ISOLATE_NARROW_IN_BIT) | (val << QCTL_ISOLATE_NARROW_OUT_BIT) |
            (val << QCTL_ISOLATE_WIDE_IN_BIT) | (val << QCTL_ISOLATE_WIDE_OUT_BIT);
-    writew(mask, occ_quad_ctrl + QCTL_ISOLATE_REG_OFFSET);
+    writew(mask, occamy_addr(occ_quad_ctrl, QCTL_ISOLATE_REG_OFFSET));
     fence();
 }
 
 void clint_set_irq(uint32_t irq) {
-    int val = readw((uint32_t *)occ_clint);
-    writew(val | irq, (uint32_t *)occ_clint);
+    int val = readw((uintptr_t)occ_clint);
+    writew(val | irq, (uintptr_t)occ_clint);
 }
 
 void clint_clear_irq(uint32_t irq) {
-    int val = readw((uint32_t *)occ_clint);
-    writew(val & ~irq, (uint32_t *)occ_clint);
+    int val = readw((uintptr_t)occ_clint);
+    writew(val & ~irq, (uintptr_t)occ_clint);
 }
 
 // Set up transparent TLB
@@ -41,20 +52,20 @@ static int occamy_tlb_write(uint32_t idx, uint64_t addr_begin, uint64_t addr_end
     uint64_t page_num_first = addr_begin >> 12;
     uint64_t page_num_last = addr_end >> 12;
 
-    writew((uint32_t)  page_num_first        , (uint32_t *) (occ_quad_ctrl + QCTL_TLB_NARROW_REG_OFFSET + QCTL_TLB_REG_STRIDE * idx + 0x00) );
-    writew((uint32_t) (page_num_first >> 32) , (uint32_t *) (occ_quad_ctrl + QCTL_TLB_NARROW_REG_OFFSET + QCTL_TLB_REG_STRIDE * idx + 0x04) );
-    writew((uint32_t)  page_num_last         , (uint32_t *) (occ_quad_ctrl + QCTL_TLB_NARROW_REG_OFFSET + QCTL_TLB_REG_STRIDE * idx + 0x08) );
-    writew((uint32_t) (page_num_last >> 32)  , (uint32_t *) (occ_quad_ctrl + QCTL_TLB_NARROW_REG_OFFSET + QCTL_TLB_REG_STRIDE * idx + 0x0c) );
-    writew((uint32_t)  page_num_base         , (uint32_t *) (occ_quad_ctrl + QCTL_TLB_NARROW_REG_OFFSET + QCTL_TLB_REG_STRIDE * idx + 0x10) );
-    writew((uint32_t) (page_num_base >> 32)  , (uint32_t *) (occ_quad_ctrl + QCTL_TLB_NARROW_REG_OFFSET + QCTL_TLB_REG_STRIDE * idx + 0x14) );
-    writew((uint32_t)  flags                 , (uint32_t *) (occ_quad_ctrl + QCTL_TLB_NARROW_REG_OFFSET + QCTL_TLB_REG_STRIDE * idx + 0x18) );
-    writew((uint32_t)  page_num_first        , (uint32_t *) (occ_quad_ctrl + QCTL_TLB_WIDE_REG_OFFSET   + QCTL_TLB_REG_STRIDE * idx + 0x00) );
-    writew((uint32_t) (page_num_first >> 32) , (uint32_t *) (occ_quad_ctrl + QCTL_TLB_WIDE_REG_OFFSET   + QCTL_TLB_REG_STRIDE * idx + 0x04) );
-    writew((uint32_t)  page_num_last         , (uint32_t *) (occ_quad_ctrl + QCTL_TLB_WIDE_REG_OFFSET   + QCTL_TLB_REG_STRIDE * idx + 0x08) );
-    writew((uint32_t) (page_num_last >> 32)  , (uint32_t *) (occ_quad_ctrl + QCTL_TLB_WIDE_REG_OFFSET   + QCTL_TLB_REG_STRIDE * idx + 0x0c) );
-    writew((uint32_t)  page_num_base         , (uint32_t *) (occ_quad_ctrl + QCTL_TLB_WIDE_REG_OFFSET   + QCTL_TLB_REG_STRIDE * idx + 0x10) );
-    writew((uint32_t) (page_num_base >> 32)  , (uint32_t *) (occ_quad_ctrl + QCTL_TLB_WIDE_REG_OFFSET   + QCTL_TLB_REG_STRIDE * idx + 0x14) );
-    writew((uint32_t)  flags                 , (uint32_t *) (occ_quad_ctrl + QCTL_TLB_WIDE_REG_OFFSET   + QCTL_TLB_REG_STRIDE * idx + 0x18) );
+    writew((uint32_t)page_num_first, occamy_addr(occ_quad_ctrl, QCTL_TLB_NARROW_REG_OFFSET + QCTL_TLB_REG_STRIDE * idx + 0x00));
+    writew((uint32_t)(page_num_first >> 32), occamy_addr(occ_quad_ctrl, QCTL_TLB_NARROW_REG_OFFSET + QCTL_TLB_REG_STRIDE * idx + 0x04));
+    writew((uint32_t)page_num_last, occamy_addr(occ_quad_ctrl, QCTL_TLB_NARROW_REG_OFFSET + QCTL_TLB_REG_STRIDE * idx + 0x08));
+    writew((uint32_t)(page_num_last >> 32), occamy_addr(occ_quad_ctrl, QCTL_TLB_NARROW_REG_OFFSET + QCTL_TLB_REG_STRIDE * idx + 0x0c));
+    writew((uint32_t)page_num_base, occamy_addr(occ_quad_ctrl, QCTL_TLB_NARROW_REG_OFFSET + QCTL_TLB_REG_STRIDE * idx + 0x10));
+    writew((uint32_t)(page_num_base >> 32), occamy_addr(occ_quad_ctrl, QCTL_TLB_NARROW_REG_OFFSET + QCTL_TLB_REG_STRIDE * idx + 0x14));
+    writew((uint32_t)flags, occamy_addr(occ_quad_ctrl, QCTL_TLB_NARROW_REG_OFFSET + QCTL_TLB_REG_STRIDE * idx + 0x18));
+    writew((uint32_t)page_num_first, occamy_addr(occ_quad_ctrl, QCTL_TLB_WIDE_REG_OFFSET + QCTL_TLB_REG_STRIDE * idx + 0x00));
+    writew((uint32_t)(page_num_first >> 32), occamy_addr(occ_quad_ctrl, QCTL_TLB_WIDE_REG_OFFSET + QCTL_TLB_REG_STRIDE * idx + 0x04));
+    writew((uint32_t)page_num_last, occamy_addr(occ_quad_ctrl, QCTL_TLB_WIDE_REG_OFFSET + QCTL_TLB_REG_STRIDE * idx + 0x08));
+    writew((uint32_t)(page_num_last >> 32), occamy_addr(occ_quad_ctrl, QCTL_TLB_WIDE_REG_OFFSET + QCTL_TLB_REG_STRIDE * idx + 0x0c));
+    writew((uint32_t)page_num_base, occamy_addr(occ_quad_ctrl, QCTL_TLB_WIDE_REG_OFFSET + QCTL_TLB_REG_STRIDE * idx + 0x10));
+    writew((uint32_t)(page_num_base >> 32), occamy_addr(occ_quad_ctrl, QCTL_TLB_WIDE_REG_OFFSET + QCTL_TLB_REG_STRIDE * idx + 0x14));
+    writew((uint32_t)flags, occamy_addr(occ_quad_ctrl, QCTL_TLB_WIDE_REG_OFFSET + QCTL_TLB_REG_STRIDE * idx + 0x18));
     return 0;
 }
 
@@ -63,13 +74,13 @@ void hero_dev_reset(HeroDev *dev, unsigned full) {
     // Isolate
     occamy_set_isolation(1);
     // Reset
-    writew(0, occ_quad_ctrl + QCTL_RESET_N_REG_OFFSET);
+    writew(0, occamy_addr(occ_quad_ctrl, QCTL_RESET_N_REG_OFFSET));
     clint_clear_irq(0x1FF << 1);
     fence();
     for (volatile int i = 0; i < 16; i++)
 	;
     // De-reset
-    writew(1, occ_quad_ctrl + QCTL_RESET_N_REG_OFFSET);
+    writew(1, occamy_addr(occ_quad_ctrl, QCTL_RESET_N_REG_OFFSET));
     fence();
     // De-isolate
     occamy_set_isolation(0);
@@ -90,12 +101,12 @@ int hero_dev_mmap(HeroDev *dev) {
     CHECK_ASSERT(-1, device_fd > 0, "Can't open driver chardev\n");
 
     // Call card_mmap from the driver map address spaces
-    err |= driver_lookup_mmap(device_fd, SNITCH_CLUSTER_MMAP_ID, &occ_snitch_cluster);
-    err |= driver_lookup_mmap(device_fd, QUADRANT_CTRL_MMAP_ID, &occ_quad_ctrl);
-    err |= driver_lookup_mmap(device_fd, SOC_CTRL_MMAP_ID, &occ_soc_ctrl);
-    err |= driver_lookup_mmap(device_fd, L3_MMAP_ID, &occ_l3);
-    err |= driver_lookup_mmap(device_fd, SCRATCHPAD_WIDE_MMAP_ID, &occ_l2);
-    err |= driver_lookup_mmap(device_fd, CLINT_MMAP_ID, &occ_clint);
+    err |= occamy_lookup_mmap(device_fd, SNITCH_CLUSTER_MMAP_ID, &occ_snitch_cluster);
+    err |= occamy_lookup_mmap(device_fd, QUADRANT_CTRL_MMAP_ID, &occ_quad_ctrl);
+    err |= occamy_lookup_mmap(device_fd, SOC_CTRL_MMAP_ID, &occ_soc_ctrl);
+    err |= occamy_lookup_mmap(device_fd, L3_MMAP_ID, &occ_l3);
+    err |= occamy_lookup_mmap(device_fd, SCRATCHPAD_WIDE_MMAP_ID, &occ_l2);
+    err |= occamy_lookup_mmap(device_fd, CLINT_MMAP_ID, &occ_clint);
 
     fflush(stdout);
 
@@ -111,7 +122,7 @@ int hero_dev_mmap(HeroDev *dev) {
         pr_error("Error when allocating local_mems_tail.\n");
         goto error_driver;
     }
-    local_mems_tail->v_addr = occ_snitch_cluster;
+    local_mems_tail->v_addr = (unsigned *)occ_snitch_cluster;
     // TODO: Split lookup between device and host phy addr
     local_mems_tail->p_addr = 0xFFFFFFFF & occ_snitch_cluster_phys;
     local_mems_tail->size   = occ_snitch_cluster_size;
@@ -126,7 +137,7 @@ int hero_dev_mmap(HeroDev *dev) {
 
     // Use the upper half of the device L2 mem for the heap allocator
     l2_heap_start_phy = occ_l2_phys + ALIGN_UP(occ_l2_size / 2, O1HEAP_ALIGNMENT);
-    l2_heap_start_virt = occ_l2 + ALIGN_UP(occ_l2_size / 2, O1HEAP_ALIGNMENT);
+    l2_heap_start_virt = (uintptr_t)occ_l2 + ALIGN_UP(occ_l2_size / 2, O1HEAP_ALIGNMENT);
     l2_heap_size = occ_l2_size / 2;
     err = hero_dev_l2_init(dev);
     if(err) {
@@ -139,7 +150,7 @@ int hero_dev_mmap(HeroDev *dev) {
     uintptr_t occ_l3_phys; 
     driver_lookup_mem(device_fd, L3_MMAP_ID, &occ_l3_size, &occ_l3_phys);
     l3_heap_start_phy = occ_l3_phys + ALIGN_UP(occ_l3_size / 2, O1HEAP_ALIGNMENT);
-    l3_heap_start_virt = occ_l3 + ALIGN_UP(occ_l3_size / 2, O1HEAP_ALIGNMENT);
+    l3_heap_start_virt = (uintptr_t)occ_l3 + ALIGN_UP(occ_l3_size / 2, O1HEAP_ALIGNMENT);
     l3_heap_size = occ_l3_size / 2;
     err = hero_dev_l3_init(dev);
     if(err) {
@@ -153,7 +164,7 @@ int hero_dev_mmap(HeroDev *dev) {
         pr_error("Error when allocating l2_mems_tail.\n");
         goto error_driver;
     }
-    l2_mems_tail->v_addr = occ_l3;
+    l2_mems_tail->v_addr = (unsigned *)occ_l3;
     // TODO: Split lookup between device and host phy addr
     l2_mems_tail->p_addr = 0xFFFFFFFF & occ_l3_phys;
     l2_mems_tail->size   = occ_l3_size / 2;
@@ -173,17 +184,24 @@ int hero_dev_init(HeroDev *dev) {
     pr_trace("%p\n", dev);
 
     // Allocate sw mailboxes
-    hero_dev_alloc_mboxes(dev);
+    int err = hero_dev_alloc_mboxes(dev);
+    if (err) {
+        return err;
+    }
     // Point to the mailboxes
-    int64_t mbox_ptrs_phy;
-    struct l3_layout *mbox_ptrs = hero_dev_l3_malloc(dev, sizeof(struct l3_layout), &mbox_ptrs_phy);
+    uintptr_t mbox_ptrs_phy;
+    struct l3_layout *mbox_ptrs =
+        (struct l3_layout *)hero_dev_l3_malloc(dev, sizeof(struct l3_layout), &mbox_ptrs_phy);
+    if (!mbox_ptrs) {
+        return -ENOMEM;
+    }
 
     mbox_ptrs->h2a_mbox = (uint32_t) dev->mboxes.h2a_mbox_mem.p_addr;
     mbox_ptrs->a2h_mbox = (uint32_t) dev->mboxes.a2h_mbox_mem.p_addr;
     mbox_ptrs->a2h_rb = (uint32_t) dev->mboxes.rb_mbox_mem.p_addr;
     mbox_ptrs->heap = l3_heap_start_phy;
     // Give the poiter to the mailboxes to the device
-    writew(mbox_ptrs_phy, occ_soc_ctrl + SCTL_SCRATCH_2_REG_OFFSET);
+    writew((uint32_t)mbox_ptrs_phy, occamy_addr(occ_soc_ctrl, SCTL_SCRATCH_2_REG_OFFSET));
 
     // Setup the TLBs
     occamy_tlb_write(0, 0x01000000, 0x0101ffff, 0x3);  // BOOTROM
@@ -194,8 +212,8 @@ int hero_dev_init(HeroDev *dev) {
     occamy_tlb_write(5, 0x71000000, 0x71100000, 0x1);  // SPM wide
 
     // Enable the TLBs
-    writew(1, occ_quad_ctrl + 0x18);
-    writew(1, occ_quad_ctrl + 0x1c);
+    writew(1, occamy_addr(occ_quad_ctrl, 0x18));
+    writew(1, occamy_addr(occ_quad_ctrl, 0x1c));
 
     return 0;
 }
@@ -204,8 +222,8 @@ void hero_dev_exe_start(HeroDev *dev) {
     pr_trace("%p\n", dev);
 
     // Set entry-point, bootrom pointer and l3 layout struct pointer
-    writew((uint32_t) 0xc0000000             , occ_soc_ctrl + SCTL_SCRATCH_0_REG_OFFSET);
-    writew((uint32_t)(uint64_t)0             , occ_soc_ctrl + SCTL_SCRATCH_1_REG_OFFSET);
+    writew((uint32_t)0xc0000000, occamy_addr(occ_soc_ctrl, SCTL_SCRATCH_0_REG_OFFSET));
+    writew((uint32_t)0, occamy_addr(occ_soc_ctrl, SCTL_SCRATCH_1_REG_OFFSET));
 
     fence();
 
@@ -213,8 +231,8 @@ void hero_dev_exe_start(HeroDev *dev) {
 }
 
 int hero_dev_munmap(HeroDev *dev) {
-    int err = 0;
     pr_trace("%p\n", dev);
     hero_dev_free_mboxes(dev);
     close(device_fd);
+    return 0;
 }

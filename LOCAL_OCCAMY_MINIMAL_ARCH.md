@@ -6,7 +6,7 @@ This note is for the reduced local proof only.
 
 It does not cover:
 
-- a full user-facing HeroSDK OpenMP target application flow
+- execution of a full user-facing HeroSDK OpenMP target application flow
 - `make hero-cva6-sdk-all`
 - FPGA bitstreams
 - Linux image generation
@@ -143,6 +143,34 @@ Expected extra success lines:
 [occamy-minimal] host ELF: .../offload-axpy.elf
 [occamy-minimal] device binary: .../axpy.bin
 ```
+
+For the optional `M3` HeroSDK/OpenMP build proof, the validated follow-up
+sequence is:
+
+```bash
+source scripts/setenv.sh
+make hero-tc-gcc
+make HERO_HOST=cva6 HERO_DEVICE=occamy hero-sw-all
+make -C platforms/occamy/target/sim/sw/device/apps/libomptarget_device all
+make -C apps/omp/basic/offload_benchmark clean
+make -C apps/omp/basic/offload_benchmark DEVICES=occamy
+```
+
+Expected artifact:
+
+```text
+apps/omp/basic/offload_benchmark/offload_benchmark_occamy.elf
+```
+
+Known caveat:
+
+```text
+dangerous relocation: Mismatched R_RISCV_SUB_ULEB128 ...
+```
+
+The branch currently uses `--noinhibit-exec` for this local build proof. The
+ELF is emitted, but this is not yet a clean upstream linker fix and the ELF has
+not yet been executed through a Linux/driver-backed Occamy simulation.
 
 ## Disk Budget
 
