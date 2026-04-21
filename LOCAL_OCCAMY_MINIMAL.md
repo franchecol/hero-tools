@@ -1,7 +1,8 @@
 # Local Occamy Minimal Heterogeneous Runbook
 
 Status: validated on this machine through `M2` execution and `M3` OpenMP
-build/runtime/fake-completion plus real mailbox-runtime smokes on 2026-04-21.
+build/runtime/fake-completion, launch-capture, and real mailbox-runtime smokes
+on 2026-04-21.
 
 This note documents the smallest heterogeneous simulation path that was
 actually proven in this checkout.
@@ -64,6 +65,12 @@ Optional M3 fake-completion smoke:
 ./scripts/run-local-occamy-openmp-smoke.sh --fake-complete
 ```
 
+Optional M3 launch-capture smoke:
+
+```bash
+./scripts/run-local-occamy-openmp-smoke.sh --capture-launch
+```
+
 Optional M3 real Snitch-side mailbox-runtime smoke:
 
 ```bash
@@ -103,6 +110,14 @@ Expected M3 fake-completion smoke result on this machine:
 [occamy-openmp-smoke] target code and OpenMP map correctness are still not proven
 ```
 
+Expected M3 launch-capture smoke result on this machine:
+
+```text
+[occamy-openmp-smoke] captured 16 OpenMP launch snapshots to .../output/occamy-openmp-smoke/launches.jsonl
+[occamy-openmp-smoke] host OpenMP runtime completed with fake mailbox responses
+[occamy-openmp-smoke] target code and OpenMP map correctness are still not proven
+```
+
 Known expected fake-completion log caveat:
 
 ```text
@@ -120,6 +135,12 @@ Detailed smoke log:
 
 ```text
 output/occamy-openmp-smoke.log
+```
+
+Detailed launch-capture artifact:
+
+```text
+output/occamy-openmp-smoke/launches.jsonl
 ```
 
 Known M3 build caveat:
@@ -154,6 +175,10 @@ It only covers:
 - one fake-completion smoke run proving that the host OpenMP runtime can
   complete its target-launch/control-flow sequence if mailbox completion words
   are supplied by a fake responder
+- one launch-capture smoke run proving that the qemu OpenMP host emits concrete
+  target launch descriptors: target function address, device argument-buffer
+  address, worker count, SoC scratch registers, mailbox-layout words, and
+  argument-buffer words in the fake L3 map
 - one real Verilator mailbox-runtime smoke proving that the Snitch-side
   `libomptarget_device` manager consumes the same four-word launch protocol,
   calls a target function, writes `0x12345679` back into host-visible memory,
@@ -199,6 +224,8 @@ Known-good artifacts:
   `platforms/occamy/target/sim/sw/device/apps/libomptarget_device/build/libomptarget_device.a`
 - HeroSDK/OpenMP runtime smoke log:
   `output/occamy-openmp-smoke.log`
+- HeroSDK/OpenMP launch-capture JSONL:
+  `output/occamy-openmp-smoke/launches.jsonl`
 - RISC-V fake Occamy driver shim source:
   `sw/libhero/sim/occamy_fake_driver.c`
 - M3 mailbox-runtime host ELF:

@@ -172,6 +172,7 @@ make -C apps/omp/basic/offload_benchmark DEVICES=occamy
 ./scripts/run-local-occamy-openmp-smoke.sh
 ./scripts/run-local-occamy-openmp-smoke.sh --fake-driver
 ./scripts/run-local-occamy-openmp-smoke.sh --fake-complete
+./scripts/run-local-occamy-openmp-smoke.sh --capture-launch
 ./scripts/run-local-occamy-minimal.sh omp_mailbox
 ```
 
@@ -202,6 +203,14 @@ Expected fake-completion smoke result:
 [occamy-openmp-smoke] target code and OpenMP map correctness are still not proven
 ```
 
+Expected launch-capture smoke result:
+
+```text
+[occamy-openmp-smoke] captured 16 OpenMP launch snapshots to .../output/occamy-openmp-smoke/launches.jsonl
+[occamy-openmp-smoke] host OpenMP runtime completed with fake mailbox responses
+[occamy-openmp-smoke] target code and OpenMP map correctness are still not proven
+```
+
 Expected real mailbox-runtime smoke result:
 
 ```text
@@ -221,6 +230,12 @@ The detailed smoke log is written to:
 output/occamy-openmp-smoke.log
 ```
 
+The launch-capture JSONL is written to:
+
+```text
+output/occamy-openmp-smoke/launches.jsonl
+```
+
 Known caveat:
 
 ```text
@@ -233,9 +248,11 @@ executes the ELF far enough to load the Occamy OpenMP target plugin and reach
 device initialization, then stops because this local machine has no real
 `/dev/occamydev--1` endpoint. The `--fake-driver` mode adds a RISC-V
 `LD_PRELOAD` shim for the driver ABI and moves the boundary to target launch,
-and `--fake-complete` adds fake mailbox completion words so the host OpenMP
-runtime can finish its control path. Neither fake mode executes the
-Snitch-side runtime or validates OpenMP data mapping correctness.
+`--fake-complete` adds fake mailbox completion words so the host OpenMP
+runtime can finish its control path, and `--capture-launch` records the
+qemu-side launch descriptors and selected fake-memory contents as JSONL.
+None of these fake modes executes the Snitch-side runtime or validates OpenMP
+data mapping correctness.
 
 The separate `omp_mailbox` mode does execute the Snitch-side
 `libomptarget_device` mailbox manager in Verilator. It feeds the same

@@ -40,6 +40,10 @@
 #define MBOX_DEVICE_DONE 0x04U
 #define MBOX_DEVICE_STOP 0x0FU
 
+#define SCTL_SCRATCH_0_REG_OFFSET 0x14U
+#define SCTL_SCRATCH_1_REG_OFFSET 0x18U
+#define SCTL_SCRATCH_2_REG_OFFSET 0x1cU
+
 typedef struct HeroDev HeroDev;
 
 struct driver_ioctl_arg {
@@ -72,6 +76,7 @@ static unsigned fake_a2h_head;
 static unsigned fake_a2h_tail;
 static uint32_t fake_launch_words[4];
 static unsigned fake_launch_count;
+static unsigned fake_launch_sequence;
 
 static int fake_enabled(void) {
     const char *env = getenv("OCCAMY_FAKE_DRIVER");
@@ -81,6 +86,32 @@ static int fake_enabled(void) {
 static int fake_complete_enabled(void) {
     const char *env = getenv("OCCAMY_FAKE_DEVICE_COMPLETE");
     return fake_enabled() && env && strcmp(env, "0") != 0;
+}
+
+static const char *fake_capture_path(void) {
+    const char *env = getenv("OCCAMY_FAKE_CAPTURE_LAUNCH");
+    return (fake_enabled() && env && env[0] != '\0') ? env : NULL;
+}
+
+static int fake_capture_enabled(void) { return fake_capture_path() != NULL; }
+
+static size_t fake_capture_bytes(void) {
+    const char *env = getenv("OCCAMY_FAKE_CAPTURE_BYTES");
+    char *end = NULL;
+    unsigned long value;
+
+    if (!env || env[0] == '\0') {
+        return 128;
+    }
+
+    value = strtoul(env, &end, 0);
+    if (end == env || value == 0) {
+        return 128;
+    }
+    if (value > 4096) {
+        return 4096;
+    }
+    return (size_t)value;
 }
 
 static int fake_queue_empty(void) { return fake_a2h_tail == fake_a2h_head; }
@@ -120,6 +151,176 @@ static struct fake_region *lookup_region(int mmap_id) {
         }
     }
     return NULL;
+}
+
+static struct fake_region *lookup_region_by_paddr(uint64_t paddr) {
+    for (size_t i = 0; i < sizeof(regions) / sizeof(regions[0]); ++i) {
+        struct fake_region *region = &regions[i];
+        if (!region->mapping || paddr < region->pbase) {
+            continue;
+        }
+        if ((paddr - region->pbase) < region->size) {
+            return region;
+        }
+    }
+    return NULL;
+}
+
+static size_t mapped_bytes_available(uint64_t paddr) {
+    struct fake_region *region = lookup_region_by_paddr(paddr);
+    if (!region) {
+        return 0;
+    }
+    return region->size - (size_t)(paddr - region->pbase);
+}
+
+static void *mapped_ptr_from_paddr(uint64_t paddr, size_t size) {
+    struct fake_region *region = lookup_region_by_paddr(paddr);
+    size_t offset;
+
+    if (!region) {
+        return NULL;
+    }
+
+    offset = (size_t)(paddr - region->pbase);
+    if (size > region->size - offset) {
+        return NULL;
+    }
+    return (uint8_t *)region->mapping + offset;
+}
+
+static uint32_t read_mapped_u32(uint64_t paddr, int *ok) {
+    uint32_t value = 0;
+    void *ptr = mapped_ptr_from_paddr(paddr, sizeof(value));
+
+    if (!ptr) {
+        *ok = 0;
+        return 0;
+    }
+
+    memcpy(&value, ptr, sizeof(value));
+    *ok = 1;
+    return value;
+}
+
+static void json_region(FILE *f, const char *name, uint64_t paddr) {
+    struct fake_region *region = lookup_region_by_paddr(paddr);
+
+    fprintf(f, ",\"%s\":", name);
+    if (!region) {
+        fprintf(f, "null");
+        return;
+    }
+
+    fprintf(f,
+            "{\"mmap_id\":%d,\"pbase\":\"0x%08llx\",\"offset\":\"0x%zx\"}",
+            region->mmap_id, (unsigned long long)region->pbase,
+            (size_t)(paddr - region->pbase));
+}
+
+static void json_word_array(FILE *f, const char *name, uint64_t paddr, size_t bytes) {
+    size_t available = mapped_bytes_available(paddr);
+    size_t n_words;
+
+    fprintf(f, ",\"%s\":[", name);
+    if (available == 0) {
+        fprintf(f, "]");
+        return;
+    }
+
+    if (bytes > available) {
+        bytes = available;
+    }
+    n_words = bytes / sizeof(uint32_t);
+
+    for (size_t i = 0; i < n_words; ++i) {
+        int ok = 0;
+        uint32_t word = read_mapped_u32(paddr + i * sizeof(uint32_t), &ok);
+        if (i != 0) {
+            fprintf(f, ",");
+        }
+        if (ok) {
+            fprintf(f, "\"0x%08x\"", word);
+        } else {
+            fprintf(f, "null");
+        }
+    }
+    fprintf(f, "]");
+}
+
+static void capture_launch_packet(void) {
+    const char *path = fake_capture_path();
+    size_t bytes = fake_capture_bytes();
+    uint64_t target_fn = fake_launch_words[1];
+    uint64_t arg_ptr = fake_launch_words[2];
+    uint64_t soc_scratch_base = 0x02000000ULL;
+    int ok0 = 0;
+    int ok1 = 0;
+    int ok2 = 0;
+    uint32_t scratch0 = read_mapped_u32(soc_scratch_base + SCTL_SCRATCH_0_REG_OFFSET, &ok0);
+    uint32_t scratch1 = read_mapped_u32(soc_scratch_base + SCTL_SCRATCH_1_REG_OFFSET, &ok1);
+    uint32_t scratch2 = read_mapped_u32(soc_scratch_base + SCTL_SCRATCH_2_REG_OFFSET, &ok2);
+    FILE *f;
+
+    if (!path) {
+        return;
+    }
+
+    f = fopen(path, "a");
+    if (!f) {
+        fprintf(stderr, "[occamy-fake-driver] failed to open capture path %s: %s\n",
+                path, strerror(errno));
+        return;
+    }
+
+    fprintf(f,
+            "{\"sequence\":%u,\"start\":\"0x%08x\",\"target_fn\":\"0x%08x\","
+            "\"arg_ptr\":\"0x%08x\",\"workers\":%u",
+            ++fake_launch_sequence, fake_launch_words[0], fake_launch_words[1],
+            fake_launch_words[2], fake_launch_words[3]);
+    json_region(f, "target_region", target_fn);
+    json_region(f, "arg_region", arg_ptr);
+    json_region(f, "mailbox_layout_region", scratch2);
+    fprintf(f, ",\"soc_scratch\":{");
+    fprintf(f, "\"s0\":");
+    ok0 ? fprintf(f, "\"0x%08x\"", scratch0) : fprintf(f, "null");
+    fprintf(f, ",\"s1\":");
+    ok1 ? fprintf(f, "\"0x%08x\"", scratch1) : fprintf(f, "null");
+    fprintf(f, ",\"s2\":");
+    ok2 ? fprintf(f, "\"0x%08x\"", scratch2) : fprintf(f, "null");
+    fprintf(f, "}");
+    json_word_array(f, "mailbox_layout_words", scratch2, 16);
+    json_word_array(f, "arg_words", arg_ptr, bytes);
+    json_word_array(f, "target_words", target_fn, bytes < 64 ? bytes : 64);
+    fprintf(f, "}\n");
+    fclose(f);
+
+    fprintf(stderr, "[occamy-fake-driver] captured launch #%u to %s\n",
+            fake_launch_sequence, path);
+}
+
+static void observe_mbox_write(uint32_t word, int complete_launch) {
+    if (fake_launch_count == 0) {
+        if (word == MBOX_DEVICE_START) {
+            fake_launch_words[fake_launch_count++] = word;
+        } else if (word == MBOX_DEVICE_STOP) {
+            fprintf(stderr, "[occamy-fake-driver] observed MBOX_DEVICE_STOP\n");
+        }
+        return;
+    }
+
+    fake_launch_words[fake_launch_count++] = word;
+    if (fake_launch_count == 4) {
+        fprintf(stderr,
+                "[occamy-fake-driver] target launch fn=0x%08x args=0x%08x workers=%u\n",
+                fake_launch_words[1], fake_launch_words[2], fake_launch_words[3]);
+        capture_launch_packet();
+        if (complete_launch) {
+            fake_queue_put(MBOX_DEVICE_DONE);
+            fake_queue_put(1);
+        }
+        fake_launch_count = 0;
+    }
 }
 
 static void *map_region(struct fake_region *region, size_t requested_size) {
@@ -310,9 +511,10 @@ int close(int fd) {
 
 int hero_dev_mbox_write(HeroDev *dev, uint32_t word) {
     static int (*real_hero_dev_mbox_write)(HeroDev *, uint32_t);
-    (void)dev;
+    int complete_launch = fake_complete_enabled();
+    int capture_launch = fake_capture_enabled();
 
-    if (!fake_complete_enabled()) {
+    if (!complete_launch && !capture_launch) {
         if (!real_hero_dev_mbox_write) {
             real_hero_dev_mbox_write = must_sym("hero_dev_mbox_write");
         }
@@ -320,24 +522,13 @@ int hero_dev_mbox_write(HeroDev *dev, uint32_t word) {
     }
 
     fprintf(stderr, "[occamy-fake-driver] mbox_write 0x%08x\n", word);
+    observe_mbox_write(word, complete_launch);
 
-    if (fake_launch_count == 0) {
-        if (word == MBOX_DEVICE_START) {
-            fake_launch_words[fake_launch_count++] = word;
-        } else if (word == MBOX_DEVICE_STOP) {
-            fprintf(stderr, "[occamy-fake-driver] observed MBOX_DEVICE_STOP\n");
+    if (!complete_launch) {
+        if (!real_hero_dev_mbox_write) {
+            real_hero_dev_mbox_write = must_sym("hero_dev_mbox_write");
         }
-        return 0;
-    }
-
-    fake_launch_words[fake_launch_count++] = word;
-    if (fake_launch_count == 4) {
-        fprintf(stderr,
-                "[occamy-fake-driver] fake target launch fn=0x%08x args=0x%08x workers=%u\n",
-                fake_launch_words[1], fake_launch_words[2], fake_launch_words[3]);
-        fake_queue_put(MBOX_DEVICE_DONE);
-        fake_queue_put(1);
-        fake_launch_count = 0;
+        return real_hero_dev_mbox_write(dev, word);
     }
 
     return 0;
