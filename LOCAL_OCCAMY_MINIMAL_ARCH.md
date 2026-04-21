@@ -170,6 +170,7 @@ make -C apps/omp/basic/offload_benchmark clean
 make -C apps/omp/basic/offload_benchmark DEVICES=occamy
 ./scripts/run-local-occamy-openmp-smoke.sh
 ./scripts/run-local-occamy-openmp-smoke.sh --fake-driver
+./scripts/run-local-occamy-openmp-smoke.sh --fake-complete
 ```
 
 Expected artifact:
@@ -192,6 +193,19 @@ Expected fake-driver smoke result:
 [occamy-openmp-smoke] current expected blocker: no Snitch-side runtime/mailbox response
 ```
 
+Expected fake-completion smoke result:
+
+```text
+[occamy-openmp-smoke] host OpenMP runtime completed with fake mailbox responses
+[occamy-openmp-smoke] target code and OpenMP map correctness are still not proven
+```
+
+Known expected fake-completion log caveat:
+
+```text
+Error: map to_from did not work
+```
+
 The detailed smoke log is written to:
 
 ```text
@@ -210,8 +224,9 @@ executes the ELF far enough to load the Occamy OpenMP target plugin and reach
 device initialization, then stops because this local machine has no real
 `/dev/occamydev--1` endpoint. The `--fake-driver` mode adds a RISC-V
 `LD_PRELOAD` shim for the driver ABI and moves the boundary to target launch,
-but it still does not execute the Snitch-side runtime or validate OpenMP data
-mapping correctness.
+and `--fake-complete` adds fake mailbox completion words so the host OpenMP
+runtime can finish its control path. Neither fake mode executes the
+Snitch-side runtime or validates OpenMP data mapping correctness.
 
 ## Disk Budget
 

@@ -36,6 +36,12 @@
 #define IOCTL_DMA_ALLOC 0
 #define IOCTL_MEM_INFOS 1
 
+#define MBOX_DEVICE_START 0x02U
+#define MBOX_DEVICE_DONE 0x04U
+#define MBOX_DEVICE_STOP 0x0FU
+
+typedef struct HeroDev HeroDev;
+
 struct driver_ioctl_arg {
     size_t size;
     uint64_t result_phys_addr;
@@ -61,10 +67,41 @@ static struct fake_region regions[] = {
 };
 
 static int fake_fd = -1;
+static uint32_t fake_a2h_queue[64];
+static unsigned fake_a2h_head;
+static unsigned fake_a2h_tail;
+static uint32_t fake_launch_words[4];
+static unsigned fake_launch_count;
 
 static int fake_enabled(void) {
     const char *env = getenv("OCCAMY_FAKE_DRIVER");
     return env && strcmp(env, "0") != 0;
+}
+
+static int fake_complete_enabled(void) {
+    const char *env = getenv("OCCAMY_FAKE_DEVICE_COMPLETE");
+    return fake_enabled() && env && strcmp(env, "0") != 0;
+}
+
+static int fake_queue_empty(void) { return fake_a2h_tail == fake_a2h_head; }
+
+static int fake_queue_put(uint32_t word) {
+    unsigned next = (fake_a2h_head + 1) % (sizeof(fake_a2h_queue) / sizeof(fake_a2h_queue[0]));
+    if (next == fake_a2h_tail) {
+        return -1;
+    }
+    fake_a2h_queue[fake_a2h_head] = word;
+    fake_a2h_head = next;
+    return 0;
+}
+
+static int fake_queue_get(uint32_t *word) {
+    if (fake_queue_empty()) {
+        return -1;
+    }
+    *word = fake_a2h_queue[fake_a2h_tail];
+    fake_a2h_tail = (fake_a2h_tail + 1) % (sizeof(fake_a2h_queue) / sizeof(fake_a2h_queue[0]));
+    return 0;
 }
 
 static void *must_sym(const char *name) {
@@ -269,4 +306,62 @@ int close(int fd) {
     }
 
     return real_close(fd);
+}
+
+int hero_dev_mbox_write(HeroDev *dev, uint32_t word) {
+    static int (*real_hero_dev_mbox_write)(HeroDev *, uint32_t);
+    (void)dev;
+
+    if (!fake_complete_enabled()) {
+        if (!real_hero_dev_mbox_write) {
+            real_hero_dev_mbox_write = must_sym("hero_dev_mbox_write");
+        }
+        return real_hero_dev_mbox_write(dev, word);
+    }
+
+    fprintf(stderr, "[occamy-fake-driver] mbox_write 0x%08x\n", word);
+
+    if (fake_launch_count == 0) {
+        if (word == MBOX_DEVICE_START) {
+            fake_launch_words[fake_launch_count++] = word;
+        } else if (word == MBOX_DEVICE_STOP) {
+            fprintf(stderr, "[occamy-fake-driver] observed MBOX_DEVICE_STOP\n");
+        }
+        return 0;
+    }
+
+    fake_launch_words[fake_launch_count++] = word;
+    if (fake_launch_count == 4) {
+        fprintf(stderr,
+                "[occamy-fake-driver] fake target launch fn=0x%08x args=0x%08x workers=%u\n",
+                fake_launch_words[1], fake_launch_words[2], fake_launch_words[3]);
+        fake_queue_put(MBOX_DEVICE_DONE);
+        fake_queue_put(1);
+        fake_launch_count = 0;
+    }
+
+    return 0;
+}
+
+int hero_dev_mbox_read(const HeroDev *dev, uint32_t *buffer, size_t n_words) {
+    static int (*real_hero_dev_mbox_read)(const HeroDev *, uint32_t *, size_t);
+    (void)dev;
+
+    if (!fake_complete_enabled()) {
+        if (!real_hero_dev_mbox_read) {
+            real_hero_dev_mbox_read = must_sym("hero_dev_mbox_read");
+        }
+        return real_hero_dev_mbox_read(dev, buffer, n_words);
+    }
+
+    while (n_words--) {
+        uint32_t word = 0;
+        if (fake_queue_get(&word)) {
+            return -1;
+        }
+        buffer[n_words] = word;
+        fprintf(stderr, "[occamy-fake-driver] mbox_read  0x%08x\n", word);
+    }
+
+    return 0;
 }

@@ -15,6 +15,7 @@ TIMEOUT_SECONDS="${TIMEOUT_SECONDS:-30}"
 QEMU_RISCV64="${QEMU_RISCV64:-qemu-riscv64}"
 DO_BUILD=0
 USE_FAKE_DRIVER=0
+USE_FAKE_COMPLETE=0
 DEVICE_NODE="${OCCAMY_DEVICE_NODE:-/dev/occamydev--1}"
 
 log() {
@@ -34,6 +35,7 @@ usage() {
   cat <<'EOF'
 Usage: scripts/run-local-occamy-openmp-smoke.sh [--build]
        scripts/run-local-occamy-openmp-smoke.sh [--build] --fake-driver
+       scripts/run-local-occamy-openmp-smoke.sh [--build] --fake-complete
 
 Runs the HeroSDK/OpenMP Occamy benchmark host ELF under qemu-riscv64.
 
@@ -46,6 +48,8 @@ This is an M3 smoke test, not full heterogeneous execution:
 Options:
   --build        Rebuild the HeroSDK/OpenMP software artifacts before running.
   --fake-driver  Use a RISC-V LD_PRELOAD shim for the Occamy driver ABI.
+  --fake-complete
+                 Also fake MBOX_DEVICE_DONE responses for target launches.
 EOF
 }
 
@@ -58,6 +62,11 @@ parse_args() {
         ;;
       --fake-driver)
         USE_FAKE_DRIVER=1
+        shift
+        ;;
+      --fake-complete)
+        USE_FAKE_DRIVER=1
+        USE_FAKE_COMPLETE=1
         shift
         ;;
       -h|--help)
@@ -173,12 +182,12 @@ run_smoke() {
 
   set +e
   python3 - "$QEMU_RISCV64" "$RV64_SYSROOT" "$APP_ELF" "$SMOKE_LOG" \
-    "$TIMEOUT_SECONDS" "$guest_lib_path" "$preload_path" <<'PY'
+    "$TIMEOUT_SECONDS" "$guest_lib_path" "$preload_path" "$USE_FAKE_COMPLETE" <<'PY'
 import os
 import subprocess
 import sys
 
-qemu, sysroot, app, log_path, timeout_s, lib_path, preload_path = sys.argv[1:8]
+qemu, sysroot, app, log_path, timeout_s, lib_path, preload_path, fake_complete = sys.argv[1:9]
 env = os.environ.copy()
 env.pop("LD_PRELOAD", None)
 env.pop("LD_LIBRARY_PATH", None)
@@ -199,6 +208,8 @@ cmd = [
 ]
 if preload_path:
     cmd.extend(["-E", f"LD_PRELOAD={preload_path}", "-E", "OCCAMY_FAKE_DRIVER=1"])
+    if fake_complete == "1":
+        cmd.extend(["-E", "OCCAMY_FAKE_DEVICE_COMPLETE=1"])
 cmd.append(app)
 try:
     with open(log_path, "w", encoding="utf-8") as log:
@@ -228,6 +239,11 @@ PY
   fi
 
   if [[ ${status} -eq 0 ]]; then
+    if [[ ${USE_FAKE_COMPLETE} -eq 1 ]]; then
+      log "host OpenMP runtime completed with fake mailbox responses"
+      log "target code and OpenMP map correctness are still not proven"
+      exit 0
+    fi
     log "program exited successfully; full M3 runtime execution may now be possible"
     exit 0
   fi
@@ -254,7 +270,7 @@ PY
 
 main() {
   parse_args "$@"
-  if [[ ${USE_FAKE_DRIVER} -eq 1 && -z "${USER_TIMEOUT_SECONDS}" ]]; then
+  if [[ ${USE_FAKE_DRIVER} -eq 1 && ${USE_FAKE_COMPLETE} -eq 0 && -z "${USER_TIMEOUT_SECONDS}" ]]; then
     TIMEOUT_SECONDS=6
   fi
   source_hero_env

@@ -1,7 +1,7 @@
 # Local Occamy Minimal Heterogeneous Runbook
 
 Status: validated on this machine through `M2` execution and `M3` OpenMP
-runtime smoke on 2026-04-21.
+build/runtime/fake-completion smokes on 2026-04-21.
 
 This note documents the smallest heterogeneous simulation path that was
 actually proven in this checkout.
@@ -58,6 +58,12 @@ Optional M3 fake-driver smoke:
 ./scripts/run-local-occamy-openmp-smoke.sh --fake-driver
 ```
 
+Optional M3 fake-completion smoke:
+
+```bash
+./scripts/run-local-occamy-openmp-smoke.sh --fake-complete
+```
+
 If the OpenMP artifacts are missing or stale, rebuild before running:
 
 ```bash
@@ -82,6 +88,19 @@ Expected M3 fake-driver smoke result on this machine:
 ```text
 [occamy-openmp-smoke] reached OpenMP target launch with the fake driver
 [occamy-openmp-smoke] current expected blocker: no Snitch-side runtime/mailbox response
+```
+
+Expected M3 fake-completion smoke result on this machine:
+
+```text
+[occamy-openmp-smoke] host OpenMP runtime completed with fake mailbox responses
+[occamy-openmp-smoke] target code and OpenMP map correctness are still not proven
+```
+
+Known expected fake-completion log caveat:
+
+```text
+Error: map to_from did not work
 ```
 
 Detailed smoke log:
@@ -119,6 +138,9 @@ It only covers:
 - one fake-driver smoke run proving that the host runtime can get past the
   Occamy Linux driver ABI, load the embedded RV32 image into a simulated memory
   map, resolve the OpenMP target symbols, and reach the first target launch
+- one fake-completion smoke run proving that the host OpenMP runtime can
+  complete its target-launch/control-flow sequence if mailbox completion words
+  are supplied by a fake responder
 
 ## Scope
 
