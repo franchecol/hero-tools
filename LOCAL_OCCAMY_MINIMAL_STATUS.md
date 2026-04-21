@@ -99,11 +99,23 @@ M3 HeroSDK-shaped build and runtime smoke proof
     -> registers the embedded Occamy target image
     -> reaches __tgt_rtl_init_device(1)
 
+  fake-driver smoke run
+    -> LD_PRELOADs a RISC-V user-space shim for the Occamy driver ABI
+    -> answers the libhero open/ioctl/mmap calls for /dev/occamydev--1
+    -> provides fake SOC control, quadrant control, CLINT, L2, L3, and
+       Snitch-cluster memory maps
+    -> lets the OpenMP RTL initialize device 1
+    -> loads the embedded RV32 target image into the fake L3 map
+    -> resolves the four OpenMP target entry symbols
+    -> reaches the first __tgt_rtl_run_target_region launch
+
   Current caveat
     -> final host link still relies on --noinhibit-exec for an .eh_frame
        relocation diagnostic emitted by GNU ld
-    -> the smoke run stops at device initialization because this machine does
-       not expose /dev/occamydev--1 or an equivalent simulated driver endpoint
+    -> the no-shim smoke run stops at device initialization because this
+       machine does not expose /dev/occamydev--1
+    -> the fake-driver smoke run stops at target launch because no Snitch-side
+       runtime is connected to consume the mailbox request and send completion
 ```
 
 This is now a real heterogeneous control-path plus data-path proof.
@@ -118,6 +130,7 @@ Repo-side additions on this branch:
 - `scripts/bootstrap-local-occamy-minimal.sh`
 - `scripts/run-local-occamy-minimal.sh`
 - `scripts/run-local-occamy-openmp-smoke.sh`
+- `sw/libhero/sim/occamy_fake_driver.c`
 - `LOCAL_OCCAMY_MINIMAL.md`
 - `LOCAL_OCCAMY_MINIMAL_ARCH.md`
 - a branch-specific README note
@@ -178,6 +191,8 @@ Known-good output artifacts:
   `platforms/occamy/target/sim/sw/device/apps/libomptarget_device/build/libomptarget_device.a`
 - HeroSDK/OpenMP runtime smoke log:
   `output/occamy-openmp-smoke.log`
+- RISC-V fake Occamy driver shim:
+  `output/occamy-openmp-smoke/liboccamy_fake_driver.so`
 - host trace:
   `platforms/occamy/target/sim/trace_hart_00.dasm`
 - device trace:
@@ -199,6 +214,10 @@ What the traces demonstrate:
 - for the M3 runtime smoke, `output/occamy-openmp-smoke.log` proves that the
   host ELF starts under `qemu-riscv64`, loads the Occamy OpenMP RTL plugin,
   registers the embedded device image, and reaches device initialization
+- for the M3 fake-driver smoke, the same log proves that the OpenMP RTL gets
+  past device initialization, writes the embedded RV32 image into a fake L3
+  memory map, resolves the four target-region symbols, and reaches the first
+  OpenMP target launch
 - the host trace shows the host clearing the software interrupt, validating the
   returned buffer, and reaching the final `tohost` exit write
 
@@ -238,6 +257,8 @@ What is true now:
   `DEVICES=occamy`
 - the generated HeroSDK/OpenMP host ELF now runs far enough under `qemu-riscv64`
   to enter the Occamy OpenMP target plugin and attempt device initialization
+- the fake-driver smoke now moves the boundary past the Linux driver ABI and
+  reaches OpenMP target launch
 - the path is automated enough for reuse
 - the branch documents system prerequisites and machine setup
 - the scripts are more Linux-portable than the first local version
@@ -249,8 +270,10 @@ What is still not true:
 
 - we have not yet executed the user-facing HeroSDK OpenMP target regions on the
   Snitch-side device runtime
-- we do not yet have a real or simulated `/dev/occamydev--1` endpoint for the
-  Linux host runtime path
+- we do not yet have a real `/dev/occamydev--1` endpoint, only a local
+  user-space ABI shim for smoke testing
+- we do not yet have a Snitch-side runtime connected to the fake-driver smoke
+  path to consume mailbox launch requests
 - we have not yet validated FPGA bring-up for this reduced path
 - we do not yet have an upstream-clean linker solution for the `.eh_frame`
   relocation diagnostic in the generated offload wrapper object
@@ -344,7 +367,8 @@ Delivered:
 
 ### M3: HeroSDK-Shaped Software Proof
 
-Status: runtime smoke completed; target-region execution still pending
+Status: fake-driver target-launch smoke completed; Snitch execution still
+pending
 
 Success criteria:
 
@@ -380,6 +404,19 @@ Completed runtime-smoke subset:
 - the current run stops at `Failed to init device 1`, which is expected on this
   machine because there is no `/dev/occamydev--1` device interface
 
+Completed fake-driver subset:
+
+- `scripts/run-local-occamy-openmp-smoke.sh --fake-driver` builds and uses a
+  RISC-V `LD_PRELOAD` shim from `sw/libhero/sim/occamy_fake_driver.c`
+- the shim implements the driver ABI subset used by libhero:
+  `open`, `ioctl`, `mmap`, `munmap`, and `close`
+- the OpenMP RTL gets past `__tgt_rtl_init_device(1)`
+- the embedded RV32 image is loaded into the fake L3 memory map
+- the four target entry symbols from `offload_benchmark/main.c` are resolved
+- execution reaches `Target HERO RTL --> __tgt_rtl_run_target_region(..)`
+- the current run times out there, which is expected because no Snitch-side
+  runtime is consuming the mailbox request
+
 Known build caveat:
 
 - the final host link uses GNU ld with `--noinhibit-exec`
@@ -390,9 +427,9 @@ Known build caveat:
 
 Still missing for full M3:
 
-- provide the Occamy Linux driver interface expected by libhero
-- expose `/dev/occamydev--1` or an equivalent simulated driver endpoint
-- connect that driver endpoint to a real or simulated Occamy memory map
+- replace the fake user-space driver shim with either the real Occamy Linux
+  driver or a simulator bridge that talks to Verilator
+- connect host-side mailbox writes to a running Snitch-side device runtime
 - prove that the OpenMP target region reaches the Snitch-side device runtime
 - verify the `map(to)` and `map(tofrom)` behavior from
   `offload_benchmark/main.c`
@@ -439,8 +476,8 @@ That means:
 - stay in simulation
 - keep the reduced Occamy single-cluster configuration
 - keep the M3 build and runtime-smoke proofs frozen as the baseline
-- move from "the OpenMP ELF reaches device initialization" to "the OpenMP target
-  region reaches the Snitch-side libomptarget_device runtime"
+- move from "the OpenMP ELF reaches target launch with a fake driver" to "the
+  OpenMP target region reaches the Snitch-side libomptarget_device runtime"
 - keep the workload tiny enough that failures are still attributable
 
 Short version:
@@ -450,10 +487,11 @@ Current state:
   M0, M1, and M2 work in simulation
   M3 builds a HeroSDK/OpenMP offload ELF for Occamy
   M3 smoke-runs that ELF far enough to load the Occamy OpenMP target plugin
+  M3 fake-driver smoke reaches target launch
 
 Best next state:
-  that ELF can execute a target region through a real or simulated Occamy
-  device endpoint
+  that ELF can execute a target region through a real Verilator-connected or
+  kernel-driver-connected Occamy device endpoint
 
 Then:
   consider reduced FPGA bring-up

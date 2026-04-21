@@ -169,6 +169,7 @@ make -C platforms/occamy/target/sim/sw/device/apps/libomptarget_device all
 make -C apps/omp/basic/offload_benchmark clean
 make -C apps/omp/basic/offload_benchmark DEVICES=occamy
 ./scripts/run-local-occamy-openmp-smoke.sh
+./scripts/run-local-occamy-openmp-smoke.sh --fake-driver
 ```
 
 Expected artifact:
@@ -182,6 +183,13 @@ Expected smoke result on a machine without an Occamy Linux driver endpoint:
 ```text
 [occamy-openmp-smoke] reached the HeroSDK OpenMP runtime path
 [occamy-openmp-smoke] current expected blocker: missing /dev/occamydev--1 device interface
+```
+
+Expected fake-driver smoke result:
+
+```text
+[occamy-openmp-smoke] reached OpenMP target launch with the fake driver
+[occamy-openmp-smoke] current expected blocker: no Snitch-side runtime/mailbox response
 ```
 
 The detailed smoke log is written to:
@@ -199,8 +207,11 @@ dangerous relocation: Mismatched R_RISCV_SUB_ULEB128 ...
 The branch currently uses `--noinhibit-exec` for this local build proof. The
 ELF is emitted, but this is not yet a clean upstream linker fix. The smoke run
 executes the ELF far enough to load the Occamy OpenMP target plugin and reach
-device initialization, then stops because this local machine has no
-`/dev/occamydev--1` or equivalent simulated driver endpoint.
+device initialization, then stops because this local machine has no real
+`/dev/occamydev--1` endpoint. The `--fake-driver` mode adds a RISC-V
+`LD_PRELOAD` shim for the driver ABI and moves the boundary to target launch,
+but it still does not execute the Snitch-side runtime or validate OpenMP data
+mapping correctness.
 
 ## Disk Budget
 

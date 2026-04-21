@@ -52,6 +52,12 @@ Optional M3 HeroSDK/OpenMP runtime smoke:
 ./scripts/run-local-occamy-openmp-smoke.sh
 ```
 
+Optional M3 fake-driver smoke:
+
+```bash
+./scripts/run-local-occamy-openmp-smoke.sh --fake-driver
+```
+
 If the OpenMP artifacts are missing or stale, rebuild before running:
 
 ```bash
@@ -69,6 +75,13 @@ Expected M3 runtime smoke result on this machine:
 ```text
 [occamy-openmp-smoke] reached the HeroSDK OpenMP runtime path
 [occamy-openmp-smoke] current expected blocker: missing /dev/occamydev--1 device interface
+```
+
+Expected M3 fake-driver smoke result on this machine:
+
+```text
+[occamy-openmp-smoke] reached OpenMP target launch with the fake driver
+[occamy-openmp-smoke] current expected blocker: no Snitch-side runtime/mailbox response
 ```
 
 Detailed smoke log:
@@ -103,6 +116,9 @@ It only covers:
 - one `qemu-riscv64` smoke run proving that the generated RISC-V Linux host ELF
   loads `libomptarget.rtl.herodev_occamy.so`, registers the Occamy target image,
   and reaches `__tgt_rtl_init_device(1)`
+- one fake-driver smoke run proving that the host runtime can get past the
+  Occamy Linux driver ABI, load the embedded RV32 image into a simulated memory
+  map, resolve the OpenMP target symbols, and reach the first target launch
 
 ## Scope
 
@@ -144,6 +160,8 @@ Known-good artifacts:
   `platforms/occamy/target/sim/sw/device/apps/libomptarget_device/build/libomptarget_device.a`
 - HeroSDK/OpenMP runtime smoke log:
   `output/occamy-openmp-smoke.log`
+- RISC-V fake Occamy driver shim source:
+  `sw/libhero/sim/occamy_fake_driver.c`
 
 Required files provided by the matching Occamy fork branch:
 

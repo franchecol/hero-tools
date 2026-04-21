@@ -8,9 +8,13 @@ APP_DIR="${ROOT_DIR}/apps/omp/basic/offload_benchmark"
 APP_ELF="${APP_DIR}/offload_benchmark_occamy.elf"
 DEVICE_RUNTIME_DIR="${ROOT_DIR}/platforms/occamy/target/sim/sw/device/apps/libomptarget_device"
 SMOKE_LOG="${ROOT_DIR}/output/occamy-openmp-smoke.log"
+FAKE_DRIVER_SRC="${ROOT_DIR}/sw/libhero/sim/occamy_fake_driver.c"
+FAKE_DRIVER_SO="${ROOT_DIR}/output/occamy-openmp-smoke/liboccamy_fake_driver.so"
+USER_TIMEOUT_SECONDS="${TIMEOUT_SECONDS:-}"
 TIMEOUT_SECONDS="${TIMEOUT_SECONDS:-30}"
 QEMU_RISCV64="${QEMU_RISCV64:-qemu-riscv64}"
 DO_BUILD=0
+USE_FAKE_DRIVER=0
 DEVICE_NODE="${OCCAMY_DEVICE_NODE:-/dev/occamydev--1}"
 
 log() {
@@ -29,6 +33,7 @@ need_cmd() {
 usage() {
   cat <<'EOF'
 Usage: scripts/run-local-occamy-openmp-smoke.sh [--build]
+       scripts/run-local-occamy-openmp-smoke.sh [--build] --fake-driver
 
 Runs the HeroSDK/OpenMP Occamy benchmark host ELF under qemu-riscv64.
 
@@ -39,7 +44,8 @@ This is an M3 smoke test, not full heterogeneous execution:
     /dev/occamydev--1
 
 Options:
-  --build   Rebuild the HeroSDK/OpenMP software artifacts before running.
+  --build        Rebuild the HeroSDK/OpenMP software artifacts before running.
+  --fake-driver  Use a RISC-V LD_PRELOAD shim for the Occamy driver ABI.
 EOF
 }
 
@@ -48,6 +54,10 @@ parse_args() {
     case "$1" in
       --build)
         DO_BUILD=1
+        shift
+        ;;
+      --fake-driver)
+        USE_FAKE_DRIVER=1
         shift
         ;;
       -h|--help)
@@ -113,6 +123,21 @@ build_artifacts() {
   make -C "${APP_DIR}" DEVICES=occamy
 }
 
+build_fake_driver() {
+  local compiler="${HERO_LINUX_CROSS_COMPILE}gcc"
+
+  [[ -f "${FAKE_DRIVER_SRC}" ]] || die "missing fake driver source: ${FAKE_DRIVER_SRC}"
+  [[ -x "${compiler}" ]] || die "missing RISC-V Linux compiler: ${compiler}"
+
+  mkdir -p "$(dirname -- "${FAKE_DRIVER_SO}")"
+
+  if [[ ! -f "${FAKE_DRIVER_SO}" || "${FAKE_DRIVER_SRC}" -nt "${FAKE_DRIVER_SO}" ]]; then
+    log "building RISC-V fake Occamy driver shim"
+    "${compiler}" --sysroot="${RV64_SYSROOT}" -shared -fPIC -O2 -Wall -Wextra \
+      -o "${FAKE_DRIVER_SO}" "${FAKE_DRIVER_SRC}" -ldl
+  fi
+}
+
 check_artifacts() {
   [[ -x "${APP_ELF}" ]] || die "missing executable: ${APP_ELF} (run with --build first)"
   [[ -f "${ROOT_DIR}/sw/libhero/lib/libhero_occamy.so" ]] || die "missing libhero_occamy.so (run with --build first)"
@@ -127,10 +152,16 @@ check_artifacts() {
 run_smoke() {
   local status
   local guest_lib_path
+  local preload_path=""
 
   need_cmd "${QEMU_RISCV64}"
   need_cmd timeout
   need_cmd python3
+
+  if [[ ${USE_FAKE_DRIVER} -eq 1 ]]; then
+    build_fake_driver
+    preload_path="${FAKE_DRIVER_SO}"
+  fi
 
   mkdir -p "$(dirname -- "${SMOKE_LOG}")"
   : > "${SMOKE_LOG}"
@@ -142,19 +173,33 @@ run_smoke() {
 
   set +e
   python3 - "$QEMU_RISCV64" "$RV64_SYSROOT" "$APP_ELF" "$SMOKE_LOG" \
-    "$TIMEOUT_SECONDS" "$guest_lib_path" <<'PY'
+    "$TIMEOUT_SECONDS" "$guest_lib_path" "$preload_path" <<'PY'
 import os
 import subprocess
 import sys
 
-qemu, sysroot, app, log_path, timeout_s, lib_path = sys.argv[1:7]
+qemu, sysroot, app, log_path, timeout_s, lib_path, preload_path = sys.argv[1:8]
 env = os.environ.copy()
+env.pop("LD_PRELOAD", None)
+env.pop("LD_LIBRARY_PATH", None)
 env["QEMU_LD_PREFIX"] = sysroot
-env["LD_LIBRARY_PATH"] = lib_path
-env.setdefault("LIBOMPTARGET_DEBUG", "1")
-env.setdefault("LIBHERO_LOG", "4")
+libomptarget_debug = env.get("LIBOMPTARGET_DEBUG", "1")
+libhero_log = env.get("LIBHERO_LOG", "4")
 
-cmd = [qemu, "-L", sysroot, app]
+cmd = [
+    qemu,
+    "-L",
+    sysroot,
+    "-E",
+    f"LD_LIBRARY_PATH={lib_path}",
+    "-E",
+    f"LIBOMPTARGET_DEBUG={libomptarget_debug}",
+    "-E",
+    f"LIBHERO_LOG={libhero_log}",
+]
+if preload_path:
+    cmd.extend(["-E", f"LD_PRELOAD={preload_path}", "-E", "OCCAMY_FAKE_DRIVER=1"])
+cmd.append(app)
 try:
     with open(log_path, "w", encoding="utf-8") as log:
         completed = subprocess.run(
@@ -173,6 +218,12 @@ PY
   set -e
 
   if [[ ${status} -eq 124 ]]; then
+    if [[ ${USE_FAKE_DRIVER} -eq 1 ]] &&
+       grep -q "__tgt_rtl_run_target_region" "${SMOKE_LOG}"; then
+      log "reached OpenMP target launch with the fake driver"
+      log "current expected blocker: no Snitch-side runtime/mailbox response"
+      exit 0
+    fi
     die "smoke run timed out after ${TIMEOUT_SECONDS}s; see ${SMOKE_LOG}"
   fi
 
@@ -189,12 +240,23 @@ PY
     exit 0
   fi
 
+  if [[ ${USE_FAKE_DRIVER} -eq 1 ]] &&
+     grep -q "Successfully loaded library 'libomptarget.rtl.herodev_occamy.so'" "${SMOKE_LOG}" &&
+     grep -q "__tgt_rtl_load_binary" "${SMOKE_LOG}"; then
+    log "fake driver moved execution past device initialization"
+    log "current blocker is beyond the Linux driver ABI; see ${SMOKE_LOG}"
+    exit 0
+  fi
+
   tail -n 40 "${SMOKE_LOG}" >&2 || true
   die "smoke run failed before the expected HeroSDK runtime boundary; see ${SMOKE_LOG}"
 }
 
 main() {
   parse_args "$@"
+  if [[ ${USE_FAKE_DRIVER} -eq 1 && -z "${USER_TIMEOUT_SECONDS}" ]]; then
+    TIMEOUT_SECONDS=6
+  fi
   source_hero_env
 
   if [[ ${DO_BUILD} -eq 1 ]]; then
