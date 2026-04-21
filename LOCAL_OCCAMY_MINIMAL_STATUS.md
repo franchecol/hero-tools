@@ -132,6 +132,20 @@ M3 HeroSDK-shaped build and runtime smoke proof
     -> preserves the memory image needed to start a future Verilator replay
        from a concrete qemu-generated OpenMP launch
 
+  captured-launch Verilator replay
+    -> consumes launch 1 from the qemu/fake-driver capture artifacts
+    -> builds a temporary bare-metal CVA6 replay host under
+       output/occamy-openmp-replay
+    -> rewrites the captured fake-driver mailbox state into L3 so both the
+       CVA6 host and Snitch mailbox manager can access it in simulation
+    -> adapts the captured Linux-driver boot state to the Occamy sim bootrom
+       convention by programming scratch1 with the Snitch entry point
+    -> wakes the real Snitch-side libomptarget_device mailbox manager
+    -> sends the captured OpenMP launch words through the real ring-buffer
+       mailbox path
+    -> reaches the captured RV32 OpenMP target entry point at 0xc000044c
+    -> returns to the CVA6 host and exits Verilator successfully
+
   real mailbox-runtime smoke run
     -> builds a bare-metal CVA6 host app and RV32 Snitch payload
     -> runs the Snitch-side libomptarget_device mailbox manager in Verilator
@@ -153,8 +167,11 @@ M3 HeroSDK-shaped build and runtime smoke proof
        "Error: map to_from did not work"
     -> the launch-capture smoke records qemu-side launch and memory descriptors,
        but it is still an offline snapshot, not a live qemu-to-Verilator bridge
-    -> the replay-snapshot smoke writes replay inputs, but no Verilator harness
-       consumes those files yet
+    -> the captured-launch Verilator replay is still an offline transformed
+       snapshot replay, not a live qemu-to-Verilator bridge
+    -> the captured-launch Verilator replay has only proven launch 1, an empty
+       first OpenMP target region, not the full benchmark sequence or map(tofrom)
+       correctness
     -> the real mailbox-runtime smoke is not yet wired to the Linux/qemu
        HeroSDK OpenMP host process; it proves the device-side protocol in
        Verilator, not the full user-facing OpenMP map/tofrom flow
@@ -176,6 +193,7 @@ Repo-side additions on this branch:
   qemu-side OpenMP launch snapshots
 - `scripts/run-local-occamy-openmp-smoke.sh --capture-snapshot` mode for
   per-launch fake-region binary dumps
+- `scripts/run-local-occamy-openmp-replay.sh`
 - `sw/libhero/sim/occamy_fake_driver.c`
 - fake-driver `OCCAMY_FAKE_CAPTURE_LAUNCH` JSONL capture support
 - fake-driver `OCCAMY_FAKE_CAPTURE_DIR` replay-snapshot support
@@ -247,6 +265,10 @@ Known-good output artifacts:
   `output/occamy-openmp-smoke/launches.jsonl`
 - HeroSDK/OpenMP replay-snapshot manifest:
   `output/occamy-openmp-smoke/snapshots/snapshots.jsonl`
+- HeroSDK/OpenMP captured-launch replay host ELF:
+  `output/occamy-openmp-replay/openmp-replay.elf`
+- HeroSDK/OpenMP captured-launch replay config:
+  `output/occamy-openmp-replay/replay_config.h`
 - RISC-V fake Occamy driver shim:
   `output/occamy-openmp-smoke/liboccamy_fake_driver.so`
 - M3 mailbox-runtime host ELF:

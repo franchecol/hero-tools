@@ -1,8 +1,8 @@
 # Local Occamy Minimal Heterogeneous Runbook
 
 Status: validated on this machine through `M2` execution and `M3` OpenMP
-build/runtime/fake-completion, launch-capture, and real mailbox-runtime smokes
-on 2026-04-21.
+build/runtime/fake-completion, launch-capture, replay, and real
+mailbox-runtime smokes on 2026-04-21.
 
 This note documents the smallest heterogeneous simulation path that was
 actually proven in this checkout.
@@ -77,6 +77,12 @@ Optional M3 replay-snapshot smoke:
 ./scripts/run-local-occamy-openmp-smoke.sh --capture-snapshot
 ```
 
+Optional M3 captured-launch Verilator replay:
+
+```bash
+./scripts/run-local-occamy-openmp-replay.sh --sequence 1
+```
+
 Optional M3 real Snitch-side mailbox-runtime smoke:
 
 ```bash
@@ -133,6 +139,13 @@ Expected M3 replay-snapshot smoke result on this machine:
 [occamy-openmp-smoke] target code and OpenMP map correctness are still not proven
 ```
 
+Expected M3 captured-launch Verilator replay result on this machine:
+
+```text
+[occamy-openmp-replay] success
+[occamy-openmp-replay] sequence: 1
+```
+
 Known expected fake-completion log caveat:
 
 ```text
@@ -165,6 +178,15 @@ output/occamy-openmp-smoke/snapshots/snapshots.jsonl
 output/occamy-openmp-smoke/snapshots/launch-0001-l3.bin
 output/occamy-openmp-smoke/snapshots/launch-0001-scratchpad_wide.bin
 ...
+```
+
+Detailed captured-launch replay artifacts:
+
+```text
+output/occamy-openmp-replay/openmp-replay.elf
+output/occamy-openmp-replay/replay_config.h
+output/occamy-openmp-replay/l3_replay.bin
+output/occamy-openmp-replay/mailbox_snapshot.bin
 ```
 
 Known M3 build caveat:
@@ -206,6 +228,10 @@ It only covers:
 - one replay-snapshot smoke run proving that those qemu-side launch descriptors
   can be paired with per-launch binary dumps of the fake Occamy regions needed
   for Verilator replay work
+- one captured-launch Verilator replay proving that a qemu-generated OpenMP
+  launch descriptor can be transformed into a bare-metal CVA6 replay harness,
+  consumed by the real Snitch-side mailbox manager, and dispatched to the
+  captured RV32 OpenMP target entry point
 - one real Verilator mailbox-runtime smoke proving that the Snitch-side
   `libomptarget_device` manager consumes the same four-word launch protocol,
   calls a target function, writes `0x12345679` back into host-visible memory,

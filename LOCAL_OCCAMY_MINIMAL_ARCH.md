@@ -20,6 +20,7 @@ It covers the minimal local Verilator path driven by:
 It also covers the optional `M3` OpenMP runtime smoke driven by:
 
 - `scripts/run-local-occamy-openmp-smoke.sh`
+- `scripts/run-local-occamy-openmp-replay.sh`
 - `scripts/run-local-occamy-minimal.sh omp_mailbox`
 
 If your checkout does not contain those scripts, you are not on the local
@@ -80,6 +81,7 @@ This quickstart assumes the checkout already contains:
 - `scripts/bootstrap-local-occamy-minimal.sh`
 - `scripts/run-local-occamy-minimal.sh`
 - `scripts/run-local-occamy-openmp-smoke.sh`
+- `scripts/run-local-occamy-openmp-replay.sh`
 
 Quick sanity check:
 
@@ -87,6 +89,7 @@ Quick sanity check:
 test -x scripts/bootstrap-local-occamy-minimal.sh
 test -x scripts/run-local-occamy-minimal.sh
 test -x scripts/run-local-occamy-openmp-smoke.sh
+test -x scripts/run-local-occamy-openmp-replay.sh
 ```
 
 If either command fails, your checkout does not yet include the reduced local
@@ -174,6 +177,7 @@ make -C apps/omp/basic/offload_benchmark DEVICES=occamy
 ./scripts/run-local-occamy-openmp-smoke.sh --fake-complete
 ./scripts/run-local-occamy-openmp-smoke.sh --capture-launch
 ./scripts/run-local-occamy-openmp-smoke.sh --capture-snapshot
+./scripts/run-local-occamy-openmp-replay.sh --sequence 1
 ./scripts/run-local-occamy-minimal.sh omp_mailbox
 ```
 
@@ -221,6 +225,13 @@ Expected replay-snapshot smoke result:
 [occamy-openmp-smoke] target code and OpenMP map correctness are still not proven
 ```
 
+Expected captured-launch Verilator replay result:
+
+```text
+[occamy-openmp-replay] success
+[occamy-openmp-replay] sequence: 1
+```
+
 Expected real mailbox-runtime smoke result:
 
 ```text
@@ -250,6 +261,14 @@ The replay-snapshot manifest is written to:
 
 ```text
 output/occamy-openmp-smoke/snapshots/snapshots.jsonl
+```
+
+The captured-launch replay artifacts are written to:
+
+```text
+output/occamy-openmp-replay/openmp-replay.elf
+output/occamy-openmp-replay/replay_config.h
+output/occamy-openmp-replay/l3_replay.bin
 ```
 
 Known caveat:

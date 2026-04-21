@@ -13,6 +13,7 @@ REPLAY_DIR="${ROOT_DIR}/output/occamy-openmp-replay"
 HOST_ELF="${REPLAY_DIR}/openmp-replay.elf"
 HOST_DUMP="${REPLAY_DIR}/openmp-replay.dump"
 SEQUENCE=1
+REPLAY_TIMEOUT="${REPLAY_TIMEOUT:-180}"
 CANONICAL_RISCV_PREFIX="riscv64-unknown-elf-"
 RISCV_SRC_PREFIX=""
 USER_BIN_DIR="${HOME}/bin"
@@ -43,7 +44,7 @@ It consumes the qemu-side files produced by:
 Then it builds a temporary bare-metal CVA6 host harness that:
 
   - loads one captured fake L3 image into Verilator memory
-  - loads one captured fake scratchpad-wide image into Verilator memory
+  - relocates the captured mailbox ring-buffer state into L3 for simulator reachability
   - adapts the captured Linux-driver boot state to the sim bootrom convention
   - sends the captured four-word OpenMP launch to the real Snitch mailbox manager
 
@@ -204,6 +205,7 @@ generate_replay_sources() {
   python3 - "${SEQUENCE}" "${LAUNCHES_JSONL}" "${SNAPSHOT_DIR}/snapshots.jsonl" \
     "${SNAPSHOT_DIR}" "${REPLAY_DIR}" <<'PY'
 import json
+import struct
 import sys
 from pathlib import Path
 
@@ -243,11 +245,101 @@ for required in ("l3", "scratchpad_wide"):
 def c_u32(value):
     return f"0x{int(value, 16):08x}u"
 
+l3_region = regions["l3"]
+scratchpad_region = regions["scratchpad_wide"]
+l3_base = int(l3_region["pbase"], 16)
+scratchpad_base = int(scratchpad_region["pbase"], 16)
+l3_image = (snapshot_dir / l3_region["file"]).read_bytes()
+scratchpad_image = (snapshot_dir / scratchpad_region["file"]).read_bytes()
+
 scratch = launch["soc_scratch"]
 mailbox_layout = int(scratch["s2"], 16)
 device_entry = int(scratch["s0"], 16)
 if device_entry == 0:
     device_entry = 0xC0000000
+
+layout_offset = mailbox_layout - l3_base
+if layout_offset < 0 or layout_offset + 16 > len(l3_image):
+    raise SystemExit(
+        f"mailbox layout {mailbox_layout:#x} is outside L3 snapshot "
+        f"{l3_base:#x}..{l3_base + len(l3_image):#x}"
+    )
+
+layout_words = struct.unpack_from("<4I", l3_image, layout_offset)
+ring_addrs = layout_words[:3]
+ring_struct = struct.Struct("<IIIIQQ")
+spans = []
+
+for rb_paddr in ring_addrs:
+    rb_offset = rb_paddr - scratchpad_base
+    if rb_offset < 0 or rb_offset + ring_struct.size > len(scratchpad_image):
+        raise SystemExit(
+            f"ring buffer {rb_paddr:#x} is outside scratchpad snapshot "
+            f"{scratchpad_base:#x}..{scratchpad_base + len(scratchpad_image):#x}"
+        )
+
+    head, size, tail, element_size, data_v, data_p = ring_struct.unpack_from(
+        scratchpad_image, rb_offset
+    )
+    data_bytes = size * element_size
+    spans.append((rb_paddr, rb_paddr + ring_struct.size))
+
+    if data_p != 0 and data_bytes != 0:
+        data_offset = data_p - scratchpad_base
+        if data_offset < 0 or data_offset + data_bytes > len(scratchpad_image):
+            raise SystemExit(
+                f"ring data {data_p:#x}+{data_bytes:#x} is outside scratchpad snapshot "
+                f"{scratchpad_base:#x}..{scratchpad_base + len(scratchpad_image):#x}"
+            )
+        spans.append((data_p, data_p + data_bytes))
+
+mailbox_snapshot_base = min(start for start, _ in spans)
+mailbox_snapshot_end = max(end for _, end in spans)
+mailbox_snapshot = bytearray(scratchpad_image[
+    mailbox_snapshot_base - scratchpad_base : mailbox_snapshot_end - scratchpad_base
+])
+
+mailbox_snapshot_size = len(mailbox_snapshot)
+search_start = max(0, len(l3_image) - 0x4000)
+search_end = len(l3_image) - mailbox_snapshot_size
+mailbox_replay_offset = None
+for candidate in range(search_end & ~0x7, search_start - 1, -8):
+    if all(byte == 0 for byte in l3_image[candidate : candidate + mailbox_snapshot_size]):
+        mailbox_replay_offset = candidate
+        break
+if mailbox_replay_offset is None:
+    raise SystemExit(
+        f"could not find {mailbox_snapshot_size} zero bytes in the L3 replay heap"
+    )
+mailbox_replay_base = l3_base + mailbox_replay_offset
+
+relocated_ring_addrs = []
+for rb_paddr in ring_addrs:
+    rel = rb_paddr - mailbox_snapshot_base
+    head, size, tail, element_size, data_v, data_p = ring_struct.unpack_from(
+        mailbox_snapshot, rel
+    )
+    relocated_rb = mailbox_replay_base + rel
+    relocated_data = mailbox_replay_base + (data_p - mailbox_snapshot_base)
+    ring_struct.pack_into(
+        mailbox_snapshot,
+        rel,
+        head,
+        size,
+        tail,
+        element_size,
+        relocated_data,
+        relocated_data,
+    )
+    relocated_ring_addrs.append(relocated_rb)
+
+l3_replay = bytearray(l3_image)
+struct.pack_into("<III", l3_replay, layout_offset, *relocated_ring_addrs)
+l3_replay[
+    mailbox_replay_offset : mailbox_replay_offset + mailbox_snapshot_size
+] = mailbox_snapshot
+(replay_dir / "l3_replay.bin").write_bytes(l3_replay)
+(replay_dir / "mailbox_snapshot.bin").write_bytes(mailbox_snapshot)
 
 config = replay_dir / "replay_config.h"
 config.write_text(
@@ -260,6 +352,9 @@ config.write_text(
             f"#define REPLAY_TARGET_FN {c_u32(launch['target_fn'])}",
             f"#define REPLAY_ARG_PTR {c_u32(launch['arg_ptr'])}",
             f"#define REPLAY_WORKERS {int(launch['workers'])}u",
+            f"#define REPLAY_MAILBOX_ORIGINAL_BASE {c_u32(hex(mailbox_snapshot_base))}",
+            f"#define REPLAY_MAILBOX_REPLAY_BASE {c_u32(hex(mailbox_replay_base))}",
+            f"#define REPLAY_MAILBOX_REPLAY_SIZE {mailbox_snapshot_size}u",
             "",
         ]
     ),
@@ -271,15 +366,8 @@ snapshot_asm.write_text(
     f"""
 .section .replay_l3,\"aw\",@progbits
 .balign 16
-.incbin \"{(snapshot_dir / regions['l3']['file']).resolve()}\"
+.incbin \"{(replay_dir / 'l3_replay.bin').resolve()}\"
 .balign 16
-.section .rodata.snapshot_scratchpad_wide,\"a\",@progbits
-.balign 16
-.global snapshot_scratchpad_wide_start
-.global snapshot_scratchpad_wide_end
-snapshot_scratchpad_wide_start:
-.incbin \"{(snapshot_dir / regions['scratchpad_wide']['file']).resolve()}\"
-snapshot_scratchpad_wide_end:
 """.lstrip(),
     encoding="utf-8",
 )
@@ -351,8 +439,6 @@ EOF
 #include "replay_config.h"
 #include "host.c"
 
-#define SCRATCHPAD_WIDE_BASE 0x71000000u
-
 #define MBOX_DEVICE_START 0x02u
 #define MBOX_DEVICE_DONE 0x04u
 
@@ -364,48 +450,6 @@ struct ring_buf {
     uint64_t data_v;
     uint64_t data_p;
 };
-
-extern const uint8_t snapshot_scratchpad_wide_start[];
-extern const uint8_t snapshot_scratchpad_wide_end[];
-
-static const uint8_t *scratchpad_snapshot_ptr(uintptr_t paddr) {
-    return snapshot_scratchpad_wide_start + (paddr - SCRATCHPAD_WIDE_BASE);
-}
-
-static void copy_to_device(uintptr_t dst_addr, const uint8_t *src, size_t bytes) {
-    volatile uint64_t *dst64 = (volatile uint64_t *)dst_addr;
-    const uint64_t *src64 = (const uint64_t *)src;
-    size_t words = bytes / sizeof(uint64_t);
-
-    for (size_t i = 0; i < words; ++i) {
-        dst64[i] = src64[i];
-    }
-
-    for (size_t i = words * sizeof(uint64_t); i < bytes; ++i) {
-        ((volatile uint8_t *)dst_addr)[i] = src[i];
-    }
-}
-
-static void copy_ring_snapshot(uintptr_t rb_paddr) {
-    const struct ring_buf *src_rb = (const struct ring_buf *)scratchpad_snapshot_ptr(rb_paddr);
-    size_t data_bytes = (size_t)src_rb->size * (size_t)src_rb->element_size;
-
-    copy_to_device(rb_paddr, (const uint8_t *)src_rb, sizeof(*src_rb));
-    if (src_rb->data_p != 0 && data_bytes != 0) {
-        copy_to_device((uintptr_t)src_rb->data_p,
-                       scratchpad_snapshot_ptr((uintptr_t)src_rb->data_p),
-                       data_bytes);
-    }
-}
-
-static void copy_scratchpad_snapshot(void) {
-    volatile uint32_t *layout = (volatile uint32_t *)(uintptr_t)REPLAY_MAILBOX_LAYOUT;
-
-    copy_ring_snapshot(layout[0]);
-    copy_ring_snapshot(layout[1]);
-    copy_ring_snapshot(layout[2]);
-    fence();
-}
 
 static volatile struct ring_buf *layout_word(unsigned index) {
     volatile uint32_t *layout = (volatile uint32_t *)(uintptr_t)REPLAY_MAILBOX_LAYOUT;
@@ -453,7 +497,6 @@ int main(void) {
     uint32_t dma_wait_cycles = 0;
 
     set_d_cache_enable(0);
-    copy_scratchpad_snapshot();
 
     reset_and_ungate_quadrants();
     deisolate_all();
@@ -519,10 +562,10 @@ run_replay() {
   rm -f "${SIM_DIR}/uart0.log" "${SIM_DIR}/trace_hart_00.dasm"
   rm -f "${SIM_DIR}/logs/trace_hart_0000"*.dasm
 
-  log "running replay simulation"
+  log "running replay simulation (timeout ${REPLAY_TIMEOUT}s)"
   (
     cd "${SIM_DIR}"
-    "${sim_bin}" "${HOST_ELF}"
+    timeout "${REPLAY_TIMEOUT}" "${sim_bin}" "${HOST_ELF}"
   )
 }
 
@@ -549,6 +592,7 @@ main() {
   need_cmd python3
   need_cmd make
   need_cmd rg
+  need_cmd timeout
   need_cmd bender
   need_cmd verilator
   need_cmd dtc
