@@ -1,8 +1,14 @@
 # Local Occamy FPGA Bring-Up Plan
 
-This is the handoff document from the local M3 simulation/replay proof to a
-small FPGA proof.  It intentionally does not claim that the qemu/Verilator
-bridge is a real platform endpoint.
+This is the M4 handoff from the local M3 simulation/replay proof to a small
+FPGA proof.  It intentionally does not claim that the qemu/Verilator bridge is
+a real platform endpoint.
+
+For the complete M3 freeze and local reproduction guide, read:
+
+```text
+LOCAL_OCCAMY.md
+```
 
 ## Current Baseline
 
@@ -43,6 +49,9 @@ Each contains:
 output/occamy-openmp-smoke.log contains no:
   Error: map to_from did not work
 ```
+
+If this baseline is stale or missing on a new machine, rebuild it using the M3
+commands in `LOCAL_OCCAMY.md` before spending FPGA build time.
 
 ## Scope Boundary
 

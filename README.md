@@ -1,43 +1,50 @@
-# HeroSDK
+# hero-tools Occamy Minimal Branch
 
-HeroSDK is an open-research software development kit for heterogeneous RISC-V platforms. This project enables deploying accelerated Linux user space applications using OpenMP target for programmable multi-core clusters. We currently target [Carfield](https://github.com/pulp-platform/carfield/) and [Occamy](https://github.com/pulp-platform/occamy/).
+This fork branch adds a reduced local Occamy flow for staged HeroSDK/Occamy
+validation.
 
-__HeroSDK is a continuity of Hero and HeroV2 but both projects are not yet compatible. Use the [original Hero repository](https://github.com/pulp-platform/hero) for everything referred to [HeroV2](https://arxiv.org/abs/2201.03861).__
+Branch identity:
 
-HeroSDK is developed as part of the [PULP project](https://pulp-platform.org/), a joint effort between ETH Zurich and the University of Bologna.
+```text
+hero-tools fork:  franchecol/hero-tools
+hero-tools branch: occamy-minimal-bootstrap
+Occamy fork:      franchecol/occamy
+Occamy branch:    occamy-minimal-bootstrap
+```
 
-## Fork-specific note
+Current branch status:
 
-The branch `occamy-minimal-bootstrap` in the fork
-`franchecol/hero-tools` adds a reduced local Verilator flow for the minimal
-Occamy proof used in this checkout.
+```text
+M0: completed minimal control-path proof in Verilator.
+M1: completed shared-memory data-path proof in Verilator.
+M2: completed reduced axpy offload proof using the HeroSDK RV32 LLVM path.
+M3: frozen HeroSDK/OpenMP simulation proof.
+M4: next milestone, reduced FPGA bring-up.
+```
 
-Current validated state on that branch:
+The M3 freeze is not a full live qemu-to-Verilator device model.  It proves
+that the HeroSDK/OpenMP cva6/occamy stack builds, qemu reaches the Occamy
+OpenMP plugin, all 16 captured OpenMP launches can be gated on Verilator replay
+success, and the five `map(tofrom)` launches receive replay-derived W32
+copybacks without the benchmark printing `Error: map to_from did not work`.
 
-- `M0`: `minimal_irq` control-path proof
-- `M1`: `roundtrip` shared-memory proof
-- `M2`: reduced `axpy` offload proof using the HeroSDK RV32 LLVM toolchain
+The next intended step is FPGA bring-up with the tiny
+`apps/omp/basic/map_tofrom_u32` probe, not further expansion of the
+qemu/Verilator replay bridge.
 
-That branch now expects the matching Occamy fork branch to carry the actual
-simulator and app changes:
+## Start Here
 
-- `https://github.com/franchecol/occamy.git`
-- branch `occamy-minimal-bootstrap`
-
-Those four commands below are only the repo-side path.
-The machine still needs the required system dependencies first.
-
-On a stock Arch Linux install, use:
+On a stock Arch Linux install:
 
 ```bash
 sudo pacman -Syu
-sudo pacman -S --needed base-devel git python ripgrep bc dtc verilator bender riscv64-elf-gcc
+sudo pacman -S --needed base-devel git python ripgrep bc dtc verilator bender riscv64-elf-gcc qemu-user
 ```
 
-On Debian/Ubuntu/Mint and similar distributions, install the equivalent tools
-first, then use the same repo-side commands.
+On Debian/Ubuntu/Mint and similar distributions, install equivalent tools and
+use the same repo-side commands.
 
-After the dependencies are in place, the shortest first run is:
+Fresh checkout:
 
 ```bash
 git clone https://github.com/franchecol/hero-tools.git
@@ -46,79 +53,94 @@ git switch occamy-minimal-bootstrap
 ./scripts/bootstrap-local-occamy-minimal.sh
 ```
 
-That bootstrap validates the `M0` baseline.
-
-Useful follow-up reruns are:
+Useful reruns:
 
 ```bash
 ./scripts/run-local-occamy-minimal.sh roundtrip
 source scripts/setenv.sh
 make hero-tc-llvm-axpy
 ./scripts/run-local-occamy-minimal.sh axpy
+./scripts/run-local-occamy-openmp-replay-bridge.sh --all
 ```
 
-What the bootstrap does now:
+## Local Docs
 
-- clones `platforms/occamy` from `franchecol/occamy` if it is missing
-- checks that the existing `platforms/occamy` checkout matches the expected
-  fork branch
-- then hands off to the runner script for environment setup, build, and trace
-  verification
+The branch-local docs have been consolidated to avoid conflicting runbooks:
 
-Supporting notes for that reduced path:
+```text
+LOCAL_OCCAMY.md
+  M3 freeze status, local setup, reproduction commands, evidence, caveats,
+  and milestone summary.
 
-- `LOCAL_OCCAMY_MINIMAL_ARCH.md` explains the full stock-Arch setup
-- `LOCAL_OCCAMY_MINIMAL_STATUS.md` records current status, boundaries, and milestones
-- `LOCAL_OCCAMY_MINIMAL.md` gives the validated local runbook, including the
-  reduced `axpy` path
-
-This note is specific to the fork branch above. For the broader upstream
-HeroSDK setup, keep following the normal documentation below.
-
-## This repository
-
-The HeroSDK contains compilers (Linux GCC & Bare metal LLVM), Linux kernel modules, host and device runtimes. See the figure felow for more informations.
-
-![image](docs/img/hero_sdk_stack.png)
-
-## This repository
-
-First, fetch the required repositories:
-
-```bash
-git submodule update --init --recursive
+LOCAL_OCCAMY_FPGA_BRINGUP.md
+  M4 handoff: VCU128-oriented FPGA path, first correctness probe,
+  milestones, and stop conditions.
 ```
 
-This repository contains the following directories:
+The older root-level notes `LOCAL_OCCAMY_MINIMAL.md`,
+`LOCAL_OCCAMY_MINIMAL_ARCH.md`, and `LOCAL_OCCAMY_MINIMAL_STATUS.md` were merged
+into `LOCAL_OCCAMY.md`.
 
-| Directory    | Contains                                                                                         |
-| ------------ | ------------------------------------------------------------------------------------------------ |
-| `apps`       | Some example applications using OpenMP                                                           |
-| `artifacts`  | Automatically managed artifact cache                                                             |
-| `cva6-sdk`   | The cva6-sdk git submodule containing Buildroot                                                  |
-| `docs`       | Files used to build the documentation                                                            |
-| `install`*   | LLVM and compiled binaries and libraries. Also contains device's compiled newlibs.               |
-| `output`*    | Intermediary compilation folder for LLVM and newlibs.                                            |
-| `platforms`* | The hardware platforms available (cloned on demand)                                              |
-| `scripts`    | Helper scripts                                                                                   |
-| `sw`         | Hero runtime library, LLVM libraries, the OpenMP target runtime library, and the device drivers  |
-| `toolchain`  | An LLVM fork containing the Hero OpenMP target runtime library implementation                    |
-_* generated files_
-## Getting started
+## Upstream HeroSDK
 
-To build the software stack, compile a FPGA bitstream, get a Linux image, and more, go to [Getting Started](gs.md).
+HeroSDK is an open-research software development kit for heterogeneous RISC-V
+platforms.  It enables accelerated Linux userspace applications using OpenMP
+target for programmable multi-core clusters.  The upstream project currently
+targets Carfield and Occamy.
 
-## Dependencies
+HeroSDK continues the Hero and HeroV2 line, but those projects are not yet
+compatible with this repository.  Use the original Hero repository for work
+that specifically refers to HeroV2.
 
-This project contains the following dependancies:
-- [CVA6-sdk](https://github.com/pulp-platform/cva6-sdk/) to build Linux images using [Buildroot](https://buildroot.org/).
-- [llvm-project](https://github.com/llvm/llvm-project) to build the heterogeneous compiler and OpenMP target runtime.
-- [o1heap](https://github.com/pavel-kirienko/o1heap) to manage dynamic memory allocation for device.
+HeroSDK is developed as part of the PULP project, a joint effort between ETH
+Zurich and the University of Bologna.
+
+## Upstream Repository Layout
+
+```text
+apps/
+  Example OpenMP applications.
+
+artifacts/
+  Automatically managed artifact cache.
+
+cva6-sdk/
+  Buildroot-based CVA6 SDK submodule.
+
+docs/
+  Documentation sources.
+
+install/
+  Generated LLVM, binaries, libraries, and device newlibs.
+
+output/
+  Generated intermediate build output.
+
+platforms/
+  Hardware platforms cloned on demand.
+
+scripts/
+  Helper scripts.
+
+sw/
+  Hero runtime library, LLVM libraries, OpenMP target runtime, and drivers.
+
+toolchain/
+  LLVM fork containing the Hero OpenMP target runtime implementation.
+```
+
+Generated directories such as `install/`, `output/`, and `platforms/` can be
+large and are not part of the small source-only view of the branch.
+
+## Upstream Dependencies
+
+HeroSDK uses:
+
+- `cva6-sdk` for Linux images through Buildroot.
+- `llvm-project` for the heterogeneous compiler and OpenMP target runtime.
+- `o1heap` for device-side dynamic memory allocation.
 
 ## License
 
-Unless specified otherwise in the respective file headers, all code checked into this repository is made available under a permissive license. All software sources are licensed under Apache 2.0.
-
-## References
-
-_(To come)_
+Unless specified otherwise in individual file headers, software sources in this
+repository are licensed under Apache 2.0.
