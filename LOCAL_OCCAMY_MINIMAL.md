@@ -83,6 +83,12 @@ Optional M3 captured-launch Verilator replay:
 ./scripts/run-local-occamy-openmp-replay.sh --all
 ```
 
+Optional M3 online replay-bridge smoke:
+
+```bash
+./scripts/run-local-occamy-openmp-replay-bridge.sh --max-launches 4
+```
+
 Optional single-launch replay for debugging:
 
 ```bash
@@ -157,6 +163,22 @@ All 16 captured launches were replayed successfully through the real
 Snitch-side mailbox dispatch path. These are still offline per-launch replays,
 not a continuous qemu-to-Verilator execution of the full benchmark.
 
+Expected M3 online replay-bridge smoke result on this machine:
+
+```text
+[occamy-openmp-bridge] bridged launch 1: success
+[occamy-openmp-bridge] bridged launch 2: success
+[occamy-openmp-bridge] bridged launch 3: success
+[occamy-openmp-bridge] bridged launch 4: success
+[occamy-openmp-bridge] success
+```
+
+In this bridge mode the qemu/Linux OpenMP host blocks inside the fake driver
+until the native wrapper replays that launch through Verilator and writes a
+success response. This is still not coherent end-to-end map verification: later
+launches can still be fake-completed, and Verilator-side memory updates are not
+copied back into the qemu process.
+
 Known expected fake-completion log caveat:
 
 ```text
@@ -199,6 +221,15 @@ output/occamy-openmp-replay/replay_config.h
 output/occamy-openmp-replay/l3_replay.bin
 output/occamy-openmp-replay/mailbox_snapshot.bin
 output/occamy-openmp-replay/sequence-0001/trace_hart_00001.dasm
+...
+```
+
+Detailed online replay-bridge artifacts:
+
+```text
+output/occamy-openmp-bridge/requests/request-0001.json
+output/occamy-openmp-bridge/responses/response-0001.status
+output/occamy-openmp-bridge/sequence-0001/replay.log
 ...
 ```
 

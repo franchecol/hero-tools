@@ -77,6 +77,7 @@ static unsigned fake_a2h_tail;
 static uint32_t fake_launch_words[4];
 static unsigned fake_launch_count;
 static unsigned fake_launch_sequence;
+static int fake_bridge_failed;
 
 static int fake_enabled(void) {
     const char *env = getenv("OCCAMY_FAKE_DRIVER");
@@ -98,6 +99,52 @@ static int fake_capture_enabled(void) { return fake_capture_path() != NULL; }
 static const char *fake_capture_dir(void) {
     const char *env = getenv("OCCAMY_FAKE_CAPTURE_DIR");
     return (fake_enabled() && env && env[0] != '\0') ? env : NULL;
+}
+
+static const char *fake_bridge_dir(void) {
+    const char *env = getenv("OCCAMY_FAKE_BRIDGE_DIR");
+    return (fake_enabled() && env && env[0] != '\0') ? env : NULL;
+}
+
+static unsigned fake_bridge_max_launches(void) {
+    const char *env = getenv("OCCAMY_FAKE_BRIDGE_MAX_LAUNCHES");
+    char *end = NULL;
+    unsigned long value;
+
+    if (!env || env[0] == '\0') {
+        return 0;
+    }
+
+    value = strtoul(env, &end, 0);
+    if (end == env) {
+        return 0;
+    }
+    return (unsigned)value;
+}
+
+static unsigned fake_bridge_timeout_seconds(void) {
+    const char *env = getenv("OCCAMY_FAKE_BRIDGE_TIMEOUT_SECONDS");
+    char *end = NULL;
+    unsigned long value;
+
+    if (!env || env[0] == '\0') {
+        return 900;
+    }
+
+    value = strtoul(env, &end, 0);
+    if (end == env || value == 0) {
+        return 900;
+    }
+    return (unsigned)value;
+}
+
+static int fake_bridge_should_replay(unsigned sequence) {
+    unsigned max_launches = fake_bridge_max_launches();
+
+    if (!fake_bridge_dir()) {
+        return 0;
+    }
+    return max_launches == 0 || sequence <= max_launches;
 }
 
 static size_t fake_capture_bytes(void) {
@@ -367,7 +414,7 @@ static void dump_launch_snapshot(unsigned sequence) {
             sequence, dir);
 }
 
-static void capture_launch_packet(void) {
+static unsigned capture_launch_packet(void) {
     const char *path = fake_capture_path();
     size_t bytes = fake_capture_bytes();
     uint64_t target_fn = fake_launch_words[1];
@@ -382,14 +429,14 @@ static void capture_launch_packet(void) {
     FILE *f;
 
     if (!path) {
-        return;
+        return 0;
     }
 
     f = fopen(path, "a");
     if (!f) {
         fprintf(stderr, "[occamy-fake-driver] failed to open capture path %s: %s\n",
                 path, strerror(errno));
-        return;
+        return 0;
     }
 
     unsigned sequence = ++fake_launch_sequence;
@@ -419,6 +466,89 @@ static void capture_launch_packet(void) {
     fprintf(stderr, "[occamy-fake-driver] captured launch #%u to %s\n",
             sequence, path);
     dump_launch_snapshot(sequence);
+    return sequence;
+}
+
+static int bridge_wait_for_replay(unsigned sequence) {
+    const char *dir = fake_bridge_dir();
+    char request_tmp[4096];
+    char request_path[4096];
+    char response_path[4096];
+    unsigned timeout_s = fake_bridge_timeout_seconds();
+    unsigned polls = timeout_s * 10;
+    int status = 1;
+    FILE *f;
+
+    if (!dir) {
+        return 0;
+    }
+
+    snprintf(request_tmp, sizeof(request_tmp), "%s/requests/request-%04u.tmp.%ld",
+             dir, sequence, (long)getpid());
+    snprintf(request_path, sizeof(request_path), "%s/requests/request-%04u.json",
+             dir, sequence);
+    snprintf(response_path, sizeof(response_path), "%s/responses/response-%04u.status",
+             dir, sequence);
+
+    f = fopen(request_tmp, "w");
+    if (!f) {
+        fprintf(stderr, "[occamy-fake-driver] failed to write bridge request %s: %s\n",
+                request_tmp, strerror(errno));
+        return -1;
+    }
+    fprintf(f,
+            "{\"sequence\":%u,\"target_fn\":\"0x%08x\","
+            "\"arg_ptr\":\"0x%08x\",\"workers\":%u}\n",
+            sequence, fake_launch_words[1], fake_launch_words[2],
+            fake_launch_words[3]);
+    if (fclose(f) != 0) {
+        fprintf(stderr, "[occamy-fake-driver] failed to close bridge request %s: %s\n",
+                request_tmp, strerror(errno));
+        return -1;
+    }
+    if (rename(request_tmp, request_path) != 0) {
+        fprintf(stderr, "[occamy-fake-driver] failed to publish bridge request %s: %s\n",
+                request_path, strerror(errno));
+        unlink(request_tmp);
+        return -1;
+    }
+
+    fprintf(stderr, "[occamy-fake-driver] waiting for replay bridge sequence #%u\n",
+            sequence);
+
+    while (polls-- > 0) {
+        if (access(response_path, R_OK) == 0) {
+            break;
+        }
+        usleep(100000);
+    }
+
+    if (access(response_path, R_OK) != 0) {
+        fprintf(stderr, "[occamy-fake-driver] replay bridge timed out for sequence #%u\n",
+                sequence);
+        return -1;
+    }
+
+    f = fopen(response_path, "r");
+    if (!f) {
+        fprintf(stderr, "[occamy-fake-driver] failed to open bridge response %s: %s\n",
+                response_path, strerror(errno));
+        return -1;
+    }
+    if (fscanf(f, "%d", &status) != 1) {
+        status = 1;
+    }
+    fclose(f);
+
+    if (status != 0) {
+        fprintf(stderr, "[occamy-fake-driver] replay bridge failed for sequence #%u\n",
+                sequence);
+        return -1;
+    }
+
+    fprintf(stderr, "[occamy-fake-driver] replay bridge completed sequence #%u\n",
+            sequence);
+    return 0;
 }
 
 static void observe_mbox_write(uint32_t word, int complete_launch) {
@@ -433,13 +563,20 @@ static void observe_mbox_write(uint32_t word, int complete_launch) {
 
     fake_launch_words[fake_launch_count++] = word;
     if (fake_launch_count == 4) {
+        unsigned sequence;
+
         fprintf(stderr,
                 "[occamy-fake-driver] target launch fn=0x%08x args=0x%08x workers=%u\n",
                 fake_launch_words[1], fake_launch_words[2], fake_launch_words[3]);
-        capture_launch_packet();
+        sequence = capture_launch_packet();
         if (complete_launch) {
-            fake_queue_put(MBOX_DEVICE_DONE);
-            fake_queue_put(1);
+            if (sequence != 0 && fake_bridge_should_replay(sequence) &&
+                bridge_wait_for_replay(sequence) != 0) {
+                fake_bridge_failed = 1;
+            } else {
+                fake_queue_put(MBOX_DEVICE_DONE);
+                fake_queue_put(1);
+            }
         }
         fake_launch_count = 0;
     }
@@ -645,6 +782,9 @@ int hero_dev_mbox_write(HeroDev *dev, uint32_t word) {
 
     fprintf(stderr, "[occamy-fake-driver] mbox_write 0x%08x\n", word);
     observe_mbox_write(word, complete_launch);
+    if (fake_bridge_failed) {
+        return -1;
+    }
 
     if (!complete_launch) {
         if (!real_hero_dev_mbox_write) {

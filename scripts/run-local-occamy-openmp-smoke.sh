@@ -249,6 +249,14 @@ if preload_path:
             cmd.extend(["-E", f"OCCAMY_FAKE_CAPTURE_BYTES={env['OCCAMY_FAKE_CAPTURE_BYTES']}"])
         if capture_snapshot == "1":
             cmd.extend(["-E", f"OCCAMY_FAKE_CAPTURE_DIR={snapshot_dir}"])
+    for name in (
+        "OCCAMY_FAKE_BRIDGE_DIR",
+        "OCCAMY_FAKE_BRIDGE_MAX_LAUNCHES",
+        "OCCAMY_FAKE_BRIDGE_TIMEOUT_SECONDS",
+    ):
+        value = env.get(name)
+        if value:
+            cmd.extend(["-E", f"{name}={value}"])
 cmd.append(app)
 try:
     with open(log_path, "w", encoding="utf-8") as log:

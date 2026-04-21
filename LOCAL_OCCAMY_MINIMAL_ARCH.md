@@ -178,6 +178,7 @@ make -C apps/omp/basic/offload_benchmark DEVICES=occamy
 ./scripts/run-local-occamy-openmp-smoke.sh --capture-launch
 ./scripts/run-local-occamy-openmp-smoke.sh --capture-snapshot
 ./scripts/run-local-occamy-openmp-replay.sh --all
+./scripts/run-local-occamy-openmp-replay-bridge.sh --max-launches 4
 ./scripts/run-local-occamy-minimal.sh omp_mailbox
 ```
 
@@ -237,6 +238,22 @@ Use `./scripts/run-local-occamy-openmp-replay.sh --sequence N` to rerun one
 captured launch while debugging. The replay step is slower than the qemu-only
 smoke because it runs the traced Verilator model.
 
+Expected online replay-bridge smoke result:
+
+```text
+[occamy-openmp-bridge] bridged launch 1: success
+[occamy-openmp-bridge] bridged launch 2: success
+[occamy-openmp-bridge] bridged launch 3: success
+[occamy-openmp-bridge] bridged launch 4: success
+[occamy-openmp-bridge] success
+```
+
+The bridge smoke is different from offline replay: the qemu Linux OpenMP host
+publishes a launch request and waits until the native wrapper has replayed that
+launch in Verilator. The default bridge command only gates the first launch;
+`--max-launches 4` was validated to include the first mapped-argument launch
+and the first `map(tofrom)`-shaped launch.
+
 Expected real mailbox-runtime smoke result:
 
 ```text
@@ -276,6 +293,14 @@ output/occamy-openmp-replay/replay_config.h
 output/occamy-openmp-replay/l3_replay.bin
 output/occamy-openmp-replay/sequence-0001/trace_hart_00001.dasm
 ...
+```
+
+The online replay-bridge artifacts are written to:
+
+```text
+output/occamy-openmp-bridge/requests/request-0001.json
+output/occamy-openmp-bridge/responses/response-0001.status
+output/occamy-openmp-bridge/sequence-0001/replay.log
 ```
 
 Known caveat:
