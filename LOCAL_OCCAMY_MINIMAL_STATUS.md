@@ -133,7 +133,8 @@ M3 HeroSDK-shaped build and runtime smoke proof
        from a concrete qemu-generated OpenMP launch
 
   captured-launch Verilator replay
-    -> consumes selected launches from the qemu/fake-driver capture artifacts
+    -> consumes all 16 launches from the qemu/fake-driver capture artifacts
+       with --all, or one selected launch with --sequence N
     -> builds a temporary bare-metal CVA6 replay host under
        output/occamy-openmp-replay
     -> rewrites the captured fake-driver mailbox state into L3 so both the
@@ -146,9 +147,7 @@ M3 HeroSDK-shaped build and runtime smoke proof
     -> reaches captured RV32 OpenMP target entry points through the real
        mailbox dispatch path
     -> returns to the CVA6 host and exits Verilator successfully
-    -> has been validated for launch 1, launch 3, and launch 4; launch 3 is the
-       first mapped-argument launch and launch 4 is the first map(tofrom)-shaped
-       launch in offload_benchmark
+    -> has been validated for launches 1 through 16
 
   real mailbox-runtime smoke run
     -> builds a bare-metal CVA6 host app and RV32 Snitch payload
@@ -173,9 +172,10 @@ M3 HeroSDK-shaped build and runtime smoke proof
        but it is still an offline snapshot, not a live qemu-to-Verilator bridge
     -> the captured-launch Verilator replay is still an offline transformed
        snapshot replay, not a live qemu-to-Verilator bridge
-    -> the captured-launch Verilator replay has proven selected launches only;
-       it is not yet a continuous replay of all 16 target launches and does not
-       prove qemu-host-visible map(tofrom) correctness after the full benchmark
+    -> the captured-launch Verilator replay has proven all 16 captured launches,
+       but it is still not a live continuous run of the qemu Linux host against
+       the Verilator device and does not prove qemu-host-visible map(tofrom)
+       correctness after the full benchmark
     -> the real mailbox-runtime smoke is not yet wired to the Linux/qemu
        HeroSDK OpenMP host process; it proves the device-side protocol in
        Verilator, not the full user-facing OpenMP map/tofrom flow
@@ -317,7 +317,11 @@ What the traces demonstrate:
 - for the M3 replay-snapshot smoke,
   `output/occamy-openmp-smoke/snapshots/snapshots.jsonl` proves that each
   launch descriptor has matching binary dumps for the fake mapped Occamy
-  regions needed by a future Verilator replay harness
+  regions used by the offline Verilator replay harness
+- for the M3 captured-launch Verilator replay, the sequence archives under
+  `output/occamy-openmp-replay/sequence-XXXX/` prove that all 16 captured
+  OpenMP launches reached their captured RV32 target entry points through the
+  real Snitch-side mailbox manager and then returned to the CVA6 replay host
 - for the M3 mailbox-runtime smoke, the device trace proves that the real
   Snitch-side `libomptarget_device` manager reads the launch sequence, jumps to
   `omp_mailbox_target`, reads `0x12345678` from host-visible memory, stores
@@ -553,6 +557,9 @@ Completed real mailbox-runtime subset:
   `0x12345679` back
 - the Snitch-side manager returns `MBOX_DEVICE_DONE` plus cycle counters
 - the host validates the returned word and exits with code `0`
+- `scripts/run-local-occamy-openmp-replay.sh --all` now replays all 16 captured
+  OpenMP launches and archives per-sequence replay traces under
+  `output/occamy-openmp-replay/sequence-XXXX/`
 
 Known build caveat:
 
@@ -569,8 +576,9 @@ Still missing for full M3:
 - connect the Linux/qemu HeroSDK OpenMP host process to the running Verilator
   Snitch-side runtime
 - prove that the generated `offload_benchmark` target regions reach the
-  Snitch-side runtime through that connected endpoint
-- verify the `map(to)` and `map(tofrom)` behavior from
+  Snitch-side runtime through a live connected endpoint, not only through
+  offline replay of captured launch descriptors
+- verify actual end-to-end `map(to)` and `map(tofrom)` behavior from
   `offload_benchmark/main.c`
 
 Why this is the immediate next step:
@@ -608,15 +616,15 @@ Success criteria:
 
 ## Recommended Next Step
 
-The best next technical step is now M3 target-region execution, not FPGA.
+The best next technical step is now live M3 target-region execution, not FPGA.
 
 That means:
 
 - stay in simulation
 - keep the reduced Occamy single-cluster configuration
 - keep the M3 build and runtime-smoke proofs frozen as the baseline
-- move from "the host and device halves are proven separately" to "the
-  generated OpenMP host ELF drives the real Verilator Snitch-side runtime"
+- move from offline captured-launch replay to a live endpoint where the
+  generated OpenMP host ELF drives the real Verilator Snitch-side runtime
 - keep the workload tiny enough that failures are still attributable
 
 Short version:
@@ -628,6 +636,8 @@ Current state:
   M3 smoke-runs that ELF far enough to load the Occamy OpenMP target plugin
   M3 fake-driver smoke reaches target launch
   M3 fake-completion smoke completes the host OpenMP control path
+  M3 captured-launch replay runs all 16 captured OpenMP launches through the
+  real Snitch-side mailbox manager in Verilator
   M3 omp_mailbox runs the real Snitch-side mailbox manager and target function
 
 Best next state:

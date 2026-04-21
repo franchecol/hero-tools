@@ -80,14 +80,13 @@ Optional M3 replay-snapshot smoke:
 Optional M3 captured-launch Verilator replay:
 
 ```bash
-./scripts/run-local-occamy-openmp-replay.sh --sequence 1
+./scripts/run-local-occamy-openmp-replay.sh --all
 ```
 
-Optional stronger replay spot checks:
+Optional single-launch replay for debugging:
 
 ```bash
-./scripts/run-local-occamy-openmp-replay.sh --sequence 3
-./scripts/run-local-occamy-openmp-replay.sh --sequence 4
+./scripts/run-local-occamy-openmp-replay.sh --sequence 1
 ```
 
 Optional M3 real Snitch-side mailbox-runtime smoke:
@@ -150,13 +149,13 @@ Expected M3 captured-launch Verilator replay result on this machine:
 
 ```text
 [occamy-openmp-replay] success
-[occamy-openmp-replay] sequence: 1
+[occamy-openmp-replay] sequences: 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16
+[occamy-openmp-replay] artifacts: .../output/occamy-openmp-replay/sequence-XXXX
 ```
 
-Sequences 3 and 4 were also spot-checked successfully. Sequence 3 is the first
-captured launch with a mapped argument, and sequence 4 is the first
-`map(tofrom)`-shaped captured launch. These are still per-launch offline
-replays, not a continuous qemu-to-Verilator execution of the full benchmark.
+All 16 captured launches were replayed successfully through the real
+Snitch-side mailbox dispatch path. These are still offline per-launch replays,
+not a continuous qemu-to-Verilator execution of the full benchmark.
 
 Known expected fake-completion log caveat:
 
@@ -199,6 +198,8 @@ output/occamy-openmp-replay/openmp-replay.elf
 output/occamy-openmp-replay/replay_config.h
 output/occamy-openmp-replay/l3_replay.bin
 output/occamy-openmp-replay/mailbox_snapshot.bin
+output/occamy-openmp-replay/sequence-0001/trace_hart_00001.dasm
+...
 ```
 
 Known M3 build caveat:

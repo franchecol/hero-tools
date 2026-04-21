@@ -13,7 +13,9 @@ REPLAY_DIR="${ROOT_DIR}/output/occamy-openmp-replay"
 HOST_ELF="${REPLAY_DIR}/openmp-replay.elf"
 HOST_DUMP="${REPLAY_DIR}/openmp-replay.dump"
 SEQUENCE=1
-REPLAY_TIMEOUT="${REPLAY_TIMEOUT:-180}"
+SEQUENCE_SET=0
+RUN_ALL=0
+REPLAY_TIMEOUT="${REPLAY_TIMEOUT:-600}"
 CANONICAL_RISCV_PREFIX="riscv64-unknown-elf-"
 RISCV_SRC_PREFIX=""
 USER_BIN_DIR="${HOME}/bin"
@@ -34,6 +36,7 @@ need_cmd() {
 usage() {
   cat <<'EOF'
 Usage: scripts/run-local-occamy-openmp-replay.sh [--sequence N]
+       scripts/run-local-occamy-openmp-replay.sh --all
 
 Experimental M3 replay step.
 
@@ -49,15 +52,24 @@ Then it builds a temporary bare-metal CVA6 host harness that:
   - sends the captured four-word OpenMP launch to the real Snitch mailbox manager
 
 This is still not a live qemu-to-Verilator bridge.
+
+Set REPLAY_TIMEOUT to override the per-sequence Verilator timeout.  The
+default is intentionally conservative because later captured launches can be
+slower than the first spot-check replays.
 EOF
 }
 
 parse_args() {
   while [[ $# -gt 0 ]]; do
     case "$1" in
+      --all)
+        RUN_ALL=1
+        shift
+        ;;
       --sequence)
         [[ $# -ge 2 ]] || die "--sequence requires a number"
         SEQUENCE="$2"
+        SEQUENCE_SET=1
         shift 2
         ;;
       -h|--help)
@@ -69,6 +81,10 @@ parse_args() {
         ;;
     esac
   done
+
+  if [[ "${RUN_ALL}" -eq 1 && "${SEQUENCE_SET}" -eq 1 ]]; then
+    die "--all cannot be combined with --sequence"
+  fi
 }
 
 normalize_tool_prefix() {
@@ -197,6 +213,24 @@ ensure_snapshots() {
     log "missing capture snapshot; generating it now"
     "${ROOT_DIR}/scripts/run-local-occamy-openmp-smoke.sh" --capture-snapshot
   fi
+}
+
+list_launch_sequences() {
+  python3 - "${LAUNCHES_JSONL}" <<'PY'
+import json
+import sys
+from pathlib import Path
+
+launches_path = Path(sys.argv[1])
+sequences = []
+for line in launches_path.read_text().splitlines():
+    if not line.strip():
+        continue
+    sequences.append(int(json.loads(line)["sequence"]))
+
+for sequence in sorted(set(sequences)):
+    print(sequence)
+PY
 }
 
 generate_replay_sources() {
@@ -586,6 +620,28 @@ verify_replay() {
     die "host trace does not show the tohost exit write"
 }
 
+archive_replay_artifacts() {
+  local seq_dir="${REPLAY_DIR}/sequence-$(printf '%04d' "${SEQUENCE}")"
+  local dev_trace="${SIM_DIR}/logs/trace_hart_00001.dasm"
+  local host_trace="${SIM_DIR}/trace_hart_00.dasm"
+
+  mkdir -p "${seq_dir}"
+  cp -f "${REPLAY_DIR}/replay_config.h" "${seq_dir}/replay_config.h"
+  cp -f "${HOST_DUMP}" "${seq_dir}/openmp-replay.dump"
+  cp -f "${host_trace}" "${seq_dir}/trace_hart_00.dasm"
+  cp -f "${dev_trace}" "${seq_dir}/trace_hart_00001.dasm"
+}
+
+run_one_sequence() {
+  log "replaying captured launch ${SEQUENCE}"
+  generate_replay_sources
+  build_replay_host
+  run_replay
+  verify_replay
+  archive_replay_artifacts
+  log "sequence ${SEQUENCE}: success"
+}
+
 main() {
   parse_args "$@"
 
@@ -607,10 +663,24 @@ main() {
   resolve_verilator_root
   build_simulator
   ensure_snapshots
-  generate_replay_sources
-  build_replay_host
-  run_replay
-  verify_replay
+
+  if [[ "${RUN_ALL}" -eq 1 ]]; then
+    mapfile -t sequences < <(list_launch_sequences)
+    [[ "${#sequences[@]}" -gt 0 ]] || die "no launch sequences found in ${LAUNCHES_JSONL}"
+
+    log "replaying ${#sequences[@]} captured launch sequences"
+    for sequence in "${sequences[@]}"; do
+      SEQUENCE="${sequence}"
+      run_one_sequence
+    done
+
+    log "success"
+    log "sequences: ${sequences[*]}"
+    log "artifacts: ${REPLAY_DIR}/sequence-XXXX"
+    exit 0
+  fi
+
+  run_one_sequence
 
   log "success"
   log "sequence: ${SEQUENCE}"

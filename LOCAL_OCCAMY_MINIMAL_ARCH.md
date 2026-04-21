@@ -177,9 +177,7 @@ make -C apps/omp/basic/offload_benchmark DEVICES=occamy
 ./scripts/run-local-occamy-openmp-smoke.sh --fake-complete
 ./scripts/run-local-occamy-openmp-smoke.sh --capture-launch
 ./scripts/run-local-occamy-openmp-smoke.sh --capture-snapshot
-./scripts/run-local-occamy-openmp-replay.sh --sequence 1
-./scripts/run-local-occamy-openmp-replay.sh --sequence 3
-./scripts/run-local-occamy-openmp-replay.sh --sequence 4
+./scripts/run-local-occamy-openmp-replay.sh --all
 ./scripts/run-local-occamy-minimal.sh omp_mailbox
 ```
 
@@ -231,12 +229,13 @@ Expected captured-launch Verilator replay result:
 
 ```text
 [occamy-openmp-replay] success
-[occamy-openmp-replay] sequence: 1
+[occamy-openmp-replay] sequences: 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16
+[occamy-openmp-replay] artifacts: .../output/occamy-openmp-replay/sequence-XXXX
 ```
 
-Sequences 3 and 4 are optional stronger spot checks. They should also end with
-`[occamy-openmp-replay] success`; they are slower than the qemu-only smoke
-because they run the traced Verilator model.
+Use `./scripts/run-local-occamy-openmp-replay.sh --sequence N` to rerun one
+captured launch while debugging. The replay step is slower than the qemu-only
+smoke because it runs the traced Verilator model.
 
 Expected real mailbox-runtime smoke result:
 
@@ -275,6 +274,8 @@ The captured-launch replay artifacts are written to:
 output/occamy-openmp-replay/openmp-replay.elf
 output/occamy-openmp-replay/replay_config.h
 output/occamy-openmp-replay/l3_replay.bin
+output/occamy-openmp-replay/sequence-0001/trace_hart_00001.dasm
+...
 ```
 
 Known caveat:
