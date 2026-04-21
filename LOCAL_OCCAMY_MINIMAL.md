@@ -1,7 +1,7 @@
 # Local Occamy Minimal Heterogeneous Runbook
 
 Status: validated on this machine through `M2` execution and `M3` OpenMP
-build/runtime/fake-completion smokes on 2026-04-21.
+build/runtime/fake-completion plus real mailbox-runtime smokes on 2026-04-21.
 
 This note documents the smallest heterogeneous simulation path that was
 actually proven in this checkout.
@@ -64,6 +64,12 @@ Optional M3 fake-completion smoke:
 ./scripts/run-local-occamy-openmp-smoke.sh --fake-complete
 ```
 
+Optional M3 real Snitch-side mailbox-runtime smoke:
+
+```bash
+./scripts/run-local-occamy-minimal.sh omp_mailbox
+```
+
 If the OpenMP artifacts are missing or stale, rebuild before running:
 
 ```bash
@@ -101,6 +107,13 @@ Known expected fake-completion log caveat:
 
 ```text
 Error: map to_from did not work
+```
+
+Expected M3 real mailbox-runtime smoke result on this machine:
+
+```text
+[occamy-minimal] success
+[occamy-minimal] mode: omp_mailbox
 ```
 
 Detailed smoke log:
@@ -141,6 +154,10 @@ It only covers:
 - one fake-completion smoke run proving that the host OpenMP runtime can
   complete its target-launch/control-flow sequence if mailbox completion words
   are supplied by a fake responder
+- one real Verilator mailbox-runtime smoke proving that the Snitch-side
+  `libomptarget_device` manager consumes the same four-word launch protocol,
+  calls a target function, writes `0x12345679` back into host-visible memory,
+  and returns `MBOX_DEVICE_DONE`
 
 ## Scope
 
@@ -184,12 +201,18 @@ Known-good artifacts:
   `output/occamy-openmp-smoke.log`
 - RISC-V fake Occamy driver shim source:
   `sw/libhero/sim/occamy_fake_driver.c`
+- M3 mailbox-runtime host ELF:
+  `platforms/occamy/target/sim/sw/host/apps/omp_mailbox/build/omp_mailbox.elf`
+- M3 mailbox-runtime device binary:
+  `platforms/occamy/target/sim/sw/device/apps/omp_mailbox/build/omp_mailbox.bin`
 
 Required files provided by the matching Occamy fork branch:
 
 - `platforms/occamy/target/sim/sw/device/apps/minimal_irq/`
 - `platforms/occamy/target/sim/sw/device/apps/roundtrip/`
 - `platforms/occamy/target/sim/sw/host/apps/roundtrip/`
+- `platforms/occamy/target/sim/sw/device/apps/omp_mailbox/`
+- `platforms/occamy/target/sim/sw/host/apps/omp_mailbox/`
 
 Required simulator compatibility fix provided by that Occamy branch:
 

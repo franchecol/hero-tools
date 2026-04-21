@@ -20,6 +20,7 @@ It covers the minimal local Verilator path driven by:
 It also covers the optional `M3` OpenMP runtime smoke driven by:
 
 - `scripts/run-local-occamy-openmp-smoke.sh`
+- `scripts/run-local-occamy-minimal.sh omp_mailbox`
 
 If your checkout does not contain those scripts, you are not on the local
 branch/commit that added this reduced flow.
@@ -171,6 +172,7 @@ make -C apps/omp/basic/offload_benchmark DEVICES=occamy
 ./scripts/run-local-occamy-openmp-smoke.sh
 ./scripts/run-local-occamy-openmp-smoke.sh --fake-driver
 ./scripts/run-local-occamy-openmp-smoke.sh --fake-complete
+./scripts/run-local-occamy-minimal.sh omp_mailbox
 ```
 
 Expected artifact:
@@ -200,6 +202,13 @@ Expected fake-completion smoke result:
 [occamy-openmp-smoke] target code and OpenMP map correctness are still not proven
 ```
 
+Expected real mailbox-runtime smoke result:
+
+```text
+[occamy-minimal] success
+[occamy-minimal] mode: omp_mailbox
+```
+
 Known expected fake-completion log caveat:
 
 ```text
@@ -227,6 +236,13 @@ device initialization, then stops because this local machine has no real
 and `--fake-complete` adds fake mailbox completion words so the host OpenMP
 runtime can finish its control path. Neither fake mode executes the
 Snitch-side runtime or validates OpenMP data mapping correctness.
+
+The separate `omp_mailbox` mode does execute the Snitch-side
+`libomptarget_device` mailbox manager in Verilator. It feeds the same
+`MBOX_DEVICE_START`, target-entry, argument-pointer, thread-count sequence used
+by the HeroSDK OpenMP RTL, calls a tiny target function, writes a result into
+host-visible memory, and returns `MBOX_DEVICE_DONE`. It is still not a full
+user-facing OpenMP map/tofrom proof.
 
 ## Disk Budget
 
@@ -293,6 +309,7 @@ Useful reruns:
 source scripts/setenv.sh
 make hero-tc-llvm-axpy
 ./scripts/run-local-occamy-minimal.sh axpy
+./scripts/run-local-occamy-minimal.sh omp_mailbox
 ```
 
 For the broader context and manual build details, see:

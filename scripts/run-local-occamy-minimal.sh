@@ -18,6 +18,7 @@ HOST_APP_DIR=""
 HOST_ELF=""
 DEVICE_BIN=""
 DEVICE_SYMBOL_ELF=""
+DEVICE_TARGET_FN=""
 VERIFY_SCRIPT=""
 
 log() {
@@ -57,8 +58,15 @@ configure_mode() {
       DEVICE_SYMBOL_ELF="${DEVICE_APP_DIR}/build/axpy.elf"
       VERIFY_SCRIPT="${ROOT_DIR}/platforms/occamy/deps/snitch_cluster/sw/blas/axpy/verify.py"
       ;;
+    omp_mailbox)
+      DEVICE_APP_DIR="${SIM_DIR}/sw/device/apps/omp_mailbox"
+      HOST_APP_DIR="${SIM_DIR}/sw/host/apps/omp_mailbox"
+      HOST_ELF="${HOST_APP_DIR}/build/omp_mailbox.elf"
+      DEVICE_BIN="${DEVICE_APP_DIR}/build/omp_mailbox.bin"
+      DEVICE_SYMBOL_ELF="${DEVICE_APP_DIR}/build/omp_mailbox.elf"
+      ;;
     *)
-      die "unsupported mode: ${APP_MODE} (expected minimal_irq, roundtrip, or axpy)"
+      die "unsupported mode: ${APP_MODE} (expected minimal_irq, roundtrip, axpy, or omp_mailbox)"
       ;;
   esac
 }
@@ -226,19 +234,22 @@ ensure_hero_install_env() {
   fi
 }
 
-ensure_axpy_toolchain() {
-  [[ "${APP_MODE}" == "axpy" ]] || return 0
+ensure_hero_device_toolchain() {
+  [[ "${APP_MODE}" == "axpy" || "${APP_MODE}" == "omp_mailbox" ]] || return 0
 
   ensure_hero_install_env
 
   [[ -d "${HERO_INSTALL}/bin" ]] || \
-    die "axpy requires the HeroSDK LLVM toolchain under ${HERO_INSTALL}; run: source scripts/setenv.sh && make hero-tc-llvm-axpy"
+    die "${APP_MODE} requires the HeroSDK LLVM toolchain under ${HERO_INSTALL}; run: source scripts/setenv.sh && make hero-tc-llvm-axpy"
   command -v riscv32-unknown-elf-clang >/dev/null 2>&1 || \
-    die "axpy requires riscv32-unknown-elf-clang from the HeroSDK LLVM toolchain; run: source scripts/setenv.sh && make hero-tc-llvm-axpy"
+    die "${APP_MODE} requires riscv32-unknown-elf-clang from the HeroSDK LLVM toolchain; run: source scripts/setenv.sh && make hero-tc-llvm-axpy"
   [[ -d "${HERO_INSTALL}/rv32imafd-ilp32d/riscv32-unknown-elf" ]] || \
-    die "axpy requires the rv32imafd-ilp32d device sysroot in ${HERO_INSTALL}; run: source scripts/setenv.sh && make hero-tc-llvm-axpy"
-  [[ -x "${VERIFY_SCRIPT}" ]] || [[ -f "${VERIFY_SCRIPT}" ]] || \
-    die "missing axpy verify script: ${VERIFY_SCRIPT}"
+    die "${APP_MODE} requires the rv32imafd-ilp32d device sysroot in ${HERO_INSTALL}; run: source scripts/setenv.sh && make hero-tc-llvm-axpy"
+
+  if [[ "${APP_MODE}" == "axpy" ]]; then
+    [[ -x "${VERIFY_SCRIPT}" ]] || [[ -f "${VERIFY_SCRIPT}" ]] || \
+      die "missing axpy verify script: ${VERIFY_SCRIPT}"
+  fi
 }
 
 verify_local_patch() {
@@ -259,6 +270,35 @@ build_simulator() {
     VLT_ROOT="${VLT_ROOT}" \
     CXXFLAGS='-include cstdint -fcoroutines' \
     bin/occamy_top.vlt
+}
+
+get_symbol_addr() {
+  local nm_bin="$1"
+  local elf="$2"
+  local symbol="$3"
+
+  "${nm_bin}" -n "${elf}" | awk -v symbol="${symbol}" '
+    $NF == symbol {
+      print "0x" $1
+      exit
+    }
+  '
+}
+
+write_device_origin() {
+  local origin="$1"
+  local origin_ld="${DEVICE_APP_DIR}/build/origin.ld"
+
+  mkdir -p "${DEVICE_APP_DIR}/build"
+  printf 'L3_ORIGIN = %s;\n' "${origin}" > "${origin_ld}"
+}
+
+finalize_omp_mailbox_host() {
+  rm -f \
+    "${HOST_APP_DIR}/build/omp_mailbox.elf" \
+    "${HOST_APP_DIR}/build/omp_mailbox.dump" \
+    "${HOST_APP_DIR}/build/omp_mailbox.dwarf"
+  make -C "${HOST_APP_DIR}" finalize-build DEVICE_TARGET_FN="${DEVICE_TARGET_FN}"
 }
 
 build_selected_payload() {
@@ -283,6 +323,64 @@ build_selected_payload() {
 
     log "finalizing ${APP_MODE} host application"
     make -C "${HOST_APP_DIR}" finalize-build DEVICE_APPS=blas/axpy
+  elif [[ "${APP_MODE}" == "omp_mailbox" ]]; then
+    log "cleaning ${APP_MODE} device payload"
+    make -C "${DEVICE_APP_DIR}" clean
+
+    log "cleaning ${APP_MODE} host application"
+    make -C "${HOST_APP_DIR}" clean
+
+    log "building device runtime library"
+    make -C "${DEVICE_RUNTIME_DIR}" all
+
+    log "building device math library"
+    make -C "${DEVICE_MATH_DIR}" all
+
+    log "building ${APP_MODE} host partial application"
+    make -C "${HOST_APP_DIR}" partial-build
+
+    local partial_snitch_main=""
+    local final_snitch_main=""
+    local expected_snitch_main=""
+    local pass=""
+
+    partial_snitch_main=$(get_symbol_addr "${CANONICAL_RISCV_PREFIX}nm" "${HOST_APP_DIR}/build/omp_mailbox.part.elf" snitch_main)
+    [[ -n "${partial_snitch_main}" ]] || \
+      die "could not locate snitch_main in ${HOST_APP_DIR}/build/omp_mailbox.part.elf"
+
+    expected_snitch_main="${partial_snitch_main}"
+    for pass in 1 2 3; do
+      if [[ "${pass}" != "1" ]]; then
+        log "relinking ${APP_MODE} device payload at snitch_main=${expected_snitch_main}"
+        make -C "${DEVICE_APP_DIR}" clean
+        write_device_origin "${expected_snitch_main}"
+      else
+        log "building ${APP_MODE} device payload"
+      fi
+
+      make -C "${DEVICE_APP_DIR}" all
+
+      DEVICE_TARGET_FN=$(get_symbol_addr "${HERO_INSTALL}/bin/llvm-nm" "${DEVICE_SYMBOL_ELF}" omp_mailbox_target)
+      [[ -n "${DEVICE_TARGET_FN}" ]] || \
+        die "could not locate omp_mailbox_target in ${DEVICE_SYMBOL_ELF}"
+      log "using omp_mailbox_target=${DEVICE_TARGET_FN}"
+
+      log "finalizing ${APP_MODE} host application"
+      finalize_omp_mailbox_host
+      final_snitch_main=$(get_symbol_addr "${CANONICAL_RISCV_PREFIX}nm" "${HOST_ELF}" snitch_main)
+      [[ -n "${final_snitch_main}" ]] || \
+        die "could not locate snitch_main in ${HOST_ELF}"
+
+      if [[ "${final_snitch_main}" == "${expected_snitch_main}" ]]; then
+        break
+      fi
+
+      log "host final snitch_main moved from ${expected_snitch_main} to ${final_snitch_main}"
+      expected_snitch_main="${final_snitch_main}"
+    done
+
+    [[ "${final_snitch_main}" == "${expected_snitch_main}" ]] || \
+      die "could not stabilize omp_mailbox snitch_main address after 3 passes"
   else
     log "building ${APP_MODE} device payload"
     make -C "${DEVICE_APP_DIR}" clean
@@ -346,7 +444,7 @@ verify_traces() {
       die "device trace does not show the host interrupt store"
     rg -q '0x80000464.*04000737' "${host_trace}" || \
       die "host trace does not show the host SW interrupt clear path"
-  else
+  elif [[ "${APP_MODE}" == "roundtrip" ]]; then
     roundtrip_base=$("${CANONICAL_RISCV_PREFIX}nm" -n "${HOST_ELF}" | awk '
       $NF == "roundtrip_buffer" {
         print $1
@@ -362,6 +460,33 @@ verify_traces() {
       die "device trace does not show stores into ${roundtrip_base}"
     rg -q '0x80000068.*00a2a023' "${host_trace}" || \
       die "host trace does not show the tohost exit write"
+  elif [[ "${APP_MODE}" == "omp_mailbox" ]]; then
+    local args_base=""
+    local args_result_addr=""
+    local target_addr=""
+
+    args_base=$("${CANONICAL_RISCV_PREFIX}nm" -n "${HOST_ELF}" | awk '
+      $NF == "omp_mailbox_args" {
+        print $1
+        exit
+      }
+    ')
+    [[ -n "${args_base}" ]] || die "could not locate omp_mailbox_args in ${HOST_ELF}"
+    args_result_addr=$(printf '0x%x\n' $((0x${args_base} + 4)))
+
+    target_addr=$("${HERO_INSTALL}/bin/llvm-nm" -n "${DEVICE_SYMBOL_ELF}" | awk '
+      $NF == "omp_mailbox_target" {
+        print "0x" $1
+        exit
+      }
+    ')
+    [[ -n "${target_addr}" ]] || \
+      die "could not locate omp_mailbox_target in ${DEVICE_SYMBOL_ELF}"
+
+    rg -q "${target_addr}" "${dev_trace}" || \
+      die "device trace does not show execution at ${target_addr}"
+    rg -q "is_store': 0x1.*writeback': ${args_result_addr}.*gpr_rdata_1': 0x12345679" "${dev_trace}" || \
+      die "device trace does not show target stores 0x12345679 into ${args_result_addr}"
   fi
 
   rg -q '0x80000068.*00a2a023' "${host_trace}" || \
@@ -391,7 +516,7 @@ main() {
   cd "${ROOT_DIR}"
 
   ensure_venv
-  ensure_axpy_toolchain
+  ensure_hero_device_toolchain
   resolve_verilator_root
   ensure_riscv_aliases
   verify_local_patch

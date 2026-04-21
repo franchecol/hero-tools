@@ -115,6 +115,15 @@ M3 HeroSDK-shaped build and runtime smoke proof
     -> returns MBOX_DEVICE_DONE and a fake device cycle count
     -> lets the host OpenMP runtime complete its target-launch control path
 
+  real mailbox-runtime smoke run
+    -> builds a bare-metal CVA6 host app and RV32 Snitch payload
+    -> runs the Snitch-side libomptarget_device mailbox manager in Verilator
+    -> sends the same four launch words used by the HeroSDK OpenMP RTL:
+       MBOX_DEVICE_START, target entry, argument pointer, and thread count
+    -> calls a tiny target function through that manager
+    -> writes 0x12345679 into host-visible memory
+    -> returns MBOX_DEVICE_DONE, cycles, and dma-wait cycles to the host
+
   Current caveat
     -> final host link still relies on --noinhibit-exec for an .eh_frame
        relocation diagnostic emitted by GNU ld
@@ -125,6 +134,9 @@ M3 HeroSDK-shaped build and runtime smoke proof
     -> the fake-completion smoke run intentionally does not execute target code,
        so map(tofrom) correctness is not proven and the benchmark reports
        "Error: map to_from did not work"
+    -> the real mailbox-runtime smoke is not yet wired to the Linux/qemu
+       HeroSDK OpenMP host process; it proves the device-side protocol in
+       Verilator, not the full user-facing OpenMP map/tofrom flow
 ```
 
 This is now a real heterogeneous control-path plus data-path proof.
@@ -140,6 +152,8 @@ Repo-side additions on this branch:
 - `scripts/run-local-occamy-minimal.sh`
 - `scripts/run-local-occamy-openmp-smoke.sh`
 - `sw/libhero/sim/occamy_fake_driver.c`
+- `scripts/run-local-occamy-minimal.sh omp_mailbox` mode for a real
+  Snitch-side mailbox-runtime smoke
 - `LOCAL_OCCAMY_MINIMAL.md`
 - `LOCAL_OCCAMY_MINIMAL_ARCH.md`
 - a branch-specific README note
@@ -162,6 +176,8 @@ Matching Occamy fork branch contents:
 - `target/sim/sw/device/toolchain.mk` fix for the reduced `axpy` builtins path
 - `target/sim/sw/device/apps/libomptarget_device/Makefile` default-goal fix so
   plain `make` builds the device-side archive instead of selecting `clean`
+- `target/sim/sw/device/apps/omp_mailbox/`
+- `target/sim/sw/host/apps/omp_mailbox/`
 
 Runtime/workflow additions made by the bootstrap path:
 
@@ -202,12 +218,18 @@ Known-good output artifacts:
   `output/occamy-openmp-smoke.log`
 - RISC-V fake Occamy driver shim:
   `output/occamy-openmp-smoke/liboccamy_fake_driver.so`
+- M3 mailbox-runtime host ELF:
+  `platforms/occamy/target/sim/sw/host/apps/omp_mailbox/build/omp_mailbox.elf`
+- M3 mailbox-runtime device binary:
+  `platforms/occamy/target/sim/sw/device/apps/omp_mailbox/build/omp_mailbox.bin`
 - host trace:
   `platforms/occamy/target/sim/trace_hart_00.dasm`
 - device trace:
   `platforms/occamy/target/sim/logs/trace_hart_00001.dasm`
-- verifier outcome:
+- `axpy` verifier outcome:
   `[occamy-minimal] success` and `[occamy-minimal] mode: axpy`
+- M3 mailbox-runtime verifier outcome:
+  `[occamy-minimal] success` and `[occamy-minimal] mode: omp_mailbox`
 
 What the traces demonstrate:
 
@@ -231,6 +253,10 @@ What the traces demonstrate:
   responder can let the host OpenMP runtime complete its target-launch control
   path, while also showing that target execution and map(tofrom) correctness
   are still missing
+- for the M3 mailbox-runtime smoke, the device trace proves that the real
+  Snitch-side `libomptarget_device` manager reads the launch sequence, jumps to
+  `omp_mailbox_target`, reads `0x12345678` from host-visible memory, stores
+  `0x12345679` back, and returns `MBOX_DEVICE_DONE` through the mailbox
 - the host trace shows the host clearing the software interrupt, validating the
   returned buffer, and reaching the final `tohost` exit write
 
@@ -274,6 +300,9 @@ What is true now:
   reaches OpenMP target launch
 - the fake-completion smoke now moves the host-side boundary through OpenMP
   target-launch completion by faking mailbox responses
+- the real mailbox-runtime smoke now proves that the Snitch-side
+  `libomptarget_device` manager can consume the HeroSDK launch protocol and
+  execute a target-function pointer in Verilator
 - the path is automated enough for reuse
 - the branch documents system prerequisites and machine setup
 - the scripts are more Linux-portable than the first local version
@@ -287,8 +316,8 @@ What is still not true:
   Snitch-side device runtime
 - we do not yet have a real `/dev/occamydev--1` endpoint, only a local
   user-space ABI shim for smoke testing
-- we do not yet have a Snitch-side runtime connected to the fake-driver smoke
-  path to consume mailbox launch requests
+- we do not yet have the Linux/qemu HeroSDK OpenMP host process connected to the
+  real Verilator Snitch-side runtime
 - we have not yet validated OpenMP `map(to)` / `map(tofrom)` correctness
   through actual Snitch-side target execution
 - we have not yet validated FPGA bring-up for this reduced path
@@ -384,8 +413,8 @@ Delivered:
 
 ### M3: HeroSDK-Shaped Software Proof
 
-Status: fake-completion host-runtime smoke completed; Snitch execution still
-pending
+Status: real mailbox-runtime smoke completed; full user-facing OpenMP
+map/tofrom execution still pending
 
 Success criteria:
 
@@ -446,6 +475,20 @@ Completed fake-completion subset:
 - the run still reports `Error: map to_from did not work`, which is expected
   because the fake responder does not execute any Snitch-side target function
 
+Completed real mailbox-runtime subset:
+
+- `scripts/run-local-occamy-minimal.sh omp_mailbox` builds a bare-metal host
+  app plus an RV32 Snitch payload that links the real `libomptarget_device`
+  mailbox manager
+- the host app sends `MBOX_DEVICE_START`, target function address, argument
+  pointer, and thread count through the same software mailbox protocol used by
+  the HeroSDK OpenMP RTL
+- the Snitch-side manager calls `omp_mailbox_target`
+- `omp_mailbox_target` reads `0x12345678` from host-visible memory and writes
+  `0x12345679` back
+- the Snitch-side manager returns `MBOX_DEVICE_DONE` plus cycle counters
+- the host validates the returned word and exits with code `0`
+
 Known build caveat:
 
 - the final host link uses GNU ld with `--noinhibit-exec`
@@ -458,8 +501,10 @@ Still missing for full M3:
 
 - replace the fake user-space driver shim with either the real Occamy Linux
   driver or a simulator bridge that talks to Verilator
-- connect host-side mailbox writes to a running Snitch-side device runtime
-- prove that the OpenMP target region reaches the Snitch-side device runtime
+- connect the Linux/qemu HeroSDK OpenMP host process to the running Verilator
+  Snitch-side runtime
+- prove that the generated `offload_benchmark` target regions reach the
+  Snitch-side runtime through that connected endpoint
 - verify the `map(to)` and `map(tofrom)` behavior from
   `offload_benchmark/main.c`
 
@@ -505,9 +550,8 @@ That means:
 - stay in simulation
 - keep the reduced Occamy single-cluster configuration
 - keep the M3 build and runtime-smoke proofs frozen as the baseline
-- move from "the host OpenMP runtime can complete with fake mailbox responses"
-  to "the OpenMP target region reaches the Snitch-side libomptarget_device
-  runtime"
+- move from "the host and device halves are proven separately" to "the
+  generated OpenMP host ELF drives the real Verilator Snitch-side runtime"
 - keep the workload tiny enough that failures are still attributable
 
 Short version:
@@ -519,10 +563,11 @@ Current state:
   M3 smoke-runs that ELF far enough to load the Occamy OpenMP target plugin
   M3 fake-driver smoke reaches target launch
   M3 fake-completion smoke completes the host OpenMP control path
+  M3 omp_mailbox runs the real Snitch-side mailbox manager and target function
 
 Best next state:
-  that ELF can execute a target region through a real Verilator-connected or
-  kernel-driver-connected Occamy device endpoint
+  the generated OpenMP ELF executes a target region through a real
+  Verilator-connected or kernel-driver-connected Occamy endpoint
 
 Then:
   consider reduced FPGA bring-up
