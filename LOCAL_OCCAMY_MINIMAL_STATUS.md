@@ -162,10 +162,13 @@ M3 HeroSDK-shaped build and runtime smoke proof
        before completing the corresponding OpenMP target launch
     -> the fake driver returns MBOX_DEVICE_DONE to the qemu host only after
        that response
-    -> has been validated for launches 1 through 4, covering the first no-op,
-       mapped-argument, and map(tofrom)-shaped target launches
-    -> launch 4 now proves the first replay-derived host-visible copyback:
-       the bridge writes `0x0000000a` back to `0xc08003a0`
+    -> has been validated for all 16 launches captured from
+       offload_benchmark
+    -> the five map(tofrom)-shaped launches, sequences 4, 7, 10, 13, and 16,
+       each apply one replay-derived host-visible copyback:
+       `W32 0xc08003a0 0x0000000a`
+    -> the full bridge run completes without
+       `Error: map to_from did not work`
 
   real mailbox-runtime smoke run
     -> builds a bare-metal CVA6 host app and RV32 Snitch payload
@@ -195,12 +198,12 @@ M3 HeroSDK-shaped build and runtime smoke proof
        the Verilator device and does not prove qemu-host-visible map(tofrom)
        correctness after the full benchmark
     -> the online replay bridge makes qemu host progress depend on Verilator
-       replay success for selected launches and can apply selected
-       trace-derived W32 copyback writes, but it is still not a general
-       coherent qemu/Verilator memory system
-    -> the bounded `--max-launches 4` bridge run proves the first map(tofrom)
-       copyback only; later benchmark loop iterations still use fake
-       completions and can still report `Error: map to_from did not work`
+       replay success for configured launches and can apply trace-derived W32
+       copyback writes, but it is still not a general coherent qemu/Verilator
+       memory system
+    -> the `--all` bridge run validates every offload_benchmark launch through
+       the replay bridge, but each launch is still an isolated captured replay
+       rather than a single continuously running Verilator device session
     -> the real mailbox-runtime smoke is not yet wired to the Linux/qemu
        HeroSDK OpenMP host process; it proves the device-side protocol in
        Verilator, not the full user-facing OpenMP map/tofrom flow
@@ -349,14 +352,19 @@ What the traces demonstrate:
   `output/occamy-openmp-replay/sequence-XXXX/` prove that all 16 captured
   OpenMP launches reached their captured RV32 target entry points through the
   real Snitch-side mailbox manager and then returned to the CVA6 replay host
-- for the M3 online replay-bridge smoke, `output/occamy-openmp-smoke.log` shows
-  the qemu host waiting for replay bridge sequences 1 through 4 and resuming
-  only after the bridge reports completion; the response files under
-  `output/occamy-openmp-bridge/responses/` all contain status `0`, and
-  `response-0004.status` contains `W32 0xc08003a0 0x0000000a`
-- the same M3 online replay-bridge log shows the fake driver applying that
-  write before completing sequence 4:
+- for the M3 online replay-bridge smoke,
+  `scripts/run-local-occamy-openmp-replay-bridge.sh --all` shows the qemu host
+  waiting for replay bridge sequences 1 through 16 and resuming each launch
+  only after the bridge reports completion
+- the response files under `output/occamy-openmp-bridge/responses/` all contain
+  status `0`
+- responses 4, 7, 10, 13, and 16 each contain
+  `W32 0xc08003a0 0x0000000a`
+- the same M3 online replay-bridge log shows the fake driver applying five
+  copyback writes before completing the corresponding map(tofrom) launches:
   `applied bridge W32 0x0000000a -> 0xc08003a0`
+- the full M3 online replay-bridge qemu log contains no
+  `Error: map to_from did not work` messages
 - for the M3 mailbox-runtime smoke, the device trace proves that the real
   Snitch-side `libomptarget_device` manager reads the launch sequence, jumps to
   `omp_mailbox_target`, reads `0x12345678` from host-visible memory, stores
@@ -595,11 +603,10 @@ Completed real mailbox-runtime subset:
 - `scripts/run-local-occamy-openmp-replay.sh --all` now replays all 16 captured
   OpenMP launches and archives per-sequence replay traces under
   `output/occamy-openmp-replay/sequence-XXXX/`
-- `scripts/run-local-occamy-openmp-replay-bridge.sh --max-launches 4` now
-  blocks the qemu host on the first four OpenMP launches until their Verilator
-  replays succeed
-- the same bridge run applies the first trace-derived qemu-visible data
-  copyback for the first `map(tofrom)` target launch:
+- `scripts/run-local-occamy-openmp-replay-bridge.sh --all` now blocks the qemu
+  host on all 16 OpenMP launches until their Verilator replays succeed
+- the same bridge run applies five trace-derived qemu-visible data copybacks
+  for the five `map(tofrom)` target launches:
   `W32 0xc08003a0 0x0000000a`
 
 Known build caveat:
@@ -621,8 +628,8 @@ Still missing for full M3:
   offline replay of captured launch descriptors
 - replace the current selected W32 trace-copyback path with a general memory
   synchronization mechanism for qemu/Verilator
-- verify full-run end-to-end `map(to)` and `map(tofrom)` behavior from
-  `offload_benchmark/main.c`, not only the first bridged `map(tofrom)` launch
+- replace isolated replay-per-launch validation with a continuous live
+  qemu-to-Verilator endpoint
 
 Why this is the immediate next step:
 
@@ -681,10 +688,10 @@ Current state:
   M3 fake-completion smoke completes the host OpenMP control path
   M3 captured-launch replay runs all 16 captured OpenMP launches through the
   real Snitch-side mailbox manager in Verilator
-  M3 replay bridge makes qemu host progress wait on Verilator success for the
-  first four captured launches
-  M3 replay bridge applies the first qemu-visible replay-derived W32 copyback
-  for the first map(tofrom) launch
+  M3 replay bridge makes qemu host progress wait on Verilator success for all
+  16 captured launches
+  M3 replay bridge applies qemu-visible replay-derived W32 copybacks for all
+  five map(tofrom) launches
   M3 omp_mailbox runs the real Snitch-side mailbox manager and target function
 
 Best next state:

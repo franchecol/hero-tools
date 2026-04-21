@@ -313,8 +313,13 @@ PY
           log "captured replay snapshots to ${SNAPSHOT_DIR}"
         fi
       fi
-      log "host OpenMP runtime completed with fake mailbox responses"
-      log "target code and OpenMP map correctness are still not proven"
+      if [[ -n "${OCCAMY_FAKE_BRIDGE_DIR:-}" ]]; then
+        log "host OpenMP runtime completed with replay bridge responses"
+        log "full coherent qemu/Verilator device endpoint is still not proven"
+      else
+        log "host OpenMP runtime completed with fake mailbox responses"
+        log "target code and OpenMP map correctness are still not proven"
+      fi
       exit 0
     fi
     log "program exited successfully; full M3 runtime execution may now be possible"
