@@ -10,6 +10,8 @@ hero-tools fork:  franchecol/hero-tools
 hero-tools branch: occamy-minimal-bootstrap
 Occamy fork:      franchecol/occamy
 Occamy branch:    occamy-minimal-bootstrap
+cva6-sdk fork:    franchecol/cva6-sdk
+cva6-sdk branch:  occamy-minimal-bootstrap
 ```
 
 Current branch status:
@@ -66,9 +68,8 @@ Current reproducibility scope:
 M0/M1: expected to reproduce from this branch, the matching Occamy fork, and
        the listed Linux dependencies.
 M2:    expected to reproduce after the LLVM/o1heap submodules are initialized.
-M3:    validated on this checkout, but not yet sealed as a clean-machine proof
-       until the exact cva6-sdk state is pinned in the fork or patched by the
-       bootstrap flow.
+M3:    source state is now pinned through the matching cva6-sdk fork branch.
+       A clean-machine revalidation is still recommended after checkout.
 ```
 
 Useful reruns:

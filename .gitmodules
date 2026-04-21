@@ -1,6 +1,7 @@
 [submodule "cva6-sdk"]
 	path = cva6-sdk
-	url = https://github.com/pulp-platform/cva6-sdk.git
+	url = https://github.com/franchecol/cva6-sdk.git
+	branch = occamy-minimal-bootstrap
 	ignore = dirty
 [submodule "toolchain/llvm-project"]
 	path = toolchain/llvm-project

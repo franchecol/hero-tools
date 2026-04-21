@@ -189,22 +189,25 @@ Current source-only status:
 M0: expected to reproduce from a fresh Linux checkout with the listed packages.
 M1: expected to reproduce after M0 bootstrap.
 M2: expected to reproduce after initializing toolchain/llvm-project and o1heap.
-M3: locally validated, but not yet fully sealed for a new machine.
+M3: source state is pinned through franchecol/cva6-sdk, branch
+    occamy-minimal-bootstrap.  A clean-machine revalidation is still
+    recommended before calling the path externally proven.
 ```
 
-The reason M3 is not yet sealed is `cva6-sdk`: the last successful M3 build on
-this machine used a local `cva6-sdk` state different from the submodule pointer
-currently committed in this branch.  That local state includes Buildroot
-configuration and nested submodule updates.
+The `cva6-sdk` submodule pointer is intentionally pinned to the matching fork
+branch because the M3 build needs Buildroot configuration and nested submodule
+updates that were not present at the previous upstream submodule pointer.
 
-To make M3 fully independent for a new machine, one of these must happen:
+The top-level submodule entry is:
 
-- fork/pin `cva6-sdk` and update the top-level submodule pointer
-- or teach the bootstrap flow to apply the required `cva6-sdk` patch set
-- or revalidate that the committed `cva6-sdk` pointer works on a clean clone
+```text
+url    = https://github.com/franchecol/cva6-sdk.git
+branch = occamy-minimal-bootstrap
+```
 
-Until then, treat the M3 result as validated in this checkout, not as a
-guaranteed one-clone reproduction.
+This removes the previous hidden local `cva6-sdk` dependency.  It does not
+replace an actual fresh-clone revalidation run; it only makes the source state
+explicit and fetchable.
 
 ## Common Reruns
 
