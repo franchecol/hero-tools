@@ -1,7 +1,7 @@
 # Local Occamy Minimal Heterogeneous Runbook
 
-Status: validated on this machine through `M2` execution and `M3` build on
-2026-04-21.
+Status: validated on this machine through `M2` execution and `M3` OpenMP
+runtime smoke on 2026-04-21.
 
 This note documents the smallest heterogeneous simulation path that was
 actually proven in this checkout.
@@ -46,10 +46,35 @@ make -C apps/omp/basic/offload_benchmark clean
 make -C apps/omp/basic/offload_benchmark DEVICES=occamy
 ```
 
+Optional M3 HeroSDK/OpenMP runtime smoke:
+
+```bash
+./scripts/run-local-occamy-openmp-smoke.sh
+```
+
+If the OpenMP artifacts are missing or stale, rebuild before running:
+
+```bash
+./scripts/run-local-occamy-openmp-smoke.sh --build
+```
+
 Expected M3 build artifact:
 
 ```text
 apps/omp/basic/offload_benchmark/offload_benchmark_occamy.elf
+```
+
+Expected M3 runtime smoke result on this machine:
+
+```text
+[occamy-openmp-smoke] reached the HeroSDK OpenMP runtime path
+[occamy-openmp-smoke] current expected blocker: missing /dev/occamydev--1 device interface
+```
+
+Detailed smoke log:
+
+```text
+output/occamy-openmp-smoke.log
 ```
 
 Known M3 build caveat:
@@ -61,8 +86,9 @@ dangerous relocation: Mismatched R_RISCV_SUB_ULEB128 ...
 The current branch uses GNU ld with `--noinhibit-exec` so the local proof still
 emits the ELF. This is not yet an upstream-clean linker fix.
 
-It does not yet cover execution of a full user-facing HeroSDK OpenMP target
-application or the broader Linux/FPGA bring-up flow.
+It does not yet cover successful execution of a full user-facing HeroSDK OpenMP
+target region on the Snitch-side runtime or the broader Linux/FPGA bring-up
+flow.
 It only covers:
 
 - reduced `occamy` configuration
@@ -74,6 +100,9 @@ It only covers:
 - one minimal shared-memory roundtrip
 - one reduced `axpy` offload proof using the HeroSDK RV32 LLVM device toolchain
 - one HeroSDK/OpenMP `offload_benchmark` build proof for `DEVICES=occamy`
+- one `qemu-riscv64` smoke run proving that the generated RISC-V Linux host ELF
+  loads `libomptarget.rtl.herodev_occamy.so`, registers the Occamy target image,
+  and reaches `__tgt_rtl_init_device(1)`
 
 ## Scope
 
@@ -113,6 +142,8 @@ Known-good artifacts:
   `apps/omp/basic/offload_benchmark/offload_benchmark_occamy.elf`
 - HeroSDK/OpenMP device runtime archive:
   `platforms/occamy/target/sim/sw/device/apps/libomptarget_device/build/libomptarget_device.a`
+- HeroSDK/OpenMP runtime smoke log:
+  `output/occamy-openmp-smoke.log`
 
 Required files provided by the matching Occamy fork branch:
 
@@ -160,6 +191,10 @@ The following must exist on the machine:
 - `bender`
 - a bare-metal RISC-V GNU toolchain
 - Python 3 with `venv`
+
+For the optional `M3` OpenMP runtime smoke, the machine also needs:
+
+- `qemu-riscv64`
 
 For the optional `axpy` proof, this machine also needed the reduced HeroSDK
 RV32 LLVM toolchain and sysroot built with:

@@ -1,20 +1,25 @@
 # Stock Arch Linux Quickstart For The Minimal Occamy Run
 
-Status: validated against this local bootstrap flow on 2026-04-20.
+Status: validated against this local bootstrap flow on 2026-04-21.
 
 This note is for the reduced local proof only.
 
 It does not cover:
 
-- execution of a full user-facing HeroSDK OpenMP target application flow
+- full execution of a user-facing HeroSDK OpenMP target application on the
+  Snitch-side runtime
 - `make hero-cva6-sdk-all`
 - FPGA bitstreams
 - Linux image generation
 
-It only covers the minimal local Verilator path driven by:
+It covers the minimal local Verilator path driven by:
 
 - `scripts/bootstrap-local-occamy-minimal.sh`
 - `scripts/run-local-occamy-minimal.sh`
+
+It also covers the optional `M3` OpenMP runtime smoke driven by:
+
+- `scripts/run-local-occamy-openmp-smoke.sh`
 
 If your checkout does not contain those scripts, you are not on the local
 branch/commit that added this reduced flow.
@@ -26,6 +31,12 @@ Install the required packages:
 ```bash
 sudo pacman -Syu
 sudo pacman -S --needed base-devel git python ripgrep bc dtc verilator bender riscv64-elf-gcc
+```
+
+For the optional `M3` OpenMP runtime smoke, also install:
+
+```bash
+sudo pacman -S --needed qemu-user
 ```
 
 Why those packages are enough:
@@ -40,6 +51,7 @@ dtc             -> provides the device-tree compiler used by the simulator flow
 verilator       -> RTL-to-C++ simulator frontend
 bender          -> hardware dependency manager used by Occamy
 riscv64-elf-gcc -> bare-metal RISC-V toolchain; pulls in riscv64-elf-binutils
+qemu-user       -> optional; provides qemu-riscv64 for the M3 OpenMP smoke
 ```
 
 Notes:
@@ -66,12 +78,14 @@ This quickstart assumes the checkout already contains:
 
 - `scripts/bootstrap-local-occamy-minimal.sh`
 - `scripts/run-local-occamy-minimal.sh`
+- `scripts/run-local-occamy-openmp-smoke.sh`
 
 Quick sanity check:
 
 ```bash
 test -x scripts/bootstrap-local-occamy-minimal.sh
 test -x scripts/run-local-occamy-minimal.sh
+test -x scripts/run-local-occamy-openmp-smoke.sh
 ```
 
 If either command fails, your checkout does not yet include the reduced local
@@ -154,12 +168,26 @@ make HERO_HOST=cva6 HERO_DEVICE=occamy hero-sw-all
 make -C platforms/occamy/target/sim/sw/device/apps/libomptarget_device all
 make -C apps/omp/basic/offload_benchmark clean
 make -C apps/omp/basic/offload_benchmark DEVICES=occamy
+./scripts/run-local-occamy-openmp-smoke.sh
 ```
 
 Expected artifact:
 
 ```text
 apps/omp/basic/offload_benchmark/offload_benchmark_occamy.elf
+```
+
+Expected smoke result on a machine without an Occamy Linux driver endpoint:
+
+```text
+[occamy-openmp-smoke] reached the HeroSDK OpenMP runtime path
+[occamy-openmp-smoke] current expected blocker: missing /dev/occamydev--1 device interface
+```
+
+The detailed smoke log is written to:
+
+```text
+output/occamy-openmp-smoke.log
 ```
 
 Known caveat:
@@ -169,8 +197,10 @@ dangerous relocation: Mismatched R_RISCV_SUB_ULEB128 ...
 ```
 
 The branch currently uses `--noinhibit-exec` for this local build proof. The
-ELF is emitted, but this is not yet a clean upstream linker fix and the ELF has
-not yet been executed through a Linux/driver-backed Occamy simulation.
+ELF is emitted, but this is not yet a clean upstream linker fix. The smoke run
+executes the ELF far enough to load the Occamy OpenMP target plugin and reach
+device initialization, then stops because this local machine has no
+`/dev/occamydev--1` or equivalent simulated driver endpoint.
 
 ## Disk Budget
 
