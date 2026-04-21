@@ -631,7 +631,7 @@ Still missing for full M3:
 - replace isolated replay-per-launch validation with a continuous live
   qemu-to-Verilator endpoint
 
-Why this is the immediate next step:
+Why this was the immediate next step before the full bridge run:
 
 - it answers the actual "why HeroSDK instead of pure Occamy?" question more
   directly
@@ -640,19 +640,22 @@ Why this is the immediate next step:
 
 ### M4: Reduced FPGA Bring-Up
 
-Status: deferred until after M3
+Status: next milestone
 
 Success criteria:
 
-- move the reduced path onto FPGA only after the simulation-side software proof
-  is stronger
+- move the reduced path onto FPGA now that the simulation-side software proof
+  is strong enough to serve as the baseline
 - keep the experiment narrow enough that failures can be attributed to board,
   boot, or hardware effects rather than basic host/device contract issues
+- use `apps/omp/basic/map_tofrom_u32` as the first application, not a larger
+  benchmark
 
-Why this is not the immediate next step:
+Why this is now the immediate next step:
 
 - FPGA adds boot images, board-specific flow, bitstream generation, and
-  hardware debugging on top of the existing software uncertainty
+  hardware debugging, but the remaining unknowns are now platform-endpoint
+  unknowns rather than basic HeroSDK/OpenMP launch-contract unknowns
 
 ### M5: Upstream-Oriented Cleanup
 
@@ -666,16 +669,16 @@ Success criteria:
 
 ## Recommended Next Step
 
-The best next technical step is now live M3 target-region execution, not FPGA.
+The best next technical step is now reduced FPGA bring-up preparation, not more
+qemu/Verilator bridge expansion.
 
 That means:
 
-- stay in simulation
-- keep the reduced Occamy single-cluster configuration
-- keep the M3 build and runtime-smoke proofs frozen as the baseline
-- move from the selected-launch replay bridge to a live endpoint with
-  coherent qemu/Verilator memory behavior
-- keep the workload tiny enough that failures are still attributable
+- freeze the M3 `--all` replay-bridge result as the simulation baseline
+- keep the reduced Occamy configuration assumptions explicit
+- build the tiny `map_tofrom_u32` OpenMP app as the first real-platform probe
+- use the VCU128-oriented FPGA path under `platforms/occamy/target/fpga`
+- do not start FPGA validation with AXPY or matrix-vector benchmarks
 
 Short version:
 
@@ -695,11 +698,11 @@ Current state:
   M3 omp_mailbox runs the real Snitch-side mailbox manager and target function
 
 Best next state:
-  the generated OpenMP ELF executes target regions through a live endpoint with
-  coherent data movement, not only request/response gating
+  M4 boots the reduced FPGA platform far enough to expose /dev/occamydev--1
+  and run map_tofrom_u32_occamy.elf without the fake driver or replay bridge
 
 Then:
-  consider reduced FPGA bring-up
+  run offload_benchmark_occamy.elf on the real endpoint
 ```
 
 ## Branch Context
@@ -718,3 +721,4 @@ The reduced path lives on the dedicated branch above.
 
 - `LOCAL_OCCAMY_MINIMAL.md`
 - `LOCAL_OCCAMY_MINIMAL_ARCH.md`
+- `LOCAL_OCCAMY_FPGA_BRINGUP.md`
