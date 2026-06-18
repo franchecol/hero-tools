@@ -6,6 +6,7 @@ SCRIPT_DIR=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)
 ROOT_DIR=$(cd -- "${SCRIPT_DIR}/.." && pwd)
 LOCK_FILE="${SCRIPT_DIR}/occamy-m0.lock.env"
 PYTHON_REQUIREMENTS="${SCRIPT_DIR}/requirements-occamy-m0.txt"
+M1_LOCK_FILE="${SCRIPT_DIR}/occamy-m1.lock.env"
 
 [[ -f "${LOCK_FILE}" ]] || {
   printf '[occamy-minimal] ERROR: missing lock file: %s\n' "${LOCK_FILE}" >&2
@@ -65,6 +66,35 @@ check_version() {
   else
     log "WARNING: ${name} version is unverified: expected '${expected}', got '${actual}'"
   fi
+}
+
+check_sha256() {
+  local name="$1"
+  local expected="$2"
+  local path="$3"
+  local actual
+
+  actual=$(sha256sum "${path}" | awk '{print $1}')
+  [[ "${actual}" == "${expected}" ]] || \
+    die "${name} checksum mismatch: expected ${expected}, got ${actual} (${path})"
+  log "${name} checksum: ${actual}"
+}
+
+verify_m1_sources() {
+  [[ "${APP_MODE}" == "roundtrip" ]] || return 0
+  [[ -f "${M1_LOCK_FILE}" ]] || die "missing M1 lock file: ${M1_LOCK_FILE}"
+
+  # shellcheck disable=SC1090
+  source "${M1_LOCK_FILE}"
+
+  check_sha256 "M1 device Makefile" "${OCCAMY_M1_DEVICE_MAKEFILE_SHA256}" \
+    "${DEVICE_APP_DIR}/Makefile"
+  check_sha256 "M1 device source" "${OCCAMY_M1_DEVICE_SOURCE_SHA256}" \
+    "${DEVICE_APP_DIR}/src/roundtrip.S"
+  check_sha256 "M1 host Makefile" "${OCCAMY_M1_HOST_MAKEFILE_SHA256}" \
+    "${HOST_APP_DIR}/Makefile"
+  check_sha256 "M1 host source" "${OCCAMY_M1_HOST_SOURCE_SHA256}" \
+    "${HOST_APP_DIR}/src/roundtrip.c"
 }
 
 verify_reproducible_environment() {
@@ -136,7 +166,7 @@ ensure_venv() {
   # shellcheck disable=SC1091
   source "${VENV_DIR}/bin/activate"
 
-  check_version "M0 virtualenv Python" "${OCCAMY_M0_PYTHON_VERSION}" \
+  check_version "Occamy virtualenv Python" "${OCCAMY_M0_PYTHON_VERSION}" \
     "$(python -c 'import platform; print(platform.python_version())')"
 
   log "synchronizing pinned Python build dependencies"
@@ -550,21 +580,106 @@ verify_traces() {
     rg -q "${host_exit_pc}.*DASM\\(00a2a023\\)" "${host_trace}" || \
       die "host trace does not show the tohost exit store at ${host_exit_pc}"
   elif [[ "${APP_MODE}" == "roundtrip" ]]; then
-    roundtrip_base=$("${CANONICAL_RISCV_PREFIX}nm" -n "${HOST_ELF}" | awk '
-      $NF == "roundtrip_buffer" {
-        print $1
-        exit
-      }
-    ')
-    [[ -n "${roundtrip_base}" ]] || die "could not locate roundtrip_buffer in ${HOST_ELF}"
-    roundtrip_base=$(printf '0x%x\n' "0x${roundtrip_base}")
+    local snitch_base=""
+    local device_data_store_offset=""
+    local device_data_store_pc=""
+    local device_irq_store_offset=""
+    local device_irq_store_pc=""
+    local host_clear_pc=""
+    local host_exit_pc=""
+    local host_failure_pc=""
+    local word_index=""
+    local word_addr=""
+    local word_value=""
 
-    rg -q "DASM\\(00732023\\).*opa': 0x4000000" "${dev_trace}" || \
-      die "device trace does not show the host interrupt store"
-    rg -q "opa': ${roundtrip_base}" "${dev_trace}" || \
-      die "device trace does not show stores into ${roundtrip_base}"
-    rg -q '0x80000068.*00a2a023' "${host_trace}" || \
-      die "host trace does not show the tohost exit write"
+    # shellcheck disable=SC1090
+    source "${M1_LOCK_FILE}"
+
+    roundtrip_base=$(get_symbol_addr "${CANONICAL_RISCV_PREFIX}nm" "${HOST_ELF}" roundtrip_buffer)
+    [[ -n "${roundtrip_base}" ]] || die "could not locate roundtrip_buffer in ${HOST_ELF}"
+
+    snitch_base=$(get_symbol_addr "${CANONICAL_RISCV_PREFIX}nm" "${HOST_ELF}" snitch_main)
+    [[ -n "${snitch_base}" ]] || die "could not locate snitch_main in ${HOST_ELF}"
+
+    device_data_store_offset=$("${CANONICAL_RISCV_PREFIX}objdump" -d "${DEVICE_SYMBOL_ELF}" | awk '
+      /sw[[:space:]]+t6,0\(t3\)/ && !found {
+        sub(/:$/, "", $1)
+        value = "0x" $1
+        found = 1
+      }
+      END { print value }
+    ')
+    [[ -n "${device_data_store_offset}" ]] || \
+      die "could not locate the M1 data store in ${DEVICE_SYMBOL_ELF}"
+    device_data_store_pc=$(printf '0x%x\n' $((snitch_base + device_data_store_offset)))
+
+    device_irq_store_offset=$("${CANONICAL_RISCV_PREFIX}objdump" -d "${DEVICE_SYMBOL_ELF}" | awk '
+      /sw[[:space:]]+t2,0\(t1\).*4000000/ && !found {
+        sub(/:$/, "", $1)
+        value = "0x" $1
+        found = 1
+      }
+      END { print value }
+    ')
+    [[ -n "${device_irq_store_offset}" ]] || \
+      die "could not locate the M1 interrupt store in ${DEVICE_SYMBOL_ELF}"
+    device_irq_store_pc=$(printf '0x%x\n' $((snitch_base + device_irq_store_offset)))
+
+    host_clear_pc=$("${CANONICAL_RISCV_PREFIX}objdump" -d "${HOST_ELF}" | awk '
+      /sw[[:space:]]+zero,0\(a4\).*4000000/ && !found {
+        sub(/:$/, "", $1)
+        value = "0x" $1
+        found = 1
+      }
+      END { print value }
+    ')
+    [[ -n "${host_clear_pc}" ]] || \
+      die "could not locate the host SW-interrupt clear store in ${HOST_ELF}"
+
+    host_exit_pc=$("${CANONICAL_RISCV_PREFIX}objdump" -d "${HOST_ELF}" | awk '
+      /sw[[:space:]]+a0,0\(t0\)/ && !found {
+        sub(/:$/, "", $1)
+        value = "0x" $1
+        found = 1
+      }
+      END { print value }
+    ')
+    [[ -n "${host_exit_pc}" ]] || die "could not locate the tohost store in ${HOST_ELF}"
+
+    host_failure_pc=$("${CANONICAL_RISCV_PREFIX}objdump" -d "${HOST_ELF}" | awk '
+      /<main>:/ {
+        in_main = 1
+        next
+      }
+      in_main && /^$/ {
+        in_main = 0
+      }
+      in_main && /li[[:space:]]+a0,1/ && !found {
+        sub(/:$/, "", $1)
+        value = "0x" $1
+        found = 1
+      }
+      END { print value }
+    ')
+    [[ -n "${host_failure_pc}" ]] || \
+      die "could not locate the M1 validation failure path in ${HOST_ELF}"
+
+    for ((word_index = 0; word_index < OCCAMY_M1_WORDS; ++word_index)); do
+      word_addr=$(printf '0x%x\n' $((roundtrip_base + word_index * 4)))
+      word_value=$(printf '0x%x\n' $((word_index + 1)))
+      rg -q "${device_data_store_pc}.*DASM\\(01fe2023\\).*opa': ${word_addr}.*gpr_rdata_1': ${word_value}" "${dev_trace}" || \
+        die "device trace does not show M1 word ${word_index} written as ${word_value} at ${word_addr}"
+    done
+
+    rg -q "${device_irq_store_pc}.*DASM\\(00732023\\).*opa': 0x4000000.*gpr_rdata_1': 0x1" "${dev_trace}" || \
+      die "device trace does not show the M1 completion interrupt"
+    rg -q "${host_clear_pc}.*DASM\\(00072023\\)" "${host_trace}" || \
+      die "host trace does not show the M1 interrupt clear"
+    if rg -q "${host_failure_pc}" "${host_trace}"; then
+      die "host trace entered the M1 buffer-validation failure path at ${host_failure_pc}"
+    fi
+    rg -q "${host_exit_pc}.*DASM\\(00a2a023\\)" "${host_trace}" || \
+      die "host trace does not show the M1 tohost exit"
   elif [[ "${APP_MODE}" == "omp_mailbox" ]]; then
     local args_base=""
     local args_result_addr=""
@@ -594,7 +709,7 @@ verify_traces() {
       die "device trace does not show target stores 0x12345679 into ${args_result_addr}"
   fi
 
-  if [[ "${APP_MODE}" != "minimal_irq" ]]; then
+  if [[ "${APP_MODE}" != "minimal_irq" && "${APP_MODE}" != "roundtrip" ]]; then
     rg -q '0x80000068.*00a2a023' "${host_trace}" || \
       die "host trace does not show the tohost exit write"
   fi
@@ -613,6 +728,7 @@ main() {
   need_cmd c++
   need_cmd ar
   need_cmd ld
+  need_cmd sha256sum
 
   configure_mode
 
@@ -623,6 +739,7 @@ main() {
   cd "${ROOT_DIR}"
 
   verify_reproducible_environment
+  verify_m1_sources
   ensure_venv
   ensure_hero_device_toolchain
   resolve_verilator_root
