@@ -4,6 +4,16 @@ set -euo pipefail
 
 SCRIPT_DIR=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)
 ROOT_DIR=$(cd -- "${SCRIPT_DIR}/.." && pwd)
+LOCK_FILE="${SCRIPT_DIR}/occamy-m0.lock.env"
+PYTHON_REQUIREMENTS="${SCRIPT_DIR}/requirements-occamy-m0.txt"
+
+[[ -f "${LOCK_FILE}" ]] || {
+  printf '[occamy-minimal] ERROR: missing lock file: %s\n' "${LOCK_FILE}" >&2
+  exit 1
+}
+# shellcheck disable=SC1090
+source "${LOCK_FILE}"
+
 SIM_DIR="${ROOT_DIR}/platforms/occamy/target/sim"
 DEVICE_RUNTIME_DIR="${SIM_DIR}/sw/device/runtime"
 DEVICE_MATH_DIR="${SIM_DIR}/sw/device/math"
@@ -12,6 +22,15 @@ USER_BIN_DIR="${HOME}/bin"
 HERO_INSTALL_DIR="${HERO_INSTALL:-${ROOT_DIR}/install}"
 CANONICAL_RISCV_PREFIX="riscv64-unknown-elf-"
 RISCV_SRC_PREFIX=""
+VLT_JOBS="${VLT_JOBS:-1}"
+VLT_TRACE="${VLT_TRACE:-0}"
+VLT_PROF="${VLT_PROF:-0}"
+VLT_OUTPUT_SPLIT="${VLT_OUTPUT_SPLIT:-5000}"
+VLT_OUTPUT_SPLIT_CFUNCS="${VLT_OUTPUT_SPLIT_CFUNCS:-5000}"
+VLT_CC="${VLT_CC:-cc}"
+VLT_CXX="${VLT_CXX:-c++}"
+M0_STRICT_VERSIONS="${M0_STRICT_VERSIONS:-1}"
+M0_ALLOW_UNPINNED="${M0_ALLOW_UNPINNED:-0}"
 APP_MODE="${1:-minimal_irq}"
 DEVICE_APP_DIR=""
 HOST_APP_DIR=""
@@ -32,6 +51,37 @@ die() {
 
 need_cmd() {
   command -v "$1" >/dev/null 2>&1 || die "missing command: $1"
+}
+
+check_version() {
+  local name="$1"
+  local expected="$2"
+  local actual="$3"
+
+  if [[ "${actual}" == "${expected}" ]]; then
+    log "${name}: ${actual}"
+  elif [[ "${M0_STRICT_VERSIONS}" == "1" ]]; then
+    die "${name} version mismatch: expected '${expected}', got '${actual}'. Set M0_STRICT_VERSIONS=0 to test an unverified version."
+  else
+    log "WARNING: ${name} version is unverified: expected '${expected}', got '${actual}'"
+  fi
+}
+
+verify_reproducible_environment() {
+  local occamy_head
+
+  [[ -f "${PYTHON_REQUIREMENTS}" ]] || \
+    die "missing pinned Python requirements: ${PYTHON_REQUIREMENTS}"
+
+  occamy_head=$(git -C "${ROOT_DIR}/platforms/occamy" rev-parse HEAD)
+  if [[ "${occamy_head}" != "${OCCAMY_M0_COMMIT}" && "${M0_ALLOW_UNPINNED}" != "1" ]]; then
+    die "Occamy HEAD is ${occamy_head}, expected ${OCCAMY_M0_COMMIT}. Run the bootstrap from a clean checkout or set M0_ALLOW_UNPINNED=1."
+  fi
+
+  check_version "Python" "${OCCAMY_M0_PYTHON_VERSION}" "$(python -c 'import platform; print(platform.python_version())')"
+  check_version "Bender" "${OCCAMY_M0_BENDER_VERSION}" "$(bender --version)"
+  check_version "Verilator" "${OCCAMY_M0_VERILATOR_VERSION}" "$(verilator --version | head -n 1)"
+  check_version "host GCC" "${OCCAMY_M0_HOST_GCC_VERSION}" "$("${VLT_CC}" --version | head -n 1)"
 }
 
 configure_mode() {
@@ -86,16 +136,12 @@ ensure_venv() {
   # shellcheck disable=SC1091
   source "${VENV_DIR}/bin/activate"
 
-  if ! python - <<'PY' >/dev/null 2>&1
-import importlib
-mods = ["hjson", "jsonref", "mako", "yaml", "tabulate", "jsonschema", "pkg_resources"]
-for mod in mods:
-    importlib.import_module(mod)
-PY
-  then
-    log "installing Python build dependencies into ${VENV_DIR}"
-    python -m pip install hjson jsonref mako pyyaml tabulate jsonschema "setuptools<81"
-  fi
+  check_version "M0 virtualenv Python" "${OCCAMY_M0_PYTHON_VERSION}" \
+    "$(python -c 'import platform; print(platform.python_version())')"
+
+  log "synchronizing pinned Python build dependencies"
+  python -m pip install --disable-pip-version-check --no-deps \
+    --requirement "${PYTHON_REQUIREMENTS}"
 
   if [[ "${APP_MODE}" == "axpy" ]]; then
     if ! python - <<'PY' >/dev/null 2>&1
@@ -154,6 +200,9 @@ resolve_verilator_root() {
   export VLT_ROOT="${VERILATOR_ROOT}"
 
   log "using VERILATOR_ROOT=${VERILATOR_ROOT}"
+  log "using $(verilator --version | head -n 1) with VLT_JOBS=${VLT_JOBS}, VLT_TRACE=${VLT_TRACE}, VLT_PROF=${VLT_PROF}"
+  log "using Verilator output split: VLT_OUTPUT_SPLIT=${VLT_OUTPUT_SPLIT}, VLT_OUTPUT_SPLIT_CFUNCS=${VLT_OUTPUT_SPLIT_CFUNCS}"
+  log "using simulator C/C++ compilers: CC=${VLT_CC}, CXX=${VLT_CXX}"
 }
 
 find_riscv_tool_prefix() {
@@ -220,6 +269,9 @@ ensure_riscv_aliases() {
   need_cmd "${CANONICAL_RISCV_PREFIX}objcopy"
   need_cmd "${CANONICAL_RISCV_PREFIX}objdump"
   need_cmd "${CANONICAL_RISCV_PREFIX}readelf"
+  need_cmd "${CANONICAL_RISCV_PREFIX}nm"
+  check_version "RISC-V GCC" "${OCCAMY_M0_RISCV_GCC_VERSION}" \
+    "$("${CANONICAL_RISCV_PREFIX}gcc" --version | head -n 1)"
 }
 
 ensure_hero_install_env() {
@@ -268,6 +320,13 @@ build_simulator() {
     VLT='verilator --timing -DASSERTS_OFF' \
     VERILATOR_ROOT="${VERILATOR_ROOT}" \
     VLT_ROOT="${VLT_ROOT}" \
+    VLT_JOBS="${VLT_JOBS}" \
+    VLT_TRACE="${VLT_TRACE}" \
+    VLT_PROF="${VLT_PROF}" \
+    VLT_OUTPUT_SPLIT="${VLT_OUTPUT_SPLIT}" \
+    VLT_OUTPUT_SPLIT_CFUNCS="${VLT_OUTPUT_SPLIT_CFUNCS}" \
+    CC="${VLT_CC}" \
+    CXX="${VLT_CXX}" \
     CXXFLAGS='-include cstdint -fcoroutines' \
     bin/occamy_top.vlt
 }
@@ -278,10 +337,11 @@ get_symbol_addr() {
   local symbol="$3"
 
   "${nm_bin}" -n "${elf}" | awk -v symbol="${symbol}" '
-    $NF == symbol {
-      print "0x" $1
-      exit
+    $NF == symbol && !found {
+      value = "0x" $1
+      found = 1
     }
+    END { print value }
   '
 }
 
@@ -440,10 +500,55 @@ verify_traces() {
   [[ -f "${dev_trace}" ]] || die "missing device trace: ${dev_trace}"
 
   if [[ "${APP_MODE}" == "minimal_irq" ]]; then
-    rg -q '0x80000524.*00732023' "${dev_trace}" || \
-      die "device trace does not show the host interrupt store"
-    rg -q '0x80000464.*04000737' "${host_trace}" || \
-      die "host trace does not show the host SW interrupt clear path"
+    local snitch_base=""
+    local device_store_offset=""
+    local device_store_pc=""
+    local host_clear_pc=""
+    local host_exit_pc=""
+
+    snitch_base=$(get_symbol_addr "${CANONICAL_RISCV_PREFIX}nm" "${HOST_ELF}" snitch_main)
+    [[ -n "${snitch_base}" ]] || die "could not locate snitch_main in ${HOST_ELF}"
+
+    device_store_offset=$("${CANONICAL_RISCV_PREFIX}objdump" -d "${DEVICE_SYMBOL_ELF}" | awk '
+      /sw[[:space:]]+t2,0\(t1\).*4000000/ && !found {
+        sub(/:$/, "", $1)
+        value = "0x" $1
+        found = 1
+      }
+      END { print value }
+    ')
+    [[ -n "${device_store_offset}" ]] || \
+      die "could not locate the device host-interrupt store in ${DEVICE_SYMBOL_ELF}"
+    device_store_pc=$(printf '0x%x\n' $((snitch_base + device_store_offset)))
+
+    host_clear_pc=$("${CANONICAL_RISCV_PREFIX}objdump" -d "${HOST_ELF}" | awk '
+      /sw[[:space:]]+zero,0\(a4\).*4000000/ && !found {
+        sub(/:$/, "", $1)
+        value = "0x" $1
+        found = 1
+      }
+      END { print value }
+    ')
+    [[ -n "${host_clear_pc}" ]] || \
+      die "could not locate the host SW-interrupt clear store in ${HOST_ELF}"
+
+    host_exit_pc=$("${CANONICAL_RISCV_PREFIX}objdump" -d "${HOST_ELF}" | awk '
+      /sw[[:space:]]+a0,0\(t0\)/ && !found {
+        sub(/:$/, "", $1)
+        value = "0x" $1
+        found = 1
+      }
+      END { print value }
+    ')
+    [[ -n "${host_exit_pc}" ]] || \
+      die "could not locate the tohost exit store in ${HOST_ELF}"
+
+    rg -q "${device_store_pc}.*DASM\\(00732023\\).*opa': 0x4000000.*gpr_rdata_1': 0x1" "${dev_trace}" || \
+      die "device trace does not show the host interrupt store at ${device_store_pc}"
+    rg -q "${host_clear_pc}.*DASM\\(00072023\\)" "${host_trace}" || \
+      die "host trace does not show the SW-interrupt clear store at ${host_clear_pc}"
+    rg -q "${host_exit_pc}.*DASM\\(00a2a023\\)" "${host_trace}" || \
+      die "host trace does not show the tohost exit store at ${host_exit_pc}"
   elif [[ "${APP_MODE}" == "roundtrip" ]]; then
     roundtrip_base=$("${CANONICAL_RISCV_PREFIX}nm" -n "${HOST_ELF}" | awk '
       $NF == "roundtrip_buffer" {
@@ -489,8 +594,10 @@ verify_traces() {
       die "device trace does not show target stores 0x12345679 into ${args_result_addr}"
   fi
 
-  rg -q '0x80000068.*00a2a023' "${host_trace}" || \
-    die "host trace does not show the tohost exit write"
+  if [[ "${APP_MODE}" != "minimal_irq" ]]; then
+    rg -q '0x80000068.*00a2a023' "${host_trace}" || \
+      die "host trace does not show the tohost exit write"
+  fi
 }
 
 main() {
@@ -515,6 +622,7 @@ main() {
 
   cd "${ROOT_DIR}"
 
+  verify_reproducible_environment
   ensure_venv
   ensure_hero_device_toolchain
   resolve_verilator_root

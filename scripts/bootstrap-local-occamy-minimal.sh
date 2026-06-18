@@ -4,9 +4,21 @@ set -euo pipefail
 
 SCRIPT_DIR=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)
 ROOT_DIR=$(cd -- "${SCRIPT_DIR}/.." && pwd)
+LOCK_FILE="${SCRIPT_DIR}/occamy-m0.lock.env"
+PATCH_FILE="${SCRIPT_DIR}/patches/occamy-m0-verilator.patch"
+
+[[ -f "${LOCK_FILE}" ]] || {
+  printf '[occamy-bootstrap] ERROR: missing lock file: %s\n' "${LOCK_FILE}" >&2
+  exit 1
+}
+# shellcheck disable=SC1090
+source "${LOCK_FILE}"
+
 OCCAMY_DIR="${ROOT_DIR}/platforms/occamy"
-OCCAMY_URL="${OCCAMY_URL:-https://github.com/franchecol/occamy.git}"
-OCCAMY_BRANCH="${OCCAMY_BRANCH:-occamy-minimal-bootstrap}"
+OCCAMY_URL="${OCCAMY_URL:-${OCCAMY_M0_URL}}"
+OCCAMY_BRANCH="${OCCAMY_BRANCH:-${OCCAMY_M0_BRANCH}}"
+OCCAMY_COMMIT="${OCCAMY_COMMIT:-${OCCAMY_M0_COMMIT}}"
+M0_ALLOW_UNPINNED="${M0_ALLOW_UNPINNED:-0}"
 RUNNER="${ROOT_DIR}/scripts/run-local-occamy-minimal.sh"
 SIM_MAKEFILE="${OCCAMY_DIR}/target/sim/Makefile"
 
@@ -63,6 +75,7 @@ ensure_checkout() {
     die "bootstrap must run from a hero-tools checkout"
   [[ -x "${RUNNER}" ]] || \
     die "missing runner script: ${RUNNER}"
+  [[ -f "${PATCH_FILE}" ]] || die "missing Occamy compatibility patch: ${PATCH_FILE}"
 }
 
 ensure_occamy_checkout() {
@@ -75,6 +88,7 @@ ensure_occamy_checkout() {
   if [[ ! -d "${OCCAMY_DIR}/.git" ]]; then
     log "cloning Occamy (${OCCAMY_BRANCH}) into ${OCCAMY_DIR}"
     git clone --branch "${OCCAMY_BRANCH}" --single-branch "${OCCAMY_URL}" "${OCCAMY_DIR}"
+    git -C "${OCCAMY_DIR}" checkout --detach "${OCCAMY_COMMIT}"
     return
   fi
 
@@ -89,8 +103,24 @@ ensure_occamy_checkout() {
   fi
 
   branch=$(git -C "${OCCAMY_DIR}" branch --show-current || true)
-  [[ "${branch}" == "${OCCAMY_BRANCH}" ]] || \
-    die "existing ${OCCAMY_DIR} checkout is on '${branch:-detached}', expected '${OCCAMY_BRANCH}'"
+  if [[ "${M0_ALLOW_UNPINNED}" != "1" && \
+        "$(git -C "${OCCAMY_DIR}" rev-parse HEAD)" != "${OCCAMY_COMMIT}" ]]; then
+    die "Occamy HEAD is not the pinned M0 commit ${OCCAMY_COMMIT}; use a clean checkout or set M0_ALLOW_UNPINNED=1"
+  fi
+
+  log "using Occamy ${branch:-detached}@$(git -C "${OCCAMY_DIR}" rev-parse HEAD)"
+}
+
+ensure_occamy_patch() {
+  if git -C "${OCCAMY_DIR}" apply --reverse --check "${PATCH_FILE}" >/dev/null 2>&1; then
+    log "Occamy Verilator compatibility patch is already applied"
+    return
+  fi
+
+  git -C "${OCCAMY_DIR}" apply --check "${PATCH_FILE}" || \
+    die "cannot apply ${PATCH_FILE}; Occamy sources differ from the pinned revision"
+  log "applying reproducible Verilator compatibility patch"
+  git -C "${OCCAMY_DIR}" apply "${PATCH_FILE}"
 }
 
 require_occamy_branch_content() {
@@ -100,6 +130,10 @@ require_occamy_branch_content() {
     die "expected Verilator compatibility fix in ${SIM_MAKEFILE}; clone the expected Occamy fork branch"
   grep -q 'verilated_threads.o' "${SIM_MAKEFILE}" || \
     die "expected Verilator compatibility fix in ${SIM_MAKEFILE}; clone the expected Occamy fork branch"
+  grep -q 'VLT_JOBS' "${SIM_MAKEFILE}" || \
+    die "expected configurable Verilator parallelism in ${SIM_MAKEFILE}; update the expected Occamy fork branch"
+  grep -q 'VLT_VERSION_STAMP' "${SIM_MAKEFILE}" || \
+    die "expected Verilator version tracking in ${SIM_MAKEFILE}; update the expected Occamy fork branch"
 
   local required_file
 
@@ -115,6 +149,7 @@ main() {
 
   ensure_checkout
   ensure_occamy_checkout
+  ensure_occamy_patch
   require_occamy_branch_content
 
   exec "${RUNNER}" "$@"
