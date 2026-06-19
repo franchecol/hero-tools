@@ -7,6 +7,7 @@ ROOT_DIR=$(cd -- "${SCRIPT_DIR}/.." && pwd)
 LOCK_FILE="${SCRIPT_DIR}/occamy-m0.lock.env"
 PYTHON_REQUIREMENTS="${SCRIPT_DIR}/requirements-occamy-m0.txt"
 M1_LOCK_FILE="${SCRIPT_DIR}/occamy-m1.lock.env"
+M2_LOCK_FILE="${SCRIPT_DIR}/occamy-m2.lock.env"
 
 [[ -f "${LOCK_FILE}" ]] || {
   printf '[occamy-minimal] ERROR: missing lock file: %s\n' "${LOCK_FILE}" >&2
@@ -80,6 +81,41 @@ check_sha256() {
   log "${name} checksum: ${actual}"
 }
 
+tree_sha256() {
+  local path
+  local relative_paths=()
+
+  for path in "$@"; do
+    relative_paths+=("${path#"${ROOT_DIR}/"}")
+  done
+
+  (
+    cd "${ROOT_DIR}"
+    find "${relative_paths[@]}" -type f \
+      -not -path '*/build/*' \
+      -not -path '*/__pycache__/*' \
+      -not -name '*.pyc' \
+      -not -name 'data.h' \
+      -print0 |
+      sort -z |
+      xargs -0 sha256sum |
+      sha256sum |
+      awk '{print $1}'
+  )
+}
+
+check_tree_sha256() {
+  local name="$1"
+  local expected="$2"
+  shift 2
+  local actual
+
+  actual=$(tree_sha256 "$@")
+  [[ "${actual}" == "${expected}" ]] || \
+    die "${name} tree checksum mismatch: expected ${expected}, got ${actual}"
+  log "${name} tree checksum: ${actual}"
+}
+
 verify_m1_sources() {
   [[ "${APP_MODE}" == "roundtrip" ]] || return 0
   [[ -f "${M1_LOCK_FILE}" ]] || die "missing M1 lock file: ${M1_LOCK_FILE}"
@@ -95,6 +131,37 @@ verify_m1_sources() {
     "${HOST_APP_DIR}/Makefile"
   check_sha256 "M1 host source" "${OCCAMY_M1_HOST_SOURCE_SHA256}" \
     "${HOST_APP_DIR}/src/roundtrip.c"
+}
+
+verify_m2_sources() {
+  [[ "${APP_MODE}" == "axpy" ]] || return 0
+  [[ -f "${M2_LOCK_FILE}" ]] || die "missing M2 lock file: ${M2_LOCK_FILE}"
+
+  # shellcheck disable=SC1090
+  source "${M2_LOCK_FILE}"
+
+  local llvm_head
+  local snitch_head
+  llvm_head=$(git -C "${ROOT_DIR}/toolchain/llvm-project" rev-parse HEAD)
+  snitch_head=$(git -C "${ROOT_DIR}/platforms/occamy/deps/snitch_cluster" rev-parse HEAD)
+
+  [[ "${llvm_head}" == "${OCCAMY_M2_LLVM_COMMIT}" ]] || \
+    die "LLVM HEAD is ${llvm_head}, expected ${OCCAMY_M2_LLVM_COMMIT}"
+  [[ "${snitch_head}" == "${OCCAMY_M2_SNITCH_COMMIT}" ]] || \
+    die "Snitch HEAD is ${snitch_head}, expected ${OCCAMY_M2_SNITCH_COMMIT}"
+
+  check_tree_sha256 "M2 target/runtime" "${OCCAMY_M2_TARGET_TREE_SHA256}" \
+    "${SIM_DIR}/sw/device/apps/blas/axpy" \
+    "${SIM_DIR}/sw/device/runtime" \
+    "${SIM_DIR}/sw/device/math" \
+    "${SIM_DIR}/sw/device/toolchain.mk" \
+    "${SIM_DIR}/sw/device/apps/common.mk"
+  check_tree_sha256 "M2 Snitch AXPY" "${OCCAMY_M2_SNITCH_AXPY_TREE_SHA256}" \
+    "${ROOT_DIR}/platforms/occamy/deps/snitch_cluster/sw/blas/axpy"
+  check_tree_sha256 "M2 verification support" "${OCCAMY_M2_VERIFY_SUPPORT_TREE_SHA256}" \
+    "${ROOT_DIR}/platforms/occamy/deps/snitch_cluster/util/sim"
+  check_tree_sha256 "M2 host" "${OCCAMY_M2_HOST_TREE_SHA256}" \
+    "${HOST_APP_DIR}"
 }
 
 verify_reproducible_environment() {
@@ -173,17 +240,6 @@ ensure_venv() {
   python -m pip install --disable-pip-version-check --no-deps \
     --requirement "${PYTHON_REQUIREMENTS}"
 
-  if [[ "${APP_MODE}" == "axpy" ]]; then
-    if ! python - <<'PY' >/dev/null 2>&1
-import importlib
-for mod in ("numpy", "elftools"):
-    importlib.import_module(mod)
-PY
-    then
-      log "installing axpy verification dependencies into ${VENV_DIR}"
-      python -m pip install numpy pyelftools
-    fi
-  fi
 }
 
 resolve_verilator_root() {
@@ -329,9 +385,93 @@ ensure_hero_device_toolchain() {
     die "${APP_MODE} requires the rv32imafd-ilp32d device sysroot in ${HERO_INSTALL}; run: source scripts/setenv.sh && make hero-tc-llvm-axpy"
 
   if [[ "${APP_MODE}" == "axpy" ]]; then
+    # shellcheck disable=SC1090
+    source "${M2_LOCK_FILE}"
+    check_version "M2 Clang" "${OCCAMY_M2_CLANG_VERSION}" \
+      "$(riscv32-unknown-elf-clang --version | head -n 1)"
     [[ -x "${VERIFY_SCRIPT}" ]] || [[ -f "${VERIFY_SCRIPT}" ]] || \
       die "missing axpy verify script: ${VERIFY_SCRIPT}"
   fi
+}
+
+generate_m2_data() {
+  [[ "${APP_MODE}" == "axpy" ]] || return 0
+
+  # shellcheck disable=SC1090
+  source "${M2_LOCK_FILE}"
+
+  local datagen="${ROOT_DIR}/platforms/occamy/deps/snitch_cluster/sw/blas/axpy/data/datagen.py"
+  local data_header="${ROOT_DIR}/platforms/occamy/deps/snitch_cluster/sw/blas/axpy/data/data.h"
+
+  log "generating deterministic M2 inputs: length=${OCCAMY_M2_LENGTH}, seed=${OCCAMY_M2_NUMPY_SEED}"
+  python - "${OCCAMY_M2_LENGTH}" "${OCCAMY_M2_NUMPY_SEED}" "${datagen}" "${data_header}" <<'PY'
+import runpy
+import sys
+from contextlib import redirect_stdout
+from pathlib import Path
+
+import numpy as np
+
+length, seed, script, output = sys.argv[1:]
+np.random.seed(int(seed))
+sys.argv = [script, length, "--section="]
+with Path(output).open("w") as stream, redirect_stdout(stream):
+    runpy.run_path(script, run_name="__main__")
+PY
+
+  check_sha256 "M2 generated data header" "${OCCAMY_M2_DATA_HEADER_SHA256}" \
+    "${data_header}"
+}
+
+verify_m2_elf_contract() {
+  [[ "${APP_MODE}" == "axpy" ]] || return 0
+
+  # shellcheck disable=SC1090
+  source "${M2_LOCK_FILE}"
+
+  local nm_bin="${HERO_INSTALL}/bin/llvm-nm"
+  local expected_bytes=$((OCCAMY_M2_LENGTH * 8))
+  local symbol
+  local expected_size
+  local actual_size
+
+  for symbol in x y z; do
+    actual_size=$("${nm_bin}" -S "${DEVICE_SYMBOL_ELF}" | awk -v symbol="${symbol}" '
+      $NF == symbol { print "0x" $2 }
+    ')
+    [[ -n "${actual_size}" ]] || die "M2 device ELF is missing symbol ${symbol}"
+    [[ $((actual_size)) -eq "${expected_bytes}" ]] || \
+      die "M2 symbol ${symbol} has $((actual_size)) bytes, expected ${expected_bytes}"
+  done
+
+  for symbol in l a; do
+    expected_size=4
+    [[ "${symbol}" == "a" ]] && expected_size=8
+    actual_size=$("${nm_bin}" -S "${DEVICE_SYMBOL_ELF}" | awk -v symbol="${symbol}" '
+      $NF == symbol { print "0x" $2 }
+    ')
+    [[ -n "${actual_size}" ]] || die "M2 device ELF is missing symbol ${symbol}"
+    [[ $((actual_size)) -eq "${expected_size}" ]] || \
+      die "M2 symbol ${symbol} has $((actual_size)) bytes, expected ${expected_size}"
+  done
+
+  log "M2 ELF contract: ${OCCAMY_M2_LENGTH} doubles in x/y/z"
+  check_sha256 "M2 device binary" "${OCCAMY_M2_DEVICE_BIN_SHA256}" \
+    "${DEVICE_BIN}"
+}
+
+verify_m2_host_image() {
+  [[ "${APP_MODE}" == "axpy" ]] || return 0
+
+  # shellcheck disable=SC1090
+  source "${M2_LOCK_FILE}"
+
+  local host_image
+  host_image=$(mktemp)
+  "${CANONICAL_RISCV_PREFIX}objcopy" -O binary "${HOST_ELF}" "${host_image}"
+  check_sha256 "M2 host loadable image" "${OCCAMY_M2_HOST_LOADABLE_SHA256}" \
+    "${host_image}"
+  rm -f "${host_image}"
 }
 
 verify_local_patch() {
@@ -395,6 +535,7 @@ build_selected_payload() {
   if [[ "${APP_MODE}" == "axpy" ]]; then
     log "cleaning ${APP_MODE} device payload"
     make -C "${DEVICE_APP_DIR}" clean
+    generate_m2_data
 
     log "cleaning ${APP_MODE} host application"
     make -C "${HOST_APP_DIR}" clean
@@ -410,9 +551,11 @@ build_selected_payload() {
 
     log "building ${APP_MODE} device payload"
     make -C "${DEVICE_APP_DIR}" all
+    verify_m2_elf_contract
 
     log "finalizing ${APP_MODE} host application"
     make -C "${HOST_APP_DIR}" finalize-build DEVICE_APPS=blas/axpy
+    verify_m2_host_image
   elif [[ "${APP_MODE}" == "omp_mailbox" ]]; then
     log "cleaning ${APP_MODE} device payload"
     make -C "${DEVICE_APP_DIR}" clean
@@ -519,6 +662,7 @@ run_and_verify_axpy() {
     cd "${SIM_DIR}"
     python "${VERIFY_SCRIPT}" --symbols-bin "${DEVICE_SYMBOL_ELF}" "${sim_bin}" "${HOST_ELF}"
   )
+  log "M2 numerical verification: ${OCCAMY_M2_LENGTH} outputs within relative error ${OCCAMY_M2_ERR_THRESHOLD}"
 }
 
 verify_traces() {
@@ -729,6 +873,7 @@ main() {
   need_cmd ar
   need_cmd ld
   need_cmd sha256sum
+  need_cmd xargs
 
   configure_mode
 
@@ -740,6 +885,7 @@ main() {
 
   verify_reproducible_environment
   verify_m1_sources
+  verify_m2_sources
   ensure_venv
   ensure_hero_device_toolchain
   resolve_verilator_root
