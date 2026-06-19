@@ -8,6 +8,7 @@ LOCK_FILE="${SCRIPT_DIR}/occamy-m0.lock.env"
 PYTHON_REQUIREMENTS="${SCRIPT_DIR}/requirements-occamy-m0.txt"
 M1_LOCK_FILE="${SCRIPT_DIR}/occamy-m1.lock.env"
 M2_LOCK_FILE="${SCRIPT_DIR}/occamy-m2.lock.env"
+M3_LOCK_FILE="${SCRIPT_DIR}/occamy-m3.lock.env"
 
 [[ -f "${LOCK_FILE}" ]] || {
   printf '[occamy-minimal] ERROR: missing lock file: %s\n' "${LOCK_FILE}" >&2
@@ -162,6 +163,36 @@ verify_m2_sources() {
     "${ROOT_DIR}/platforms/occamy/deps/snitch_cluster/util/sim"
   check_tree_sha256 "M2 host" "${OCCAMY_M2_HOST_TREE_SHA256}" \
     "${HOST_APP_DIR}"
+}
+
+verify_m3_sources() {
+  [[ "${APP_MODE}" == "omp_mailbox" ]] || return 0
+  [[ -f "${M3_LOCK_FILE}" ]] || die "missing M3 lock file: ${M3_LOCK_FILE}"
+
+  # shellcheck disable=SC1090
+  source "${M3_LOCK_FILE}"
+
+  local llvm_head
+  local snitch_head
+  llvm_head=$(git -C "${ROOT_DIR}/toolchain/llvm-project" rev-parse HEAD)
+  snitch_head=$(git -C "${ROOT_DIR}/platforms/occamy/deps/snitch_cluster" rev-parse HEAD)
+
+  [[ "${llvm_head}" == "${OCCAMY_M3_LLVM_COMMIT}" ]] || \
+    die "LLVM HEAD is ${llvm_head}, expected ${OCCAMY_M3_LLVM_COMMIT}"
+  [[ "${snitch_head}" == "${OCCAMY_M3_SNITCH_COMMIT}" ]] || \
+    die "Snitch HEAD is ${snitch_head}, expected ${OCCAMY_M3_SNITCH_COMMIT}"
+
+  check_tree_sha256 "M3 device/runtime" "${OCCAMY_M3_DEVICE_RUNTIME_TREE_SHA256}" \
+    "${SIM_DIR}/sw/device/apps/omp_mailbox" \
+    "${SIM_DIR}/sw/device/apps/libomptarget_device" \
+    "${SIM_DIR}/sw/device/runtime" \
+    "${SIM_DIR}/sw/device/math" \
+    "${SIM_DIR}/sw/device/toolchain.mk" \
+    "${SIM_DIR}/sw/device/apps/common.mk"
+  check_tree_sha256 "M3 host" "${OCCAMY_M3_HOST_TREE_SHA256}" \
+    "${HOST_APP_DIR}"
+  check_tree_sha256 "M3 Snitch runtime" "${OCCAMY_M3_SNITCH_RUNTIME_TREE_SHA256}" \
+    "${ROOT_DIR}/platforms/occamy/deps/snitch_cluster/sw/snRuntime"
 }
 
 verify_reproducible_environment() {
@@ -391,6 +422,11 @@ ensure_hero_device_toolchain() {
       "$(riscv32-unknown-elf-clang --version | head -n 1)"
     [[ -x "${VERIFY_SCRIPT}" ]] || [[ -f "${VERIFY_SCRIPT}" ]] || \
       die "missing axpy verify script: ${VERIFY_SCRIPT}"
+  else
+    # shellcheck disable=SC1090
+    source "${M3_LOCK_FILE}"
+    check_version "M3 Clang" "${OCCAMY_M3_CLANG_VERSION}" \
+      "$(riscv32-unknown-elf-clang --version | head -n 1)"
   fi
 }
 
@@ -470,6 +506,40 @@ verify_m2_host_image() {
   host_image=$(mktemp)
   "${CANONICAL_RISCV_PREFIX}objcopy" -O binary "${HOST_ELF}" "${host_image}"
   check_sha256 "M2 host loadable image" "${OCCAMY_M2_HOST_LOADABLE_SHA256}" \
+    "${host_image}"
+  rm -f "${host_image}"
+}
+
+verify_m3_elf_contract() {
+  [[ "${APP_MODE}" == "omp_mailbox" ]] || return 0
+
+  # shellcheck disable=SC1090
+  source "${M3_LOCK_FILE}"
+
+  local target_size
+  target_size=$("${HERO_INSTALL}/bin/llvm-nm" -S "${DEVICE_SYMBOL_ELF}" | awk '
+    $NF == "omp_mailbox_target" { print "0x" $2 }
+  ')
+  [[ -n "${target_size}" ]] || \
+    die "M3 device ELF is missing omp_mailbox_target"
+  [[ $((target_size)) -eq "${OCCAMY_M3_TARGET_SIZE}" ]] || \
+    die "M3 omp_mailbox_target is $((target_size)) bytes, expected ${OCCAMY_M3_TARGET_SIZE}"
+
+  log "M3 ELF contract: omp_mailbox_target is ${OCCAMY_M3_TARGET_SIZE} bytes"
+  check_sha256 "M3 device binary" "${OCCAMY_M3_DEVICE_BIN_SHA256}" \
+    "${DEVICE_BIN}"
+}
+
+verify_m3_host_image() {
+  [[ "${APP_MODE}" == "omp_mailbox" ]] || return 0
+
+  # shellcheck disable=SC1090
+  source "${M3_LOCK_FILE}"
+
+  local host_image
+  host_image=$(mktemp)
+  "${CANONICAL_RISCV_PREFIX}objcopy" -O binary "${HOST_ELF}" "${host_image}"
+  check_sha256 "M3 host loadable image" "${OCCAMY_M3_HOST_LOADABLE_SHA256}" \
     "${host_image}"
   rm -f "${host_image}"
 }
@@ -614,6 +684,8 @@ build_selected_payload() {
 
     [[ "${final_snitch_main}" == "${expected_snitch_main}" ]] || \
       die "could not stabilize omp_mailbox snitch_main address after 3 passes"
+    verify_m3_elf_contract
+    verify_m3_host_image
   else
     log "building ${APP_MODE} device payload"
     make -C "${DEVICE_APP_DIR}" clean
@@ -828,32 +900,98 @@ verify_traces() {
     local args_base=""
     local args_result_addr=""
     local target_addr=""
+    local target_store_pc=""
+    local completion_data_addr=""
+    local host_failure_pc=""
+    local host_result_load_pc=""
+    local host_exit_pc=""
 
-    args_base=$("${CANONICAL_RISCV_PREFIX}nm" -n "${HOST_ELF}" | awk '
-      $NF == "omp_mailbox_args" {
-        print $1
-        exit
-      }
-    ')
+    # shellcheck disable=SC1090
+    source "${M3_LOCK_FILE}"
+
+    args_base=$(get_symbol_addr "${CANONICAL_RISCV_PREFIX}nm" "${HOST_ELF}" omp_mailbox_args)
     [[ -n "${args_base}" ]] || die "could not locate omp_mailbox_args in ${HOST_ELF}"
-    args_result_addr=$(printf '0x%x\n' $((0x${args_base} + 4)))
+    args_result_addr=$(printf '0x%x\n' $((args_base + 4)))
 
-    target_addr=$("${HERO_INSTALL}/bin/llvm-nm" -n "${DEVICE_SYMBOL_ELF}" | awk '
-      $NF == "omp_mailbox_target" {
-        print "0x" $1
-        exit
-      }
-    ')
+    target_addr=$(get_symbol_addr "${HERO_INSTALL}/bin/llvm-nm" \
+      "${DEVICE_SYMBOL_ELF}" omp_mailbox_target)
     [[ -n "${target_addr}" ]] || \
       die "could not locate omp_mailbox_target in ${DEVICE_SYMBOL_ELF}"
 
-    rg -q "${target_addr}" "${dev_trace}" || \
-      die "device trace does not show execution at ${target_addr}"
-    rg -q "is_store': 0x1.*writeback': ${args_result_addr}.*gpr_rdata_1': 0x12345679" "${dev_trace}" || \
-      die "device trace does not show target stores 0x12345679 into ${args_result_addr}"
+    target_store_pc=$("${HERO_INSTALL}/bin/llvm-objdump" -d "${DEVICE_SYMBOL_ELF}" | awk '
+      /sw[[:space:]]+a1,[[:space:]]*4\(a0\)/ && !found {
+        sub(/:$/, "", $1)
+        value = "0x" $1
+        found = 1
+      }
+      END { print value }
+    ')
+    [[ -n "${target_store_pc}" ]] || \
+      die "could not locate the M3 result store in ${DEVICE_SYMBOL_ELF}"
+
+    completion_data_addr=$(get_symbol_addr "${CANONICAL_RISCV_PREFIX}nm" \
+      "${HOST_ELF}" a2h_mbox_data)
+    [[ -n "${completion_data_addr}" ]] || \
+      die "could not locate a2h_mbox_data in ${HOST_ELF}"
+    completion_data_addr=$(printf '0x%x\n' $((completion_data_addr)))
+
+    host_failure_pc=$("${CANONICAL_RISCV_PREFIX}objdump" -d "${HOST_ELF}" | awk '
+      /<main>:/ {
+        in_main = 1
+        next
+      }
+      in_main && /^$/ {
+        in_main = 0
+      }
+      in_main && /li[[:space:]]+a0,3/ && !found {
+        sub(/:$/, "", $1)
+        value = "0x" $1
+        found = 1
+      }
+      END { print value }
+    ')
+    [[ -n "${host_failure_pc}" ]] || \
+      die "could not locate the M3 completion failure path in ${HOST_ELF}"
+
+    host_result_load_pc=$("${CANONICAL_RISCV_PREFIX}objdump" -d "${HOST_ELF}" | awk '
+      /lw[[:space:]]+a0,.*omp_mailbox_args\+0x4/ && !found {
+        sub(/:$/, "", $1)
+        value = "0x" $1
+        found = 1
+      }
+      END { print value }
+    ')
+    [[ -n "${host_result_load_pc}" ]] || \
+      die "could not locate the M3 result validation load in ${HOST_ELF}"
+
+    host_exit_pc=$("${CANONICAL_RISCV_PREFIX}objdump" -d "${HOST_ELF}" | awk '
+      /sw[[:space:]]+a0,0\(t0\)/ && !found {
+        sub(/:$/, "", $1)
+        value = "0x" $1
+        found = 1
+      }
+      END { print value }
+    ')
+    [[ -n "${host_exit_pc}" ]] || \
+      die "could not locate the M3 tohost exit store in ${HOST_ELF}"
+
+    rg -q "${target_addr}.*DASM\\(00052583\\)" "${dev_trace}" || \
+      die "device trace does not show M3 entering omp_mailbox_target at ${target_addr}"
+    rg -q "${target_store_pc}.*DASM\\(00b52223\\).*is_store': 0x1.*writeback': ${args_result_addr}.*gpr_rdata_1': ${OCCAMY_M3_OUTPUT_VALUE}" "${dev_trace}" || \
+      die "device trace does not show M3 storing ${OCCAMY_M3_OUTPUT_VALUE} into ${args_result_addr}"
+    rg -q "is_store': 0x1.*writeback': ${completion_data_addr}.*gpr_rdata_1': ${OCCAMY_M3_DONE_VALUE}" "${dev_trace}" || \
+      die "device trace does not show M3 completion code ${OCCAMY_M3_DONE_VALUE} in ${completion_data_addr}"
+    rg -q "${host_result_load_pc}" "${host_trace}" || \
+      die "host trace does not show M3 validating the result at ${host_result_load_pc}"
+    if rg -q "${host_failure_pc}" "${host_trace}"; then
+      die "host trace entered the M3 completion failure path at ${host_failure_pc}"
+    fi
+    rg -q "${host_exit_pc}.*DASM\\(00a2a023\\)" "${host_trace}" || \
+      die "host trace does not show the M3 tohost exit at ${host_exit_pc}"
   fi
 
-  if [[ "${APP_MODE}" != "minimal_irq" && "${APP_MODE}" != "roundtrip" ]]; then
+  if [[ "${APP_MODE}" != "minimal_irq" && "${APP_MODE}" != "roundtrip" && \
+        "${APP_MODE}" != "omp_mailbox" ]]; then
     rg -q '0x80000068.*00a2a023' "${host_trace}" || \
       die "host trace does not show the tohost exit write"
   fi
@@ -886,6 +1024,7 @@ main() {
   verify_reproducible_environment
   verify_m1_sources
   verify_m2_sources
+  verify_m3_sources
   ensure_venv
   ensure_hero_device_toolchain
   resolve_verilator_root
