@@ -5,6 +5,10 @@ It intentionally does not paste or recreate the real source files used by M0.
 Instead, it shows the order of operations, the build handoff points, and the
 commands that the automated scripts normally hide.
 
+Use this document when you want to type the M0 phases manually. For the complete
+milestone progression and other document choices, start with the
+[Local Occamy Milestone Roadmap](local-occamy-roadmap.md).
+
 The canonical reproducible entry point is:
 
 ```bash
@@ -31,11 +35,9 @@ scripts/patches/occamy-m0-verilator.patch
 
 Related references:
 
-```text
-docs/local-occamy-m0-deep-dive.md
-docs/local-occamy-m0-bootstrap-runner.md
-docs/local-occamy-device-side-snitch-comparison.md
-```
+- [M0 Bootstrap And Runner](local-occamy-m0-bootstrap-runner.md) explains the automation.
+- [M0 Deep Dive](local-occamy-m0-deep-dive.md) explains architecture, traces, and waveforms.
+- [Device-Side Snitch Comparison](local-occamy-device-side-snitch-comparison.md) compares standalone Snitch with Occamy.
 
 ## 1. What Manual Replay Means
 

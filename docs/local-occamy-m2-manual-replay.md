@@ -2,6 +2,9 @@
 
 M2 is the reduced runtime-shaped AXPY proof.
 
+For the complete milestone progression, start with the
+[Local Occamy Milestone Roadmap](local-occamy-roadmap.md).
+
 ```text
 M0: wake Snitch and receive an interrupt
 M1: exchange and validate a small shared-memory buffer

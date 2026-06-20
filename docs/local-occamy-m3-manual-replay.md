@@ -1,12 +1,16 @@
-# Local Occamy M3 Manual Replay
+# Local Occamy M3a Manual Replay
 
-M3 is the live mailbox-runtime proof.
+M3a is the live mailbox-runtime proof.
+
+For the complete progression and the distinction between M3a and M3b, start
+with the [Local Occamy Milestone Roadmap](local-occamy-roadmap.md).
 
 ```text
 M0: wake Snitch and receive an interrupt
 M1: exchange and validate a shared-memory buffer
 M2: run and numerically verify a runtime/DMA/floating-point kernel
-M3: launch a device function through the OpenMP-style mailbox runtime
+M3a: launch a device function through the OpenMP-style mailbox runtime
+M3b: connect the Linux/OpenMP software flow to captured Verilator replays
 ```
 
 The canonical command is:
@@ -15,11 +19,12 @@ The canonical command is:
 ./scripts/bootstrap-local-occamy-m3.sh
 ```
 
-This M3 is deliberately smaller than a complete compiler-to-runtime OpenMP
+M3a is deliberately smaller than a complete compiler-to-runtime OpenMP
 offload flow. It proves the live host/mailbox/device-runtime boundary in the
-Verilator simulator.
+Verilator simulator. The broader M3b result is documented in the
+[M3b OpenMP Replay Freeze](local-occamy-m3b-openmp-freeze.md).
 
-## 1. What M3 Does
+## 1. What M3a Does
 
 The host creates two shared words:
 
@@ -52,7 +57,7 @@ args[1] == 0x12345679
 
 ## 2. Reproducibility Inputs
 
-M3 inherits the M0 simulator pins:
+M3a inherits the M0 simulator pins:
 
 ```text
 scripts/occamy-m0.lock.env
@@ -60,13 +65,13 @@ scripts/requirements-occamy-m0.txt
 scripts/patches/occamy-m0-verilator.patch
 ```
 
-M3 adds:
+M3a adds:
 
 ```text
 scripts/occamy-m3.lock.env
 ```
 
-The M3 lock records:
+The M3a lock records:
 
 ```text
 input, output, and completion values
@@ -94,7 +99,7 @@ make hero-tc-llvm-axpy
 ```
 
 Despite the target name, this produces the same generic HeroSDK RV32 LLVM
-toolchain and `rv32imafd-ilp32d` sysroot used by M2 and M3.
+toolchain and `rv32imafd-ilp32d` sysroot used by M2 and M3a.
 
 The pinned LLVM revision is:
 
@@ -135,7 +140,7 @@ make -C platforms/occamy/target/sim/sw/device/runtime all
 make -C platforms/occamy/target/sim/sw/device/math all
 ```
 
-The M3 device application also links `libomptarget_device`, which contains the
+The M3a device application also links `libomptarget_device`, which contains the
 mailbox manager that receives the launch words and calls the target function.
 
 ## 6. Build The Partial Host ELF
@@ -225,7 +230,7 @@ platforms/occamy/target/sim/logs/trace_hart_00001.dasm
 
 ## 10. What The Runner Verifies
 
-The deterministic M3 runner checks:
+The deterministic M3a runner checks:
 
 ```text
 source trees match the pinned hashes
@@ -258,4 +263,4 @@ M0_STRICT_VERSIONS=0 M0_ALLOW_UNPINNED=1 \
   ./scripts/bootstrap-local-occamy-m3.sh
 ```
 
-That is not the pinned M3 path.
+That is not the pinned M3a path.

@@ -6,3 +6,4 @@ output
 /platforms/occamy
 /platforms/carfield
 .vscode
+*.sdr/

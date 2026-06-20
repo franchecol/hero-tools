@@ -1,5 +1,10 @@
 # Occamy
 
+For the staged local work on the `occamy-minimal-bootstrap` branch, including
+M0 through M4, use the
+[Local Occamy Milestone Roadmap](../local-occamy-roadmap.md). The remainder of
+this page contains the upstream-oriented platform notes.
+
 ## Platform
 
 ...

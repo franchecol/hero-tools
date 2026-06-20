@@ -2,6 +2,9 @@
 
 M1 is the first shared-memory data-path proof after M0.
 
+For the complete milestone progression, start with the
+[Local Occamy Milestone Roadmap](local-occamy-roadmap.md).
+
 ```text
 M0
   Host wakes Snitch.

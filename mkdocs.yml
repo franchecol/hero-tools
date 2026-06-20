@@ -18,16 +18,30 @@ theme:
     - navigation.indexes
     - navigation.footer
 
-repo_url: https://iis-git.ee.ethz.ch/hero/hero-tools/
-repo_name: hero-tools
+repo_url: https://github.com/franchecol/hero-tools
+repo_name: franchecol/hero-tools
 
 nav:
 - Home:
-  - index.md
+  - Overview: index.md
   - Getting Started: gs.md
-- Sofware:
+- Software:
   - software/index.md
 - Platforms:
+  - Overview: platforms/index.md
   - Carfield: platforms/carfield.md
-  - Occamy: platforms/occamy.md
+  - Occamy:
+    - Upstream Platform Notes: platforms/occamy.md
+    - Local Milestone Roadmap: local-occamy-roadmap.md
+    - Reproduction:
+      - M0 Manual Replay: local-occamy-m0-manual-replay.md
+      - M1 Manual Replay: local-occamy-m1-manual-replay.md
+      - M2 Manual Replay: local-occamy-m2-manual-replay.md
+      - M3a Mailbox Runtime: local-occamy-m3-manual-replay.md
+    - Architecture And Internals:
+      - M0 Bootstrap And Runner: local-occamy-m0-bootstrap-runner.md
+      - M0 Deep Dive: local-occamy-m0-deep-dive.md
+      - Device-Side Snitch Comparison: local-occamy-device-side-snitch-comparison.md
+    - M3b OpenMP Replay Freeze: local-occamy-m3b-openmp-freeze.md
+    - M4 FPGA Bring-Up: local-occamy-m4-fpga-bringup.md
   - Milk-V: platforms/milkv.md
