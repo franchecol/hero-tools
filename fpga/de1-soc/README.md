@@ -42,6 +42,10 @@ d2_jtag_mmio_accel/
 s0_snitch_verilator/
   Real-Snitch simulation path:
   one-core Snitch config, tiny bare-metal ELF, Verilator testbench
+
+s1_snitch_mmio_trace/
+  Real-Snitch simulated MMIO path:
+  one-core Snitch config, fake MMIO store, trace-checked result
 ```
 
 Manual GUI scratch projects should use a `*_gui_manual/` directory name. Those
@@ -58,6 +62,7 @@ S0: Verilator first
 
 S1: simulated MMIO
     Add a small MMIO register and make Snitch write it from software.
+    Current S1 checks the MMIO-style store in the Verilator trace.
 
 S2: Quartus wrapper
     Try to synthesize the reduced Snitch wrapper for the DE1-SoC FPGA.
