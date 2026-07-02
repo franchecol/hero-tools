@@ -38,7 +38,30 @@ d1_register_accel/
 d2_jtag_mmio_accel/
   System Console/JTAG-controlled mini accelerator:
   Avalon-MM register block, ID/status/control/data/result registers
+
+s0_snitch_verilator/
+  Real-Snitch simulation path:
+  one-core Snitch config, tiny bare-metal ELF, Verilator testbench
 ```
 
 Manual GUI scratch projects should use a `*_gui_manual/` directory name. Those
 directories are ignored because they contain generated Quartus build outputs.
+
+## Snitch-Lite Track
+
+The `D*` projects are DE1-SoC FPGA board bring-up projects. The `S*` projects
+are the path toward a real Snitch core/cluster.
+
+```text
+S0: Verilator first
+    Build a reduced real Snitch target and run a tiny bare-metal program.
+
+S1: simulated MMIO
+    Add a small MMIO register and make Snitch write it from software.
+
+S2: Quartus wrapper
+    Try to synthesize the reduced Snitch wrapper for the DE1-SoC FPGA.
+
+S3: board-visible MMIO
+    Connect the Snitch-written register to LEDR/HEX/UART.
+```
