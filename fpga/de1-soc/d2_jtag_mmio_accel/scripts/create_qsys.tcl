@@ -1,0 +1,39 @@
+package require -exact qsys 20.1
+
+create_system d2_mmio_system
+
+set_project_property DEVICE_FAMILY "Cyclone V"
+set_project_property DEVICE 5CSEMA5F31C6
+
+add_instance clk_bridge altera_clock_bridge
+set_instance_parameter_value clk_bridge EXPLICIT_CLOCK_RATE 50000000
+
+add_instance reset_bridge altera_reset_bridge
+set_instance_parameter_value reset_bridge ACTIVE_LOW_RESET 0
+set_instance_parameter_value reset_bridge SYNCHRONOUS_EDGES deassert
+
+add_instance master_0 altera_jtag_avalon_master
+add_instance regs d2_mmio_regs
+
+add_connection clk_bridge.out_clk reset_bridge.clk
+add_connection clk_bridge.out_clk master_0.clk
+add_connection clk_bridge.out_clk regs.clk
+
+add_connection reset_bridge.out_reset master_0.clk_reset
+add_connection reset_bridge.out_reset regs.reset
+
+add_connection master_0.master regs.s1
+set_connection_parameter_value master_0.master/regs.s1 baseAddress 0x0000
+lock_avalon_base_address regs.s1
+
+set_interface_property clk EXPORT_OF clk_bridge.in_clk
+set_interface_property reset EXPORT_OF reset_bridge.in_reset
+set_interface_property ledr EXPORT_OF regs.ledr
+set_interface_property hex0 EXPORT_OF regs.hex0
+set_interface_property hex1 EXPORT_OF regs.hex1
+set_interface_property hex2 EXPORT_OF regs.hex2
+set_interface_property hex3 EXPORT_OF regs.hex3
+set_interface_property hex4 EXPORT_OF regs.hex4
+set_interface_property hex5 EXPORT_OF regs.hex5
+
+save_system d2_mmio_system.qsys
