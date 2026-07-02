@@ -65,6 +65,11 @@ s4_snitch_rom_mmio_led/
   First board-visible real-Snitch shell:
   feed Snitch a tiny ROM program, accept its MMIO store, and expose the written
   value on LEDR.
+
+s5_snitch_generated_rom_mmio_led/
+  Software-generated ROM path:
+  compile RV32E assembly into an ELF/binary, generate ROM contents, and reuse
+  the Snitch MMIO LED proof with software-owned instruction words.
 ```
 
 Manual GUI scratch projects should use a `*_gui_manual/` directory name. Those
@@ -102,4 +107,8 @@ S3: core-only probe
 
 S4: board-visible MMIO
     Feed Snitch a tiny instruction ROM and connect its MMIO store to LEDR.
+
+S5: generated software ROM
+    Compile assembly into ROM contents instead of hardcoding instruction words
+    in RTL.
 ```
