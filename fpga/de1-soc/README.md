@@ -60,6 +60,11 @@ s3_snitch_core_only_probe/
   Current result: sv2v, Yosys, Quartus analysis/elaboration, and full Quartus
   compile pass. A .sof is produced, but S3 still uses a constant NOP input and
   Quartus optimizes away most unused core behavior.
+
+s4_snitch_rom_mmio_led/
+  First board-visible real-Snitch shell:
+  feed Snitch a tiny ROM program, accept its MMIO store, and expose the written
+  value on LEDR.
 ```
 
 Manual GUI scratch projects should use a `*_gui_manual/` directory name. Those
@@ -96,5 +101,5 @@ S3: core-only probe
     core-only shell.
 
 S4: board-visible MMIO
-    Connect the Snitch-written register to LEDR/HEX/UART.
+    Feed Snitch a tiny instruction ROM and connect its MMIO store to LEDR.
 ```
