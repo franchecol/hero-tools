@@ -52,6 +52,13 @@ s2_snitch_quartus_wrapper/
   one-core Snitch config, Bender-to-QSF export, analysis/elaboration preflight.
   Current result: export works; Quartus Lite reaches Snitch RTL and then stops
   on unsupported advanced SystemVerilog syntax.
+
+s3_snitch_core_only_probe/
+  Reduced real-Snitch path:
+  instantiate snitch.sv directly, add tiny local shims, and probe the smaller
+  core-only subset with sv2v/yosys before trying Quartus again.
+  Current result: sv2v conversion passes and Yosys parse/elaboration/check
+  passes for the reduced core-only probe.
 ```
 
 Manual GUI scratch projects should use a `*_gui_manual/` directory name. Those
@@ -76,6 +83,16 @@ S2: Quartus wrapper
     Verified status: project export passes; Quartus Lite analysis does not yet
     pass because real Snitch dependencies use advanced SystemVerilog features.
 
-S3: board-visible MMIO
+S2.1: translation experiment
+    Try sv2v/yosys as a preprocessing route before Quartus.
+    Verified status: useful tools installed, but full snitch_cluster_wrapper
+    translation is high-friction and not recommended to continue.
+
+S3: core-only probe
+    Stop using snitch_cluster_wrapper for DE1-SoC.
+    Instantiate the real snitch core directly with local shims and a tiny shell.
+    Verified status: sv2v/yosys accept the reduced core-only subset.
+
+S4: board-visible MMIO
     Connect the Snitch-written register to LEDR/HEX/UART.
 ```

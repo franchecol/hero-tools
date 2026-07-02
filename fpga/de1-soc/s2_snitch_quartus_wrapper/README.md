@@ -114,6 +114,23 @@ So S2 currently proves that the project packaging path works, but the unmodified
 real Snitch RTL is not directly accepted by Quartus Lite analysis/elaboration
 yet.
 
+## Translation Follow-Up
+
+The follow-up translation experiment is documented in:
+
+```text
+TRANSLATION_EXPERIMENT.md
+```
+
+Summary:
+
+```text
+sv2v and yosys were installed and verified.
+Full snitch_cluster_wrapper translation was attempted.
+The path is not recommended to continue because it requires filtering,
+patching, assertion skipping, and still fails inside real cluster RTL.
+```
+
 ## Why This Is Not Yet S3
 
 S3 should connect Snitch-visible behavior to board-visible LED/UART/register
