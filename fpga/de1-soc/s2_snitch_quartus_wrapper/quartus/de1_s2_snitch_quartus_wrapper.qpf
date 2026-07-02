@@ -1,0 +1,4 @@
+QUARTUS_VERSION = "25.1"
+DATE = "00:00:00  JULY 02, 2026"
+
+PROJECT_REVISION = "de1_s2_snitch_quartus_wrapper"

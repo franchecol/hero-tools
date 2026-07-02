@@ -46,6 +46,12 @@ s0_snitch_verilator/
 s1_snitch_mmio_trace/
   Real-Snitch simulated MMIO path:
   one-core Snitch config, fake MMIO store, trace-checked result
+
+s2_snitch_quartus_wrapper/
+  Quartus-facing Snitch wrapper path:
+  one-core Snitch config, Bender-to-QSF export, analysis/elaboration preflight.
+  Current result: export works; Quartus Lite reaches Snitch RTL and then stops
+  on unsupported advanced SystemVerilog syntax.
 ```
 
 Manual GUI scratch projects should use a `*_gui_manual/` directory name. Those
@@ -66,6 +72,9 @@ S1: simulated MMIO
 
 S2: Quartus wrapper
     Try to synthesize the reduced Snitch wrapper for the DE1-SoC FPGA.
+    Current S2 first exports a Quartus project and runs analysis/elaboration.
+    Verified status: project export passes; Quartus Lite analysis does not yet
+    pass because real Snitch dependencies use advanced SystemVerilog features.
 
 S3: board-visible MMIO
     Connect the Snitch-written register to LEDR/HEX/UART.

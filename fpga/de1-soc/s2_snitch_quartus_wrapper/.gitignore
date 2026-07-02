@@ -1,0 +1,14 @@
+generated/
+db/
+incremental_db/
+output_files/
+*.done
+*.jdi
+*.pin
+*.qws
+*.rpt
+*.sld
+*.sof
+*.summary
+__pycache__/
+*.pyc
