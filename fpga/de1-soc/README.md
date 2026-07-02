@@ -57,8 +57,9 @@ s3_snitch_core_only_probe/
   Reduced real-Snitch path:
   instantiate snitch.sv directly, add tiny local shims, and probe the smaller
   core-only subset with sv2v/yosys before trying Quartus again.
-  Current result: sv2v conversion passes and Yosys parse/elaboration/check
-  passes for the reduced core-only probe.
+  Current result: sv2v, Yosys, Quartus analysis/elaboration, and full Quartus
+  compile pass. A .sof is produced, but S3 still uses a constant NOP input and
+  Quartus optimizes away most unused core behavior.
 ```
 
 Manual GUI scratch projects should use a `*_gui_manual/` directory name. Those
@@ -91,7 +92,8 @@ S2.1: translation experiment
 S3: core-only probe
     Stop using snitch_cluster_wrapper for DE1-SoC.
     Instantiate the real snitch core directly with local shims and a tiny shell.
-    Verified status: sv2v/yosys accept the reduced core-only subset.
+    Verified status: sv2v/yosys and Quartus full compile pass for the reduced
+    core-only shell.
 
 S4: board-visible MMIO
     Connect the Snitch-written register to LEDR/HEX/UART.

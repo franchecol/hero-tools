@@ -32,6 +32,16 @@ rtl/de1_s3_snitch_core_probe.sv
 scripts/run_sv2v_probe.sh
   Converts only the smaller Snitch-core subset with sv2v, then asks yosys to
   parse/check the translated Verilog if conversion succeeds.
+
+scripts/export_quartus_project.sh
+  Regenerates the translated Verilog and writes a minimal Quartus project that
+  uses generated/snitch_core_probe.v as its only RTL input.
+
+scripts/quartus_preflight.sh
+  Runs Quartus analysis/elaboration on the generated project.
+
+scripts/build.sh
+  Runs the full Quartus compile flow and produces a .sof if successful.
 ```
 
 The runner creates one generated source copy:
@@ -58,9 +68,25 @@ translation/parsing, the next step is to add simple ROM/RAM/MMIO around it.
 
 ## Run
 
+Translation and Yosys structural check:
+
 ```bash
 cd /home/ftv/builds/hero-tools/fpga/de1-soc/s3_snitch_core_only_probe
 ./scripts/run_sv2v_probe.sh
+```
+
+Quartus analysis/elaboration:
+
+```bash
+cd /home/ftv/builds/hero-tools/fpga/de1-soc/s3_snitch_core_only_probe
+./scripts/quartus_preflight.sh
+```
+
+Full Quartus compile:
+
+```bash
+cd /home/ftv/builds/hero-tools/fpga/de1-soc/s3_snitch_core_only_probe
+./scripts/build.sh
 ```
 
 The generated outputs are ignored by git and written under:
@@ -97,13 +123,24 @@ yosys:
   PASS
   The translated Verilog parses, elaborates with top
   de1_s3_snitch_core_probe, lowers processes, and passes check.
+
+Quartus analysis/elaboration:
+  PASS
+  Quartus accepts the translated core-only Verilog project.
+
+Quartus full compile:
+  PASS
+  Quartus produces:
+    generated/output_files/de1_s3_snitch_core_probe.sof
 ```
 
-Command:
+Commands:
 
 ```bash
 cd /home/ftv/builds/hero-tools/fpga/de1-soc/s3_snitch_core_only_probe
 ./scripts/run_sv2v_probe.sh
+./scripts/quartus_preflight.sh
+./scripts/build.sh
 ```
 
 Important meaning:
@@ -112,12 +149,33 @@ Important meaning:
 This proves:
   A real upstream snitch.sv instance can be reduced enough for sv2v/yosys.
   The DE1 path should continue with the core-only shell, not the full cluster.
+  Quartus can compile the translated S3 shell and generate a .sof.
 
 This does not yet prove:
-  Quartus can compile/place/route it.
-  The design fits in Cyclone V.
   The core can fetch from ROM/RAM.
   The board LEDs/UART/MMIO are driven by actual Snitch software.
+  The full core resource cost is represented.
+```
+
+Quartus resource result for this S3 shell:
+
+```text
+Logic utilization:       13 / 32,070 ALMs (< 1 %)
+Registers:               25
+Block memory bits:       0
+DSP blocks:              0
+Worst setup slack:       17.436 ns on CLOCK_50
+Worst hold slack:        0.189 ns on CLOCK_50
+Full compile status:     0 errors, 73 warnings
+```
+
+That small resource count is expected for S3 and must not be overinterpreted:
+
+```text
+The instruction input is still a constant NOP.
+There is no ROM, RAM, bus, or real software image.
+Quartus can optimize away most unused core behavior.
+S3 is a toolchain acceptance proof, not a final Snitch utilization number.
 ```
 
 ## Why This Is The Next Best Step

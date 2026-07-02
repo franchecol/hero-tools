@@ -326,6 +326,9 @@ sv2v:
 
 yosys:
   PASS for parse, elaboration, process lowering, and check.
+
+Quartus:
+  PASS for analysis/elaboration and full compile of the translated S3 shell.
 ```
 
 This does not make the full-cluster path good. It shows the opposite: reducing

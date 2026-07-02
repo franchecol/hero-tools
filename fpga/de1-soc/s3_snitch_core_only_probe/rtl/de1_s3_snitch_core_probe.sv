@@ -1,7 +1,9 @@
 package de1_s3_snitch_core_probe_pkg;
-  typedef logic [31:0] addr_t;
+  // Snitch keeps address bits above bit 31 in the mseg CSR.  Use at least
+  // 33 address bits so that field is non-empty after sv2v conversion.
+  typedef logic [32:0] addr_t;
   typedef logic [31:0] data_t;
-  typedef logic [31:0] pa_t;
+  typedef logic [32:0] pa_t;
 
   typedef struct packed {
     logic [9:0] ppn1;
@@ -69,7 +71,7 @@ module de1_s3_snitch_core_probe (
     assign irq = '0;
 
     logic          flush_i_valid;
-    logic [31:0]   inst_addr;
+    addr_t         inst_addr;
     logic          inst_cacheable;
     logic          inst_valid;
     dreq_t         data_req;
@@ -96,7 +98,7 @@ module de1_s3_snitch_core_probe (
 
     snitch #(
         .BootAddr                 (32'h0000_0000),
-        .AddrWidth                (32),
+        .AddrWidth                (33),
         .DataWidth                (32),
         .RVE                      (1'b1),
         .Xdma                     (1'b0),
@@ -164,14 +166,9 @@ module de1_s3_snitch_core_probe (
         .barrier_i                (1'b0)
     );
 
-    assign LEDR[0] = inst_valid;
-    assign LEDR[1] = data_req.q_valid;
-    assign LEDR[2] = acc_qvalid;
-    assign LEDR[3] = flush_i_valid;
-    assign LEDR[4] = barrier;
-    assign LEDR[5] = inst_cacheable;
-    assign LEDR[6] = acc_pready;
-    assign LEDR[7] = |ptw_valid;
+    // Show high PC bits so the FPGA cannot optimize the core away and a
+    // programmed board has a visible activity probe while executing NOPs.
+    assign LEDR[7:0] = inst_addr[25:18];
     assign LEDR[8] = ~rst_i;
-    assign LEDR[9] = 1'b1;
+    assign LEDR[9] = inst_valid;
 endmodule

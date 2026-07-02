@@ -39,6 +39,7 @@ if [[ -z "${COMMON_CELLS_ROOT}" || ! -d "${COMMON_CELLS_ROOT}/include" ]]; then
 fi
 
 GENERATED_DIR="${S3_DIR}/generated"
+PROJECT="de1_s3_snitch_core_probe"
 SV2V="${SV2V:-sv2v}"
 YOSYS="${YOSYS:-yosys}"
 
@@ -47,6 +48,7 @@ export REPO_ROOT
 export SNITCH_ROOT
 export COMMON_CELLS_ROOT
 export GENERATED_DIR
+export PROJECT
 export SV2V
 export YOSYS
 
@@ -54,5 +56,6 @@ echo "S3_DIR            = ${S3_DIR}"
 echo "SNITCH_ROOT       = ${SNITCH_ROOT}"
 echo "COMMON_CELLS_ROOT = ${COMMON_CELLS_ROOT}"
 echo "GENERATED_DIR     = ${GENERATED_DIR}"
+echo "PROJECT           = ${PROJECT}"
 echo "SV2V              = ${SV2V}"
 echo "YOSYS             = ${YOSYS}"
