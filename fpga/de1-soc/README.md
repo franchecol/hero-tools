@@ -107,7 +107,9 @@ d3_hps_mmio_accel/
   expose the D2-style register block through the HPS lightweight bridge and
   test it from the ARM Linux shell.
   Current result: Qsys generation, Quartus map/fit/assembler/timing, RBF
-  conversion, and ARM tester cross-build pass. Board runtime test is next.
+  conversion, ARM tester cross-build, and UART file transfer pass. Linux-side
+  FPGA Manager programming is currently blocked by the board MSEL setting;
+  USB-Blaster/JTAG was not detected in the last check.
 ```
 
 Manual GUI scratch projects should use a `*_gui_manual/` directory name. Those
@@ -165,6 +167,8 @@ S8: JTAG host control
 D3: HPS/Linux host control
     Prove the DE1-SoC ARM Linux side can control an FPGA MMIO accelerator
     through the lightweight HPS-to-FPGA bridge.
-    Verified status: host-side build passes and produces `.sof`/`.rbf`; runtime
-    access from the ARM Linux shell remains to be tested on the board.
+    Verified status: host-side build passes and produces `.sof`/`.rbf`; UART
+    transfer to the board passes; runtime access remains blocked until FPGA
+    programming succeeds through JTAG or the correct Linux FPGA Manager MSEL
+    setting.
 ```

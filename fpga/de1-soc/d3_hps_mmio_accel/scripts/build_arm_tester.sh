@@ -19,3 +19,18 @@ clang \
   -o build/d3_mmio_nolibc
 
 file build/d3_mmio_nolibc
+
+clang \
+  --target=armv7a-linux-gnueabihf \
+  -fuse-ld=lld \
+  -nostdlib \
+  -static \
+  -fno-builtin \
+  -fno-stack-protector \
+  -O2 \
+  -Wl,-e,_start \
+  -Wl,--build-id=none \
+  sw/d3_serial_recv_nolibc.c \
+  -o build/d3_serial_recv
+
+file build/d3_serial_recv

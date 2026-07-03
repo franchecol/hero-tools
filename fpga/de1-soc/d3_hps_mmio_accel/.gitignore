@@ -24,3 +24,5 @@ d3_hps_mmio_system.qsys
 *.done
 c5_pin_model_dump.txt
 build/
+__pycache__/
+*.pyc

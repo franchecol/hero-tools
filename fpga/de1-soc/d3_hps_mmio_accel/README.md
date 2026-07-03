@@ -67,7 +67,9 @@ Quartus assembler:        PASS
 Quartus timing analysis:  PASS, positive slack
 RBF conversion:           PASS
 ARM tester build:         PASS, static ARM EABI executable
-Board runtime test:       TODO
+UART file transfer:       PASS
+Linux FPGA Manager load:  BLOCKED by MSEL setting
+Board MMIO runtime test:  TODO after FPGA programming succeeds
 ```
 
 ### Quartus HPS SDRAM Workaround
@@ -112,8 +114,8 @@ echo 1 > /sys/class/fpga-bridge/lwhps2fpga/enable
 
 ## Build The ARM Tester
 
-The Terasic console image has no target compiler, so the included tester is a
-tiny no-libc ARM Linux binary built on the host with `clang`:
+The Terasic console image has no target compiler, so the included target tools
+are tiny no-libc ARM Linux binaries built on the host with `clang`:
 
 ```bash
 cd /home/ftv/builds/hero-tools/fpga/de1-soc/d3_hps_mmio_accel
@@ -124,9 +126,51 @@ Expected output:
 
 ```text
 build/d3_mmio_nolibc: ELF 32-bit LSB executable, ARM, EABI5
+build/d3_serial_recv: ELF 32-bit LSB executable, ARM, EABI5
 ```
 
-Copy `build/d3_mmio_nolibc` to the DE1-SoC Linux shell, then run:
+`d3_mmio_nolibc` is the MMIO test program.
+
+`d3_serial_recv` is a tiny raw UART receiver used because this old Yocto image
+has no `base64` command. It receives an exact byte count from stdin and writes
+it to a target file.
+
+## UART Transfer Helper
+
+When Ethernet is unavailable and only the UART console works, build the ARM
+tools and bootstrap the receiver:
+
+```bash
+cd /home/ftv/builds/hero-tools/fpga/de1-soc/d3_hps_mmio_accel
+./scripts/build_arm_tester.sh
+./scripts/serial_transfer.py bootstrap
+```
+
+Then send the tester:
+
+```bash
+./scripts/serial_transfer.py send \
+  build/d3_mmio_nolibc \
+  /tmp/d3_mmio_nolibc
+```
+
+Then send the RBF. This is slow over 115200 baud UART:
+
+```bash
+./scripts/serial_transfer.py send --progress \
+  output_files/de1_d3_hps_mmio_accel.rbf \
+  /tmp/de1_d3_hps_mmio_accel.rbf
+```
+
+Verified local board transfer on 2026-07-03:
+
+```text
+/tmp/d3_serial_recv MD5:          f015cb8514756a4923d05eb31d580073
+/tmp/d3_mmio_nolibc MD5:          3994d602a75e99cddd786dd4257c913e
+/tmp/de1_d3_hps_mmio_accel.rbf MD5: 50435cf8216fdbf83fbc5a1c1c4bf84c
+```
+
+After the FPGA is programmed, run:
 
 ```bash
 chmod +x d3_mmio_nolibc
@@ -143,7 +187,54 @@ CYCLES  = 0x00000001
 PASS
 ```
 
-## What This Proves
+## Current Runtime Blocker
+
+The RBF was successfully transferred to the board over UART, but Linux-side
+FPGA programming failed on this board state:
+
+```text
+cat /tmp/de1_d3_hps_mmio_accel.rbf > /dev/fpga0
+altera_fpga_manager ff706000.fpgamgr: Invalid MSEL setting
+```
+
+The bridge nodes were present and re-enabled:
+
+```text
+/sys/class/fpga-bridge/lwhps2fpga/enable = 1
+/sys/class/fpga-bridge/hps2fpga/enable   = 1
+/sys/class/fpga-bridge/fpga2hps/enable   = 1
+```
+
+`quartus_pgm --list` also reported:
+
+```text
+No JTAG hardware available
+```
+
+So D3 is currently host-build-proven and UART-transfer-proven, but not yet
+board-MMIO-proven.
+
+The next practical options are:
+
+```text
+Option A:
+  connect USB-Blaster,
+  program output_files/de1_d3_hps_mmio_accel.sof through JTAG,
+  then run /tmp/d3_mmio_nolibc from the ARM Linux shell.
+
+Option B:
+  set the DE1-SoC MSEL switches for HPS/Linux FPGA Manager programming,
+  power-cycle the board,
+  then retry writing the .rbf to /dev/fpga0.
+```
+
+The DE1-SoC user manual documents that Linux/application-side FPGA
+reconfiguration needs the HPS software configuration MSEL setting, commonly
+listed as `MSEL[4:0] = 01010`; some DE1-SoC demo instructions also mention
+`01010` or `01110`. JTAG programming through USB-Blaster is the simpler next
+test because it does not depend on the Linux FPGA Manager path.
+
+## What The Passing Runtime Test Will Prove
 
 ```text
 ARM Linux can map the FPGA lightweight bridge.
@@ -151,6 +242,9 @@ ARM Linux can write FPGA accelerator registers.
 ARM Linux can poll FPGA status.
 ARM Linux can read a computed FPGA result.
 ```
+
+As of 2026-07-03, this proof is still pending because FPGA programming from
+Linux is blocked by the board MSEL setting and JTAG hardware is not detected.
 
 ## What This Still Does Not Prove
 
