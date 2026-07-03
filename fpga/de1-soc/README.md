@@ -25,6 +25,22 @@ D3: HPS/ARM Linux to FPGA MMIO register access
     it from ARM Linux.
 ```
 
+## Current Board State After microSD Boot
+
+The Terasic SD-card Linux image can load or leave running a default FPGA demo.
+If the board is counting through `0,1,2,3,...,f`, that is not evidence that the
+S8 Snitch-Lite bitstream is still loaded.
+
+```text
+S8 bitstream loaded by USB-Blaster/JTAG: volatile, lost after power/reset.
+Terasic demo/counter bitstream:          useful only as a board-alive sign.
+D3 target:                               ARM Linux controls FPGA over HPS bridge.
+```
+
+Do not test the D2/S8 register map against the counter demo. The next useful
+test is D3: program an HPS-connected register block and access it from Linux at
+the lightweight bridge base, `0xff200000`.
+
 ## Current Projects
 
 ```text
@@ -85,6 +101,11 @@ s8_snitch_jtag_host_ctrl/
   Temporary host-control path:
   expose Snitch-Lite start/done/pass/fail/result registers through a
   JTAG-to-Avalon master before the ARM/HPS Linux microSD flow is available.
+
+d3_hps_mmio_accel/
+  ARM/HPS Linux-controlled mini accelerator:
+  expose the D2-style register block through the HPS lightweight bridge and
+  test it from the ARM Linux shell.
 ```
 
 Manual GUI scratch projects should use a `*_gui_manual/` directory name. Those

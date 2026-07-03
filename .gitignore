@@ -1,4 +1,5 @@
 /artifacts/.generated*
+/artifacts/de1-soc-linux/
 *.log
 *.dump
 install

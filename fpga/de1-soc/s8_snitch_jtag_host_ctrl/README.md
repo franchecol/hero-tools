@@ -239,3 +239,21 @@ No DMA.
 After S8, the next step that truly needs the microSD card is D3/HPS-lite:
 boot ARM Linux and access an equivalent FPGA register block through the
 lightweight HPS-to-FPGA bridge.
+
+## After Booting ARM Linux
+
+If the DE1-SoC is booted from the Terasic SD-card image and the LEDs/HEX display
+show a simple counter, the FPGA is not necessarily running this S8 bitstream.
+S8 was loaded through USB-Blaster/JTAG into volatile FPGA SRAM, so it disappears
+after power/reset unless reprogrammed.
+
+That counter is useful only as a board-alive sign. The correct follow-up is not
+to treat the counter design as S8, but to build D3:
+
+```text
+ARM Linux
+  -> /dev/mem
+  -> lightweight HPS-to-FPGA bridge at 0xff200000
+  -> FPGA MMIO registers
+  -> tiny accelerator / later Snitch-Lite block
+```
