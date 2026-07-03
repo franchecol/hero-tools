@@ -80,6 +80,11 @@ s7_snitch_tiny_ram_check/
   Tiny data-RAM check path:
   Snitch stores to local FPGA RAM, loads the value back, checks it, and reports
   pass/fail through LED MMIO.
+
+s8_snitch_jtag_host_ctrl/
+  Temporary host-control path:
+  expose Snitch-Lite start/done/pass/fail/result registers through a
+  JTAG-to-Avalon master before the ARM/HPS Linux microSD flow is available.
 ```
 
 Manual GUI scratch projects should use a `*_gui_manual/` directory name. Those
@@ -129,4 +134,8 @@ S6: checked generated ROM
 S7: tiny RAM check
     Add a small local data RAM and make Snitch perform a store/load/compare
     sequence before reporting pass/fail on LEDs.
+
+S8: JTAG host control
+    Wrap the Snitch-Lite RAM check in host-visible control/status registers and
+    use System Console over USB-Blaster/JTAG as the temporary host.
 ```
