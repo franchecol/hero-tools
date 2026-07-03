@@ -106,6 +106,8 @@ d3_hps_mmio_accel/
   ARM/HPS Linux-controlled mini accelerator:
   expose the D2-style register block through the HPS lightweight bridge and
   test it from the ARM Linux shell.
+  Current result: Qsys generation, Quartus map/fit/assembler/timing, RBF
+  conversion, and ARM tester cross-build pass. Board runtime test is next.
 ```
 
 Manual GUI scratch projects should use a `*_gui_manual/` directory name. Those
@@ -159,4 +161,10 @@ S7: tiny RAM check
 S8: JTAG host control
     Wrap the Snitch-Lite RAM check in host-visible control/status registers and
     use System Console over USB-Blaster/JTAG as the temporary host.
+
+D3: HPS/Linux host control
+    Prove the DE1-SoC ARM Linux side can control an FPGA MMIO accelerator
+    through the lightweight HPS-to-FPGA bridge.
+    Verified status: host-side build passes and produces `.sof`/`.rbf`; runtime
+    access from the ARM Linux shell remains to be tested on the board.
 ```

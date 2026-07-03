@@ -1,0 +1,2 @@
+QUARTUS_VERSION = "25.1"
+PROJECT_REVISION = "de1_d3_hps_mmio_accel"
