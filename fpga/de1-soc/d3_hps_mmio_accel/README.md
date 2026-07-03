@@ -68,8 +68,9 @@ Quartus timing analysis:  PASS, positive slack
 RBF conversion:           PASS
 ARM tester build:         PASS, static ARM EABI executable
 UART file transfer:       PASS
-Linux FPGA Manager load:  BLOCKED by MSEL setting
-Board MMIO runtime test:  TODO after FPGA programming succeeds
+JTAG .sof programming:    PASS
+Board MMIO runtime test:  PASS
+Linux FPGA Manager load:  BLOCKED by MSEL setting, optional path only
 ```
 
 ### Quartus HPS SDRAM Workaround
@@ -187,10 +188,40 @@ CYCLES  = 0x00000001
 PASS
 ```
 
-## Current Runtime Blocker
+## Verified Board Runtime
 
-The RBF was successfully transferred to the board over UART, but Linux-side
-FPGA programming failed on this board state:
+Verified on 2026-07-03 with USB-Blaster/JTAG programming:
+
+```bash
+cd /home/ftv/builds/hero-tools/fpga/de1-soc/d3_hps_mmio_accel
+./scripts/program.sh
+```
+
+Quartus programmed the FPGA device at JTAG index `@2`:
+
+```text
+Info (209007): Configuration succeeded -- 1 device(s) configured
+Info (209011): Successfully performed operation(s)
+```
+
+Then the ARM Linux shell enabled the bridges and ran the tester:
+
+```text
+bridges: lwhps2fpga=1 hps2fpga=1 fpga2hps=1
+ID      = 0x44330001
+STATUS  = 0x00000001
+RESULT  = 0x00000008
+CYCLES  = 0x00000001
+PASS
+TEST_RC=0
+```
+
+So D3 is now board-MMIO-proven through the JTAG `.sof` programming path.
+
+## Linux FPGA Manager Note
+
+The RBF was successfully transferred to the board over UART, but Linux-side FPGA
+programming failed on this board state:
 
 ```text
 cat /tmp/de1_d3_hps_mmio_accel.rbf > /dev/fpga0
@@ -205,36 +236,16 @@ The bridge nodes were present and re-enabled:
 /sys/class/fpga-bridge/fpga2hps/enable   = 1
 ```
 
-`quartus_pgm --list` also reported:
-
-```text
-No JTAG hardware available
-```
-
-So D3 is currently host-build-proven and UART-transfer-proven, but not yet
-board-MMIO-proven.
-
-The next practical options are:
-
-```text
-Option A:
-  connect USB-Blaster,
-  program output_files/de1_d3_hps_mmio_accel.sof through JTAG,
-  then run /tmp/d3_mmio_nolibc from the ARM Linux shell.
-
-Option B:
-  set the DE1-SoC MSEL switches for HPS/Linux FPGA Manager programming,
-  power-cycle the board,
-  then retry writing the .rbf to /dev/fpga0.
-```
-
 The DE1-SoC user manual documents that Linux/application-side FPGA
 reconfiguration needs the HPS software configuration MSEL setting, commonly
 listed as `MSEL[4:0] = 01010`; some DE1-SoC demo instructions also mention
-`01010` or `01110`. JTAG programming through USB-Blaster is the simpler next
-test because it does not depend on the Linux FPGA Manager path.
+`01010` or `01110`.
 
-## What The Passing Runtime Test Will Prove
+This does not block D3, because the JTAG `.sof` programming path passed. It only
+means Linux-side `.rbf` loading needs the board MSEL/boot-switch path fixed
+before relying on FPGA Manager.
+
+## What This Proves
 
 ```text
 ARM Linux can map the FPGA lightweight bridge.
@@ -242,9 +253,6 @@ ARM Linux can write FPGA accelerator registers.
 ARM Linux can poll FPGA status.
 ARM Linux can read a computed FPGA result.
 ```
-
-As of 2026-07-03, this proof is still pending because FPGA programming from
-Linux is blocked by the board MSEL setting and JTAG hardware is not detected.
 
 ## What This Still Does Not Prove
 
