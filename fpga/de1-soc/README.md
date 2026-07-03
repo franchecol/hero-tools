@@ -27,6 +27,10 @@ D3: HPS/ARM Linux to FPGA MMIO register access
 S9: HPS/ARM Linux to Snitch-Lite MMIO control
     Replace the D3 toy register accelerator with the S8 Snitch-Lite control
     block behind the same HPS lightweight bridge.
+
+S10: HPS/ARM Linux passes input data to Snitch-Lite
+    ARM writes input words over MMIO, starts Snitch-Lite, and reads back the
+    Snitch-computed result.
 ```
 
 ## Current Board State After microSD Boot
@@ -122,6 +126,14 @@ s9_snitch_hps_host_ctrl/
   Current result: Snitch-Lite generation, Qsys generation, Quartus
   map/fit/assembler/timing, RBF conversion, JTAG programming, ARM tester
   cross-build, UART transfer, and ARM Linux MMIO runtime test pass.
+
+s10_snitch_hps_data_input/
+  ARM/HPS Linux-controlled Snitch-Lite data-input accelerator:
+  ARM writes ARG0/ARG1/EXPECTED registers, Snitch consumes ARG0/ARG1 from
+  local RAM, computes ARG0 + ARG1, stores the result to RAM2, and reports done.
+  Current result: Snitch-Lite payload generation, sv2v, Yosys, Qsys, Quartus
+  map/fit/assembler/timing, RBF conversion, JTAG programming, ARM tester
+  cross-build, UART transfer, and two ARM Linux MMIO runtime runs pass.
 ```
 
 Manual GUI scratch projects should use a `*_gui_manual/` directory name. Those
@@ -188,4 +200,10 @@ S9: HPS/Linux Snitch-Lite host control
     keeping the same ARM Linux and HPS lightweight bridge host path.
     Verified status: ARM Linux starts Snitch-Lite through the HPS bridge and
     reads back done/pass/result/RAM state from the Snitch payload.
+
+S10: HPS/Linux Snitch-Lite host data input
+    Add ARM-written input data registers and copy them into Snitch local RAM
+    before start.
+    Verified status: ARM Linux runs Snitch-Lite twice without reprogramming,
+    passing different input values each time and reading the computed results.
 ```
