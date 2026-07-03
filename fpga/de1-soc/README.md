@@ -70,6 +70,11 @@ s5_snitch_generated_rom_mmio_led/
   Software-generated ROM path:
   compile RV32E assembly into an ELF/binary, generate ROM contents, and reuse
   the Snitch MMIO LED proof with software-owned instruction words.
+
+s6_snitch_checked_rom_mmio_led/
+  Checked software-generated ROM path:
+  add max-size checks, entry-address checks, generated metadata, and a
+  configurable assembly source path around the S5 flow.
 ```
 
 Manual GUI scratch projects should use a `*_gui_manual/` directory name. Those
@@ -111,4 +116,8 @@ S4: board-visible MMIO
 S5: generated software ROM
     Compile assembly into ROM contents instead of hardcoding instruction words
     in RTL.
+
+S6: checked generated ROM
+    Make the generated-ROM path safer and easier to reuse with different small
+    assembly payloads.
 ```
