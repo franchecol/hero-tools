@@ -31,6 +31,10 @@ S9: HPS/ARM Linux to Snitch-Lite MMIO control
 S10: HPS/ARM Linux passes input data to Snitch-Lite
     ARM writes input words over MMIO, starts Snitch-Lite, and reads back the
     Snitch-computed result.
+
+S11: HPS/ARM Linux loads a Snitch-Lite payload image
+    ARM writes RISC-V instruction words into FPGA instruction memory, writes
+    ARG0/ARG1/EXPECTED, starts Snitch-Lite, and reads back the result.
 ```
 
 ## Current Board State After microSD Boot
@@ -134,6 +138,15 @@ s10_snitch_hps_data_input/
   Current result: Snitch-Lite payload generation, sv2v, Yosys, Qsys, Quartus
   map/fit/assembler/timing, RBF conversion, JTAG programming, ARM tester
   cross-build, UART transfer, and two ARM Linux MMIO runtime runs pass.
+
+s11_snitch_hps_payload_loader/
+  ARM/HPS Linux-controlled Snitch-Lite payload loader:
+  ARM writes a tiny RISC-V instruction payload into FPGA instruction memory,
+  writes ARG0/ARG1/EXPECTED registers, starts Snitch-Lite, and reads back the
+  Snitch-computed result.
+  Current result: payload build, sv2v, Yosys, Qsys, Quartus
+  map/fit/assembler/timing, RBF conversion, JTAG programming, ARM tester
+  cross-build, UART transfer, and two ARM Linux MMIO runtime payload runs pass.
 ```
 
 Manual GUI scratch projects should use a `*_gui_manual/` directory name. Those
@@ -206,4 +219,10 @@ S10: HPS/Linux Snitch-Lite host data input
     before start.
     Verified status: ARM Linux runs Snitch-Lite twice without reprogramming,
     passing different input values each time and reading the computed results.
+
+S11: HPS/Linux Snitch-Lite payload loader
+    Add ARM-written instruction-memory payload loading before start.
+    Verified status: ARM Linux writes a 9-word RISC-V payload into FPGA
+    instruction memory, runs it twice with different input data, and reads the
+    expected Snitch-computed results.
 ```
