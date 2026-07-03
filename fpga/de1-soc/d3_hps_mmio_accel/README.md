@@ -98,6 +98,24 @@ cd /home/ftv/builds/hero-tools/fpga/de1-soc/d3_hps_mmio_accel
 ./scripts/program.sh
 ```
 
+## Manual Replay Steps
+
+These are the exact high-level steps that reproduced D3 on the local board:
+
+```text
+1. Boot the DE1-SoC ARM Linux image from microSD.
+2. Confirm UART shell access as root on /dev/ttyUSB0.
+3. Connect USB-Blaster and confirm `quartus_pgm --list` sees `DE-SoC [1-1]`.
+4. Build the D3 FPGA project with `./scripts/build.sh`.
+5. Build the ARM tester with `./scripts/build_arm_tester.sh`.
+6. Program the FPGA with `./scripts/program.sh`.
+7. Bootstrap the UART receiver with `./scripts/serial_transfer.py bootstrap`.
+8. Transfer `build/d3_mmio_nolibc` to `/tmp/d3_mmio_nolibc`.
+9. Enable `lwhps2fpga`, `hps2fpga`, and `fpga2hps` bridge nodes from Linux.
+10. Run `/tmp/d3_mmio_nolibc`.
+11. Confirm ID `0x44330001`, RESULT `0x00000008`, and `PASS`.
+```
+
 Linux-side path after copying the `.rbf` to the ARM board:
 
 ```bash

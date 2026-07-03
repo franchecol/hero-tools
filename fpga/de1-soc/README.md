@@ -23,6 +23,10 @@ D2: JTAG/PC to FPGA MMIO register access
 D3: HPS/ARM Linux to FPGA MMIO register access
     Connect the same D2 register block to the HPS lightweight bridge and access
     it from ARM Linux.
+
+S9: HPS/ARM Linux to Snitch-Lite MMIO control
+    Replace the D3 toy register accelerator with the S8 Snitch-Lite control
+    block behind the same HPS lightweight bridge.
 ```
 
 ## Current Board State After microSD Boot
@@ -110,6 +114,14 @@ d3_hps_mmio_accel/
   conversion, ARM tester cross-build, UART file transfer, JTAG programming,
   and ARM Linux MMIO runtime test pass. Linux-side FPGA Manager `.rbf` loading
   remains blocked by the board MSEL setting, but that is optional for D3.
+
+s9_snitch_hps_host_ctrl/
+  ARM/HPS Linux-controlled Snitch-Lite accelerator:
+  expose the S8 Snitch-Lite control/status block through the HPS lightweight
+  bridge and test it from the ARM Linux shell.
+  Current result: Snitch-Lite generation, Qsys generation, Quartus
+  map/fit/assembler/timing, RBF conversion, JTAG programming, ARM tester
+  cross-build, UART transfer, and ARM Linux MMIO runtime test pass.
 ```
 
 Manual GUI scratch projects should use a `*_gui_manual/` directory name. Those
@@ -170,4 +182,10 @@ D3: HPS/Linux host control
     Verified status: host-side build passes and produces `.sof`/`.rbf`; JTAG
     programming passes; ARM Linux reads/writes the FPGA MMIO registers and gets
     the expected result.
+
+S9: HPS/Linux Snitch-Lite host control
+    Replace D3's toy register accelerator with the S8 Snitch-Lite block while
+    keeping the same ARM Linux and HPS lightweight bridge host path.
+    Verified status: ARM Linux starts Snitch-Lite through the HPS bridge and
+    reads back done/pass/result/RAM state from the Snitch payload.
 ```

@@ -1,0 +1,40 @@
+package require -exact qsys 20.1
+
+create_system s9_hps_snitch_system
+
+set_project_property DEVICE_FAMILY "Cyclone V"
+set_project_property DEVICE 5CSEMA5F31C6
+
+add_instance clk_bridge altera_clock_bridge
+set_instance_parameter_value clk_bridge EXPLICIT_CLOCK_RATE 50000000
+
+add_instance reset_bridge altera_reset_bridge
+set_instance_parameter_value reset_bridge ACTIVE_LOW_RESET 0
+set_instance_parameter_value reset_bridge SYNCHRONOUS_EDGES deassert
+
+add_instance hps_0 altera_hps
+set_instance_parameter_value hps_0 quartus_ini_hps_ip_suppress_sdram_synth true
+set_instance_parameter_value hps_0 MPU_EVENTS_Enable false
+set_instance_parameter_value hps_0 F2S_Width 0
+set_instance_parameter_value hps_0 S2F_Width 0
+set_instance_parameter_value hps_0 LWH2F_Enable true
+set_instance_parameter_value hps_0 F2SDRAM_Type {}
+set_instance_parameter_value hps_0 F2SDRAM_Width {}
+
+add_instance snitch_ctrl s9_snitch_ctrl
+
+add_connection clk_bridge.out_clk reset_bridge.clk
+add_connection clk_bridge.out_clk hps_0.h2f_lw_axi_clock
+add_connection clk_bridge.out_clk snitch_ctrl.clk
+
+add_connection reset_bridge.out_reset snitch_ctrl.reset
+
+add_connection hps_0.h2f_lw_axi_master snitch_ctrl.s1
+set_connection_parameter_value hps_0.h2f_lw_axi_master/snitch_ctrl.s1 baseAddress 0x0000
+lock_avalon_base_address snitch_ctrl.s1
+
+set_interface_property clk EXPORT_OF clk_bridge.in_clk
+set_interface_property reset EXPORT_OF reset_bridge.in_reset
+set_interface_property ledr EXPORT_OF snitch_ctrl.ledr
+
+save_system s9_hps_snitch_system.qsys
