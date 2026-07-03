@@ -135,7 +135,7 @@ Yosys structural probe:          PASS
 Quartus analysis/elaboration:    PASS
 Quartus full compile:            PASS
 Quartus JTAG programming:        PASS
-physical LED observation:        pending user confirmation
+physical LED observation:        PASS
 ```
 
 Quartus full compile summary:
