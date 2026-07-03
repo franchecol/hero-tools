@@ -75,6 +75,11 @@ s6_snitch_checked_rom_mmio_led/
   Checked software-generated ROM path:
   add max-size checks, entry-address checks, generated metadata, and a
   configurable assembly source path around the S5 flow.
+
+s7_snitch_tiny_ram_check/
+  Tiny data-RAM check path:
+  Snitch stores to local FPGA RAM, loads the value back, checks it, and reports
+  pass/fail through LED MMIO.
 ```
 
 Manual GUI scratch projects should use a `*_gui_manual/` directory name. Those
@@ -120,4 +125,8 @@ S5: generated software ROM
 S6: checked generated ROM
     Make the generated-ROM path safer and easier to reuse with different small
     assembly payloads.
+
+S7: tiny RAM check
+    Add a small local data RAM and make Snitch perform a store/load/compare
+    sequence before reporting pass/fail on LEDs.
 ```
