@@ -208,13 +208,16 @@ snitch.sv no longer uses unsupported `inside` membership tests, and the one
 S2_3-empty assertion macro call no longer leaves a stray semicolon.
 snitch_ptw.sv now has an S2_3_QUARTUS width-parameterized VM/reqrsp boundary
 while preserving the page-table-walker logic.
+Inactive Snitch DMA implementation files were removed from the S2.3 preflight
+source list while keeping axi_dma_pkg.sv for shared type definitions. The
+source count is now 145 files.
 ```
 
 New first blocker:
 
 ```text
-snitch_cluster/hw/snitch_dma/src/axi_dma_error_handler.sv:15
-Error (10170): near text: "type"; expecting an identifier
+snitch_cluster/hw/snitch_icache/src/snitch_icache_l0.sv:107
+Error (10170): near text: "for"; expecting "endmodule"
 ```
 
 The next class is the actual Snitch core RTL.

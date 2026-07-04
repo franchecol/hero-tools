@@ -124,10 +124,6 @@
 @SNITCH_ROOT@/hw/snitch/src/snitch.sv
 @SNITCH_ROOT@/hw/snitch_vm/src/snitch_ptw.sv
 @SNITCH_ROOT@/hw/snitch_dma/src/axi_dma_pkg.sv
-@SNITCH_ROOT@/hw/snitch_dma/src/axi_dma_error_handler.sv
-@SNITCH_ROOT@/hw/snitch_dma/src/axi_dma_perf_counters.sv
-@SNITCH_ROOT@/hw/snitch_dma/src/axi_dma_twod_ext.sv
-@SNITCH_ROOT@/hw/snitch_dma/src/axi_dma_tc_snitch_fe.sv
 @SNITCH_ROOT@/hw/snitch_icache/src/snitch_icache_pkg.sv
 @SNITCH_ROOT@/hw/snitch_icache/src/snitch_icache_l0.sv
 @SNITCH_ROOT@/hw/snitch_icache/src/snitch_icache_refill.sv

@@ -3890,3 +3890,83 @@ The active VM page-table walker is now past Quartus. The next reported class is
 DMA helper RTL, which should be checked against the selected xdma:false config
 before doing any direct port.
 ```
+
+## Attempt 52: Prune Inactive Snitch DMA Implementations
+
+Status:
+
+```text
+FAIL
+quartus_map exit code: 3
+no .sof produced
+```
+
+Command:
+
+```bash
+cd /home/ftv/builds/hero-tools/fpga/de1-soc/s2_3_snitch_manual_fork
+./scripts/quartus_preflight.sh
+```
+
+Manual source-list edits:
+
+```text
+source_list/snitch_cluster.flist-plus.in
+```
+
+What changed:
+
+```text
+kept:
+  hw/snitch_dma/src/axi_dma_pkg.sv
+
+removed:
+  hw/snitch_dma/src/axi_dma_error_handler.sv
+  hw/snitch_dma/src/axi_dma_perf_counters.sv
+  hw/snitch_dma/src/axi_dma_twod_ext.sv
+  hw/snitch_dma/src/axi_dma_tc_snitch_fe.sv
+```
+
+Why this is acceptable for this preflight:
+
+```text
+The generated one-core wrapper sets Xdma to 1'b0, matching cfg/one-core.hjson
+xdma:false. The DMA implementation files are only instantiated under the
+inactive Xdma generate branch, while axi_dma_pkg.sv is still needed for shared
+type definitions.
+```
+
+Important limitation:
+
+```text
+This does not port the Snitch DMA engine. It removes inactive DMA
+implementation sources from the educational S2.3 parser preflight.
+```
+
+Important progress:
+
+```text
+The previous snitch_dma implementation parser errors are gone.
+The source count dropped from 149 to 145 files.
+Quartus now reaches the instruction-cache L0 implementation.
+```
+
+New first Quartus error:
+
+```text
+hw/snitch_icache/src/snitch_icache_l0.sv:107
+Error (10170): near text: "for"; expecting "endmodule"
+```
+
+Other errors in the same run:
+
+```text
+snitch_icache_l0.sv: top-level generate-for and generate-if parser errors
+```
+
+Interpretation:
+
+```text
+The parser frontier moved beyond inactive DMA implementation files. The next
+active support block is the instruction-cache L0 module.
+```
