@@ -2322,3 +2322,72 @@ Interpretation:
 The AXI parser frontier moved through zero memory. The next blocker is the
 unmuxed AXI crossbar.
 ```
+
+## Attempt 32: AXI Unmuxed Crossbar S2.3 Stub
+
+Status:
+
+```text
+FAIL
+quartus_map exit code: 3
+no .sof produced
+```
+
+Command:
+
+```bash
+cd /home/ftv/builds/hero-tools/fpga/de1-soc/s2_3_snitch_manual_fork
+./scripts/quartus_preflight.sh
+```
+
+Manual source edits:
+
+```text
+snitch_cluster/.bender/git/checkouts/axi-*/src/axi_xbar_unmuxed.sv
+```
+
+What changed:
+
+```text
+axi_xbar_unmuxed.sv:
+  added an S2_3_QUARTUS-only zero-output crossbar stub
+  skipped the original type-parameterized crossbar and interface wrapper
+```
+
+Important limitation:
+
+```text
+This is not a full semantic port of the unmuxed AXI crossbar. It performs no
+address decoding, no request routing, and no response routing; it drives crossbar
+outputs to zero.
+```
+
+Important progress:
+
+```text
+The previous axi_xbar_unmuxed.sv type-parameter parser errors are bypassed.
+Quartus now reaches axi_to_mem_interleaved.sv.
+```
+
+New first Quartus error:
+
+```text
+axi/src/axi_to_mem_interleaved.sv:20
+Error (10170): near text: "type"; expecting an identifier
+```
+
+Other errors in the same run:
+
+```text
+axi_xbar.sv: parameter type
+fpu_div_sqrt_mvp/control_mvp.sv: unnamed block
+axi_riscv_atomics/axi_res_tbl.sv: genvar parser error
+axi_riscv_atomics/axi_riscv_amos.sv: localparam/genvar/unnamed-block parser errors
+```
+
+Interpretation:
+
+```text
+The AXI parser frontier moved through the unmuxed xbar. The next blocker is the
+interleaved AXI-to-memory wrapper.
+```

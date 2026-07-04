@@ -15,6 +15,38 @@
 
 /// axi_xbar: Fully-connected AXI4+ATOP crossbar with an arbitrary number of slave and master ports.
 /// See `doc/axi_xbar.md` for the documentation, including the definition of parameters and ports.
+`ifdef S2_3_QUARTUS
+// S2.3 parser/bring-up shim: expose the crossbar boundary without type
+// parameters. This stub performs no address decode or routing.
+module axi_xbar_unmuxed
+import cf_math_pkg::idx_width;
+#(
+  parameter axi_pkg::xbar_cfg_t Cfg                                   = '0,
+  parameter bit  ATOPs                                                = 1'b1,
+  parameter bit [Cfg.NoSlvPorts-1:0][Cfg.NoMstPorts-1:0] Connectivity = '1,
+  parameter int unsigned ReqWidth                                     = 32'd1,
+  parameter int unsigned RespWidth                                    = 32'd1,
+  parameter int unsigned RuleWidth                                    = 32'd1,
+  parameter int unsigned MstPortsIdxWidth =
+      (Cfg.NoMstPorts == 32'd1) ? 32'd1 : unsigned'($clog2(Cfg.NoMstPorts))
+) (
+  input  logic                                                          clk_i,
+  input  logic                                                          rst_ni,
+  input  logic                                                          test_i,
+  input  logic [Cfg.NoSlvPorts-1:0][ReqWidth-1:0]                       slv_ports_req_i,
+  output logic [Cfg.NoSlvPorts-1:0][RespWidth-1:0]                      slv_ports_resp_o,
+  output logic [Cfg.NoMstPorts-1:0][Cfg.NoSlvPorts-1:0][ReqWidth-1:0]    mst_ports_req_o,
+  input  logic [Cfg.NoMstPorts-1:0][Cfg.NoSlvPorts-1:0][RespWidth-1:0]   mst_ports_resp_i,
+  input  logic [Cfg.NoAddrRules-1:0][RuleWidth-1:0]                     addr_map_i,
+  input  logic [Cfg.NoSlvPorts-1:0]                                     en_default_mst_port_i,
+  input  logic [Cfg.NoSlvPorts-1:0][MstPortsIdxWidth-1:0]               default_mst_port_i
+);
+
+  assign slv_ports_resp_o = '0;
+  assign mst_ports_req_o = '0;
+
+endmodule
+`else
 module axi_xbar_unmuxed
 import cf_math_pkg::idx_width;
 #(
@@ -350,5 +382,6 @@ import cf_math_pkg::idx_width;
 
 endmodule
 
+`endif
 `endif
 `endif
