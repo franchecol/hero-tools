@@ -210,7 +210,7 @@ module axi_demux_simple #(
       axi_demux_id_counters #(
         .AxiIdBits         ( AxiLookBits    ),
         .CounterWidth      ( IdCounterWidth ),
-        .mst_port_select_t ( select_t       )
+        .SelectWidth       ( SelectWidth    )
       ) i_aw_id_counter (
         .clk_i                        ( clk_i                          ),
         .rst_ni                       ( rst_ni                         ),
@@ -356,7 +356,7 @@ module axi_demux_simple #(
       axi_demux_id_counters #(
         .AxiIdBits         ( AxiLookBits    ),
         .CounterWidth      ( IdCounterWidth ),
-        .mst_port_select_t ( select_t       )
+        .SelectWidth       ( SelectWidth    )
       ) i_ar_id_counter (
         .clk_i                        ( clk_i                                       ),
         .rst_ni                       ( rst_ni                                      ),

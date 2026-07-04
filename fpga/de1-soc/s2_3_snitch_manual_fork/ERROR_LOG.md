@@ -1293,3 +1293,68 @@ The AXI dependency boundary is now clearer: most inactive AXI noise is removed,
 and remaining early errors are in modules used by the one-core cluster's AXI
 crossbar/memory path.
 ```
+
+## Attempt 17: AXI Demux ID Counter Port
+
+Status:
+
+```text
+FAIL
+quartus_map exit code: 3
+no .sof produced
+```
+
+Command:
+
+```bash
+cd /home/ftv/builds/hero-tools/fpga/de1-soc/s2_3_snitch_manual_fork
+./scripts/quartus_preflight.sh
+```
+
+Manual source edits:
+
+```text
+snitch_cluster/.bender/git/checkouts/axi-*/src/axi_demux_id_counters.sv
+snitch_cluster/.bender/git/checkouts/axi-*/src/axi_demux_simple.sv
+```
+
+What changed:
+
+```text
+axi_demux_id_counters.sv:
+  replaced mst_port_select_t type parameter with SelectWidth
+  changed select ports/storage to explicit packed vectors
+  wrapped the counter generate-for loop with explicit generate/endgenerate
+  moved the genvar declaration outside the for-loop for Quartus compatibility
+
+axi_demux_simple.sv:
+  updated the AW and AR id-counter instances to pass .SelectWidth(SelectWidth)
+```
+
+Important progress:
+
+```text
+The previous first axi_demux_id_counters.sv type-parameter and generate-loop
+parser errors are gone.
+```
+
+New first Quartus error:
+
+```text
+axi/src/axi_atop_filter.sv:43
+Error (10170): near text: "type"; expecting an identifier
+```
+
+Other errors in the same run:
+
+```text
+axi_burst_splitter_gran.sv: parameter type and implicit generate syntax
+axi_cut.sv: parameter type
+```
+
+Interpretation:
+
+```text
+Quartus is now past the AXI demux id counter and into the next active AXI xbar
+helper. The remaining AXI work is real porting, not broad dependency cleanup.
+```
