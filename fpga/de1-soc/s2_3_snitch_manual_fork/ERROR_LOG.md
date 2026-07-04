@@ -2595,3 +2595,86 @@ blocker. The next blocker class is AXI RISC-V atomics, which should be checked
 against the one-core target before deciding between pruning, syntax porting, or
 stub replacement.
 ```
+
+## Attempt 36: Prune Unused AXI RISC-V Atomics Dependency
+
+Status:
+
+```text
+FAIL
+quartus_map exit code: 3
+no .sof produced
+```
+
+Command:
+
+```bash
+cd /home/ftv/builds/hero-tools/fpga/de1-soc/s2_3_snitch_manual_fork
+./scripts/quartus_preflight.sh
+```
+
+Manual source-list edits:
+
+```text
+source_list/snitch_cluster.flist-plus.in
+```
+
+What changed:
+
+```text
+removed the axi_riscv_atomics source block:
+  axi_res_tbl.sv
+  axi_riscv_amos_alu.sv
+  axi_riscv_amos.sv
+  axi_riscv_lrsc.sv
+  axi_riscv_atomics.sv
+  axi_riscv_lrsc_wrap.sv
+  axi_riscv_amos_wrap.sv
+  axi_riscv_atomics_wrap.sv
+```
+
+Why this is acceptable for this preflight:
+
+```text
+The one-core Snitch cluster Quartus source list does not include the simulation
+testbench that instantiates axi_riscv_atomics_wrap. A design-side search found
+no active instantiation of axi_riscv_atomics, axi_riscv_amos, axi_riscv_lrsc, or
+axi_res_tbl outside that testbench/dependency block.
+```
+
+Important limitation:
+
+```text
+This does not port AXI RISC-V atomics to Quartus. It removes an unused
+dependency from the educational S2.3 preflight.
+```
+
+Important progress:
+
+```text
+The previous axi_riscv_atomics parser errors are gone.
+The source count dropped from 230 to 222 files.
+Quartus now reaches the FPnew dependency.
+```
+
+New first Quartus error:
+
+```text
+fpnew/src/fpnew_cast_multi.sv:24
+Error (10170): near text: "type"; expecting an identifier
+```
+
+Other errors in the same run:
+
+```text
+fpnew/*.sv: parameter type, localparam-in-parameter-list, and generate parser
+errors
+```
+
+Interpretation:
+
+```text
+The parser frontier moved from unused AXI atomics into the active floating-point
+unit stack. Because the one-core config currently uses rv32imafd plus Xssr/Xfrep,
+FPnew is likely part of the intended design path, not just dead parser baggage.
+```

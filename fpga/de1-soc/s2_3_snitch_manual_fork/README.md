@@ -79,7 +79,7 @@ cd /home/ftv/builds/hero-tools/fpga/de1-soc/s2_3_snitch_manual_fork
 
 ## Current Result
 
-Attempt 35 was run locally with Quartus Prime Lite 25.1std.0.
+Attempt 36 was run locally with Quartus Prime Lite 25.1std.0.
 
 Result:
 
@@ -167,14 +167,16 @@ The active axi_xbar.sv parser errors are bypassed with an S2_3_QUARTUS
 zero-output crossbar stub.
 The active fpu_div_sqrt_mvp/control_mvp.sv unnamed generate-loop errors are
 gone after adding explicit generate block labels.
+The unused AXI RISC-V atomics dependency block was removed from the preflight
+list. The source count is now 222 files.
 ```
 
 New first blocker:
 
 ```text
-snitch_cluster/.bender/git/checkouts/axi_riscv_atomics-*/src/axi_res_tbl.sv:38
-Error (10170): near text: "genvar"; expecting an identifier
+snitch_cluster/.bender/git/checkouts/fpnew-*/src/fpnew_cast_multi.sv:24
+Error (10170): near text: "type"; expecting an identifier
 ```
 
 The fix now exists as direct edits in the local Snitch fork. The next class is
-AXI RISC-V atomics dependency pruning or syntax porting.
+FPnew type-parameter compatibility.

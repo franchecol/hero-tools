@@ -116,14 +116,6 @@
 @SNITCH_ROOT@/.bender/git/checkouts/fpu_div_sqrt_mvp-ca8b2349afb6712f/hdl/nrbd_nrsc_mvp.sv
 @SNITCH_ROOT@/.bender/git/checkouts/fpu_div_sqrt_mvp-ca8b2349afb6712f/hdl/div_sqrt_top_mvp.sv
 @SNITCH_ROOT@/.bender/git/checkouts/fpu_div_sqrt_mvp-ca8b2349afb6712f/hdl/div_sqrt_mvp_wrapper.sv
-@SNITCH_ROOT@/.bender/git/checkouts/axi_riscv_atomics-360637610c0ab464/src/axi_res_tbl.sv
-@SNITCH_ROOT@/.bender/git/checkouts/axi_riscv_atomics-360637610c0ab464/src/axi_riscv_amos_alu.sv
-@SNITCH_ROOT@/.bender/git/checkouts/axi_riscv_atomics-360637610c0ab464/src/axi_riscv_amos.sv
-@SNITCH_ROOT@/.bender/git/checkouts/axi_riscv_atomics-360637610c0ab464/src/axi_riscv_lrsc.sv
-@SNITCH_ROOT@/.bender/git/checkouts/axi_riscv_atomics-360637610c0ab464/src/axi_riscv_atomics.sv
-@SNITCH_ROOT@/.bender/git/checkouts/axi_riscv_atomics-360637610c0ab464/src/axi_riscv_lrsc_wrap.sv
-@SNITCH_ROOT@/.bender/git/checkouts/axi_riscv_atomics-360637610c0ab464/src/axi_riscv_amos_wrap.sv
-@SNITCH_ROOT@/.bender/git/checkouts/axi_riscv_atomics-360637610c0ab464/src/axi_riscv_atomics_wrap.sv
 @SNITCH_ROOT@/.bender/git/checkouts/fpnew-afcaf014ef5047df/src/fpnew_pkg.sv
 @SNITCH_ROOT@/.bender/git/checkouts/fpnew-afcaf014ef5047df/src/fpnew_cast_multi.sv
 @SNITCH_ROOT@/.bender/git/checkouts/fpnew-afcaf014ef5047df/src/fpnew_classifier.sv
