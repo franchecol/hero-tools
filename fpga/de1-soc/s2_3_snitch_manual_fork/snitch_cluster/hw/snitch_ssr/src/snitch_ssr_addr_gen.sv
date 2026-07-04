@@ -433,8 +433,8 @@ module snitch_ssr_addr_gen import snitch_ssr_pkg::*; #(
   assign cfg_write_ena = config_sq.done & cfg_write_i;
 
   // Parameter sanity checks
-  `ASSERT_INIT(CheckPointerWidth, Cfg.PointerWidth <= AddrWidth);
+  `ASSERT_INIT(CheckPointerWidth, Cfg.PointerWidth <= AddrWidth)
   // DataWidth 8 (BytecntWidth 0) is not yet supported (complex edge case)
-  `ASSERT_INIT(CheckBytecntWidth, BytecntWidth >= 1);
+  `ASSERT_INIT(CheckBytecntWidth, BytecntWidth >= 1)
 
 endmodule

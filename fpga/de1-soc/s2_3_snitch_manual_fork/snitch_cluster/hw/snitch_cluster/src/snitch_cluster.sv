@@ -1240,8 +1240,8 @@ module snitch_cluster
   // Sanity Checks
   // -------------
   // Sanity check the parameters. Not every configuration makes sense.
-  `ASSERT_INIT(CheckSuperBankSanity, NrBanks >= BanksPerSuperBank);
-  `ASSERT_INIT(CheckSuperBankFactor, (NrBanks % BanksPerSuperBank) == 0);
+  `ASSERT_INIT(CheckSuperBankSanity, NrBanks >= BanksPerSuperBank)
+  `ASSERT_INIT(CheckSuperBankFactor, (NrBanks % BanksPerSuperBank) == 0)
   // Check that the cluster base address aligns to the TCDMSize.
   `ASSERT(ClusterBaseAddrAlign, ((TCDMSize - 1) & cluster_base_addr_i) == 0)
   // Make sure we only have one DMA in the system.

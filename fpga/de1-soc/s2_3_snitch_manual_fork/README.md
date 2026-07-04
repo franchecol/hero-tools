@@ -28,8 +28,10 @@ from the successful Snitch-Lite path.
 
 ## Current Manual Patch
 
-The first patch removes unsupported `parameter type` usage from the local
-tech-cell SRAM files:
+The fork is being ported in small, committed parser-compatibility batches.
+The first patch removed unsupported `parameter type` usage from the local
+tech-cell SRAM files, then later patches handled generate syntax, macro syntax,
+and Common Cells utility modules.
 
 ```text
 snitch_cluster/.bender/git/checkouts/tech_cells_generic-*/src/rtl/tc_sram.sv
@@ -77,7 +79,7 @@ cd /home/ftv/builds/hero-tools/fpga/de1-soc/s2_3_snitch_manual_fork
 
 ## Current Result
 
-Attempt 4 was run locally with Quartus Prime Lite 25.1std.0.
+Attempt 5 was run locally with Quartus Prime Lite 25.1std.0.
 
 Result:
 
@@ -96,16 +98,19 @@ The default macro argument errors in registers.svh and assertions.svh are gone.
 The first common_cells utility-module errors in credit_counter.sv,
 delta_counter.sv, fifo_v3.sv, gray_to_binary.sv, heaviside.sv, and
 isochronous_spill_register.sv are gone.
+The second common_cells batch errors in lfsr.sv, lossy_valid_to_stream.sv,
+onehot_to_bin.sv, passthrough_stream_fifo.sv, popcount.sv, ring_buffer.sv, and
+rr_arb_tree.sv are gone.
 ```
 
 New first blocker:
 
 ```text
-snitch_cluster/.bender/git/checkouts/common_cells-*/src/lfsr.sv:254
-Error (10170): near text: "if"; expecting "endmodule"
+snitch_cluster/.bender/git/checkouts/common_cells-*/src/shift_reg.sv:17
+Error (10170): near text: "type"; expecting an identifier
 ```
 
 The fix now exists as direct edits in the local Snitch fork. The next class is
-the same common_cells syntax porting repeated across more utility modules:
-`lfsr`, `lossy_valid_to_stream`, `onehot_to_bin`, `passthrough_stream_fifo`,
-`popcount`, `ring_buffer`, and `rr_arb_tree`.
+the same common_cells syntax porting repeated across the shift-register and
+spill-register utility modules: `shift_reg`, `shift_reg_gated`, and
+`spill_register_flushable`.

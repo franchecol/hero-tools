@@ -251,42 +251,44 @@ end
 // block cipher layers
 ////////////////////////////////////////////////////////////////////////
 
-if (CipherLayers > unsigned'(0)) begin : g_cipher_layers
-  logic [63:0] ciph_layer;
-  localparam int unsigned NumRepl = ((64+LfsrWidth)/LfsrWidth);
+generate
+  if (CipherLayers > unsigned'(0)) begin : g_cipher_layers
+    logic [63:0] ciph_layer;
+    localparam int unsigned NumRepl = ((64+LfsrWidth)/LfsrWidth);
 
-  always_comb begin : p_ciph_layer
-    automatic logic [63:0] tmp;
-    tmp = 64'({NumRepl{lfsr_q}});
-    for(int unsigned k = 0; k < CipherLayers; k++) begin
-      tmp = perm_layer(sbox4_layer(tmp));
-    end
-    ciph_layer = tmp;
-  end
-
-  // additiona output reg after cipher
-  if (CipherReg) begin : g_cipher_reg
-    logic [OutWidth-1:0] out_d, out_q;
-
-    assign out_d = (en_i) ? ciph_layer[OutWidth-1:0] : out_q;
-    assign out_o = out_q[OutWidth-1:0];
-
-    always_ff @(posedge clk_i or negedge rst_ni) begin : p_regs
-      if (!rst_ni) begin
-        out_q <= '0;
-      end else begin
-        out_q <= out_d;
+    always_comb begin : p_ciph_layer
+      automatic logic [63:0] tmp;
+      tmp = 64'({NumRepl{lfsr_q}});
+      for(int unsigned k = 0; k < CipherLayers; k++) begin
+        tmp = perm_layer(sbox4_layer(tmp));
       end
+      ciph_layer = tmp;
     end
-  // no outreg
-  end else begin : g_no_out_reg
-    assign out_o  = ciph_layer[OutWidth-1:0];
-  end
 
-// no block cipher
-end else begin : g_no_cipher_layers
-  assign out_o    = lfsr_q[OutWidth-1:0];
-end
+    // additiona output reg after cipher
+    if (CipherReg) begin : g_cipher_reg
+      logic [OutWidth-1:0] out_d, out_q;
+
+      assign out_d = (en_i) ? ciph_layer[OutWidth-1:0] : out_q;
+      assign out_o = out_q[OutWidth-1:0];
+
+      always_ff @(posedge clk_i or negedge rst_ni) begin : p_regs
+        if (!rst_ni) begin
+          out_q <= '0;
+        end else begin
+          out_q <= out_d;
+        end
+      end
+    // no outreg
+    end else begin : g_no_out_reg
+      assign out_o  = ciph_layer[OutWidth-1:0];
+    end
+
+  // no block cipher
+  end else begin : g_no_cipher_layers
+    assign out_o    = lfsr_q[OutWidth-1:0];
+  end
+endgenerate
 
 ////////////////////////////////////////////////////////////////////////
 // assertions

@@ -48,18 +48,17 @@
 
 module lossy_valid_to_stream #(
     /// Default data width if the fifo is of type logic
-    parameter int unsigned DATA_WIDTH = 32,
-    parameter type T = logic [DATA_WIDTH-1:0]
+    parameter int unsigned DATA_WIDTH = 32
 ) (
     input  logic clk_i,
     input  logic rst_ni,
     // Input Interface (the input is always ready so there is no ready_o signal)
     input  logic valid_i,
-    input  T     data_i,
+    input  logic [DATA_WIDTH-1:0] data_i,
     // Output Interface
     output logic valid_o,
     input  logic ready_i,
-    output T     data_o,
+    output logic [DATA_WIDTH-1:0] data_o,
     // Status port
     output busy_o
 );
@@ -70,7 +69,7 @@ module lossy_valid_to_stream #(
   logic read_ptr_d, read_ptr_q;
   logic write_ptr_d, write_ptr_q;
   logic [1:0] pending_tx_counter_d, pending_tx_counter_q;
-  T[1:0] mem_d, mem_q;
+  logic [1:0][DATA_WIDTH-1:0] mem_d, mem_q;
 
   assign valid_o = pending_tx_counter_q != 0 || valid_i;
 
@@ -125,7 +124,7 @@ module lossy_valid_to_stream #(
       read_ptr_q           <= '0;
       write_ptr_q          <= '0;
       pending_tx_counter_q <= '0;
-      mem_q                <= {2{T'('0)}};
+      mem_q                <= '0;
     end else begin
       read_ptr_q           <= read_ptr_d;
       write_ptr_q          <= write_ptr_d;

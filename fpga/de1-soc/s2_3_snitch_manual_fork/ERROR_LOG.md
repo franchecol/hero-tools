@@ -337,3 +337,97 @@ Interpretation:
 Quartus is now deeper into common_cells. The remaining blockers are the same
 families repeated across more reusable utility modules.
 ```
+
+## Attempt 5: Second Common Cells Type/Generate Batch
+
+Status:
+
+```text
+FAIL
+quartus_map exit code: 3
+no .sof produced
+```
+
+Command:
+
+```bash
+cd /home/ftv/builds/hero-tools/fpga/de1-soc/s2_3_snitch_manual_fork
+./scripts/quartus_preflight.sh
+```
+
+Manual source edits:
+
+```text
+snitch_cluster/.bender/git/checkouts/common_cells-*/src/lfsr.sv
+snitch_cluster/.bender/git/checkouts/common_cells-*/src/lossy_valid_to_stream.sv
+snitch_cluster/.bender/git/checkouts/common_cells-*/src/onehot_to_bin.sv
+snitch_cluster/.bender/git/checkouts/common_cells-*/src/passthrough_stream_fifo.sv
+snitch_cluster/.bender/git/checkouts/common_cells-*/src/popcount.sv
+snitch_cluster/.bender/git/checkouts/common_cells-*/src/ring_buffer.sv
+snitch_cluster/.bender/git/checkouts/common_cells-*/src/rr_arb_tree.sv
+snitch_cluster/hw/tcdm_interface/src/tcdm_mux.sv
+snitch_cluster/hw/reqrsp_interface/src/reqrsp_mux.sv
+selected source files with no-op assertion macro call sites
+```
+
+What changed:
+
+```text
+lfsr.sv:
+  wrapped module-level generate-if logic with explicit generate/endgenerate
+
+lossy_valid_to_stream.sv:
+  replaced T type parameter with DATA_WIDTH vector ports/storage
+
+onehot_to_bin.sv:
+  replaced inline generate-for declarations with explicit genvars and generate/endgenerate
+
+passthrough_stream_fifo.sv:
+  replaced type_t type parameter with DATA_WIDTH vector ports/storage
+
+popcount.sv:
+  changed derived PopcountWidth to Quartus-accepted parameter syntax
+  wrapped the elaboration parameter check with explicit generate/endgenerate
+
+ring_buffer.sv:
+  replaced data_t type parameter with DATA_WIDTH vector ports/storage
+  removed trailing semicolons after disabled assertion macros
+
+rr_arb_tree.sv:
+  replaced DataType and idx_t type parameters with DATA_WIDTH and IdxWidth vectors
+  wrapped module-level generate logic with explicit generate/endgenerate
+
+tcdm_mux.sv and reqrsp_mux.sv:
+  changed rr_arb_tree overrides from .DataType(...) to .DataWidth($bits(...))
+```
+
+Important progress:
+
+```text
+The previous first errors in lfsr.sv, lossy_valid_to_stream.sv,
+onehot_to_bin.sv, passthrough_stream_fifo.sv, popcount.sv, ring_buffer.sv, and
+rr_arb_tree.sv are gone.
+```
+
+New first Quartus error:
+
+```text
+common_cells/src/shift_reg.sv:17
+Error (10170): Verilog HDL syntax error near text: "type";
+expecting an identifier ("type" is a reserved keyword)
+```
+
+Other errors in the same run:
+
+```text
+common_cells/src/shift_reg_gated.sv: parameter type and implicit generate syntax
+common_cells/src/spill_register_flushable.sv: parameter type and implicit generate syntax
+```
+
+Interpretation:
+
+```text
+The parser is still in Common Cells, but it has advanced to the shift-register
+and spill-register utility group. This confirms the previous batch was not just
+moving line numbers inside the same files; it cleared a full module group.
+```

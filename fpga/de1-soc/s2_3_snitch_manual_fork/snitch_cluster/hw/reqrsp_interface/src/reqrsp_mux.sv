@@ -83,7 +83,7 @@ module reqrsp_mux #(
   /// Arbitrate on instruction request port
   rr_arb_tree #(
     .NumIn (NrPorts),
-    .DataType (req_chan_t),
+    .DataWidth ($bits(req_chan_t)),
     .AxiVldRdy (1'b1),
     .LockIn (1'b1)
   ) i_q_mux (

@@ -21,14 +21,19 @@
 
 module popcount #(
     parameter  int unsigned INPUT_WIDTH   = 256,
-    localparam int unsigned PopcountWidth = $clog2(INPUT_WIDTH) + 1
+    parameter  int unsigned PopcountWidth = $clog2(INPUT_WIDTH) + 1
 ) (
     input  logic [  INPUT_WIDTH-1:0] data_i,
     output logic [PopcountWidth-1:0] popcount_o
 );
 
-  if (INPUT_WIDTH < 1)
-    $error("INPUT_WIDTH must be larger or equal to 1.");
+  generate
+    if (INPUT_WIDTH < 1) begin : gen_input_width_error
+      initial begin
+        $error("INPUT_WIDTH must be larger or equal to 1.");
+      end
+    end
+  endgenerate
 
   always_comb begin
     popcount_o = 0;

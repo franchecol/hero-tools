@@ -21,12 +21,10 @@
 
 module ring_buffer #(
     parameter int unsigned Depth = 32,
-    parameter type data_t = logic,
+    parameter int unsigned DATA_WIDTH = 1,
     /// Derived parameter *Do not override*
-    localparam int unsigned AddrWidth = cf_math_pkg::idx_width(Depth),
-    localparam int unsigned StepWidth = cf_math_pkg::idx_width(Depth+1),
-    localparam type addr_t = logic [AddrWidth-1:0],
-    localparam type step_t = logic [StepWidth-1:0]
+    parameter int unsigned AddrWidth = cf_math_pkg::idx_width(Depth),
+    parameter int unsigned StepWidth = cf_math_pkg::idx_width(Depth+1)
 ) (
     input logic clk_i,
     input logic rst_ni,
@@ -34,22 +32,22 @@ module ring_buffer #(
     // Write interface
     input logic wvalid_i,
     output logic wready_o,
-    input data_t wdata_i,
+    input logic [DATA_WIDTH-1:0] wdata_i,
 
     // Restricted random access read interface
     input logic rvalid_i,
     output logic rready_o,
-    input addr_t raddr_i,
-    output data_t rdata_o,
+    input logic [AddrWidth-1:0] raddr_i,
+    output logic [DATA_WIDTH-1:0] rdata_o,
 
     // Independent read pointer increment interface.
     // Increments the read pointer by `step_i` when `advance_i` is asserted.
     input logic advance_i,
-    input step_t step_i,
+    input logic [StepWidth-1:0] step_i,
 
     // Status signals
-    output addr_t wptr_o,
-    output addr_t rptr_o,
+    output logic [AddrWidth-1:0] wptr_o,
+    output logic [AddrWidth-1:0] rptr_o,
     output logic full_o,
     output logic empty_o
 );
@@ -58,7 +56,7 @@ module ring_buffer #(
     // State //
     ///////////
 
-    data_t [Depth-1:0] mem_d, mem_q;
+    logic [Depth-1:0][DATA_WIDTH-1:0] mem_d, mem_q;
 
     // We allocate one more bit than needed to represent memory
     // addresses, to compute full/empty status of the buffer.
@@ -121,7 +119,7 @@ module ring_buffer #(
     ////////////////
 
     // Auxiliary signal for assertion
-    step_t max_step;
+    logic [StepWidth-1:0] max_step;
 
     // Calculate maximum allowed step size, beyond which read pointer would overtake write pointer.
     always_comb begin
@@ -132,11 +130,11 @@ module ring_buffer #(
     end
 
     // Read pointer should not overtake write pointer.
-    `ASSERT(ReadPtrOvertakesWritePtr, advance_i |-> step_i <= max_step);
+    `ASSERT(ReadPtrOvertakesWritePtr, advance_i |-> step_i <= max_step)
 
     // Write pointer should not overtake read pointer.
     `ASSERT(WritePtrOvertakesReadPtr, wvalid_i && wready_o
-            |-> !((wptr_q[AddrWidth-1:0] == rptr_d[AddrWidth-1:0]) && !(wptr_q == rptr_d)));
+            |-> !((wptr_q[AddrWidth-1:0] == rptr_d[AddrWidth-1:0]) && !(wptr_q == rptr_d)))
 
     // When rptr_o < wptr_o, the valid range is [rptr_o, wptr_o).
     // When rptr_o > wptr_o (wrap-around), the valid range is [rptr_o, Depth) U [0, wptr_o).
@@ -146,7 +144,7 @@ module ring_buffer #(
             ((rptr_o < wptr_o) && ((raddr_i >= rptr_o) && (raddr_i < wptr_o))) ||
             ((rptr_o > wptr_o) && ((raddr_i >= rptr_o) || (raddr_i < wptr_o))) ||
             ((rptr_o == wptr_o) && !empty_o)
-        ));
+        ))
 
     // Interfaces should be stable when valid is asserted but not ready
     `ASSERT_STABLE(WriteStable, wvalid_i, wready_o, wdata_i)

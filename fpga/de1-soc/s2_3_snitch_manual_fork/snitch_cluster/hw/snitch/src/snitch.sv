@@ -2939,9 +2939,9 @@ module snitch import snitch_pkg::*; import riscv_instr::*; #(
   // Check that PMA rule counts do not exceed maximum number of rules
   `ASSERT_INIT(CheckPMANonIdempotent,
     SnitchPMACfg.NrNonIdempotentRegionRules <= snitch_pma_pkg::NrMaxRules);
-  `ASSERT_INIT(CheckPMAExecute, SnitchPMACfg.NrExecuteRegionRules <= snitch_pma_pkg::NrMaxRules);
-  `ASSERT_INIT(CheckPMACached, SnitchPMACfg.NrCachedRegionRules <= snitch_pma_pkg::NrMaxRules);
-  `ASSERT_INIT(CheckPMAAMORegion, SnitchPMACfg.NrAMORegionRules <= snitch_pma_pkg::NrMaxRules);
+  `ASSERT_INIT(CheckPMAExecute, SnitchPMACfg.NrExecuteRegionRules <= snitch_pma_pkg::NrMaxRules)
+  `ASSERT_INIT(CheckPMACached, SnitchPMACfg.NrCachedRegionRules <= snitch_pma_pkg::NrMaxRules)
+  `ASSERT_INIT(CheckPMAAMORegion, SnitchPMACfg.NrAMORegionRules <= snitch_pma_pkg::NrMaxRules)
 
   // Make sure that without virtual memory support, translation is never enabled
   `ASSERT(NoVMSupportNoTranslation, (~VMSupport |-> ~trans_active))

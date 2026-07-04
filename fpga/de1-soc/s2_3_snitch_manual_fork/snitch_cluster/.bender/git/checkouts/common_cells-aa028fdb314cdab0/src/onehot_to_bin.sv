@@ -21,15 +21,19 @@ module onehot_to_bin #(
     output logic [BIN_WIDTH-1:0]    bin
 );
 
-    for (genvar j = 0; j < BIN_WIDTH; j++) begin : gen_jl
-        logic [ONEHOT_WIDTH-1:0] tmp_mask;
-            for (genvar i = 0; i < ONEHOT_WIDTH; i++) begin : gen_il
-                logic [BIN_WIDTH-1:0] tmp_i;
-                assign tmp_i = BIN_WIDTH'(i);
-                assign tmp_mask[i] = tmp_i[j];
+    genvar gen_j;
+    genvar gen_i;
+    generate
+        for (gen_j = 0; gen_j < BIN_WIDTH; gen_j++) begin : gen_jl
+            logic [ONEHOT_WIDTH-1:0] tmp_mask;
+            for (gen_i = 0; gen_i < ONEHOT_WIDTH; gen_i++) begin : gen_il
+                    logic [BIN_WIDTH-1:0] tmp_i;
+                    assign tmp_i = BIN_WIDTH'(gen_i);
+                    assign tmp_mask[gen_i] = tmp_i[gen_j];
             end
-        assign bin[j] = |(tmp_mask & onehot);
-    end
+            assign bin[gen_j] = |(tmp_mask & onehot);
+        end
+    endgenerate
 
 `ifndef COMMON_CELLS_ASSERTS_OFF
     `ASSERT_FINAL(more_than_2_bits, $onehot0(onehot))

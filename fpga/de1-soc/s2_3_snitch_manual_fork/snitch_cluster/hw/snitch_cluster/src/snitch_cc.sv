@@ -720,7 +720,7 @@ module snitch_cc #(
     );
 
     // If Xssr is enabled, we should at least have one SSR
-    `ASSERT_INIT(CheckSsrWithXssr, NumSsrs >= 1);
+    `ASSERT_INIT(CheckSsrWithXssr, NumSsrs >= 1)
 
     snitch_ssr_streamer #(
       .NumSsrs (NumSsrs),

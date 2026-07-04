@@ -232,7 +232,7 @@ module snitch_sequencer import snitch_pkg::*; #(
   );
 
   // Ensure that `max_inst` bits fit into assigned slot
-  `ASSERT_INIT(CheckMaxInstFieldWidth, DepthBits < 11);
+  `ASSERT_INIT(CheckMaxInstFieldWidth, DepthBits < 11)
 
   assign seq_cfg_buffer_in.is_streamctl = inp_qdata_op_i[31];
   assign seq_cfg_buffer_in.is_outer = inp_qdata_op_i[7];
