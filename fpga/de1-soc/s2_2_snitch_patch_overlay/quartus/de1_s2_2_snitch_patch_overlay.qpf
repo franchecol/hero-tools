@@ -1,0 +1,5 @@
+QUARTUS_VERSION = "25.1"
+DATE = "00:00:00  JULY 04, 2026"
+
+PROJECT_REVISION = "de1_s2_2_snitch_patch_overlay"
+

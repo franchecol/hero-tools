@@ -5,6 +5,10 @@ This directory tracks the educational DE1-SoC path toward a tiny accelerator.
 It is intentionally separate from the full Occamy FPGA path. The DE1-SoC board
 is useful for small staged hardware experiments, not for full Occamy.
 
+For a feature-by-feature comparison against upstream Snitch/Occamy, including
+the S13 interrupt-done path and the proposed S14 continuation, see
+[`SNITCH_LITE_FEATURE_COMPARISON.md`](SNITCH_LITE_FEATURE_COMPARISON.md).
+
 ## Stages
 
 ```text
