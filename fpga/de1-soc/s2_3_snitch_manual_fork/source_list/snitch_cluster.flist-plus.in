@@ -78,7 +78,6 @@
 @SNITCH_ROOT@/.bender/git/checkouts/common_cells-aa028fdb314cdab0/src/max_counter.sv
 @SNITCH_ROOT@/.bender/git/checkouts/common_cells-aa028fdb314cdab0/src/rstgen.sv
 @SNITCH_ROOT@/.bender/git/checkouts/common_cells-aa028fdb314cdab0/src/spill_register.sv
-@SNITCH_ROOT@/.bender/git/checkouts/common_cells-aa028fdb314cdab0/src/stream_delay.sv
 @SNITCH_ROOT@/.bender/git/checkouts/common_cells-aa028fdb314cdab0/src/stream_fifo.sv
 @SNITCH_ROOT@/.bender/git/checkouts/common_cells-aa028fdb314cdab0/src/stream_fork_dynamic.sv
 @SNITCH_ROOT@/.bender/git/checkouts/common_cells-aa028fdb314cdab0/src/stream_join.sv

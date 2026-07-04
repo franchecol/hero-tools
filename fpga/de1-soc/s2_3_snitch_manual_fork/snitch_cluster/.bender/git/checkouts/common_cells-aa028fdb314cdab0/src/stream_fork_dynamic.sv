@@ -48,21 +48,25 @@ module stream_fork_dynamic #(
   logic             int_inp_valid,  int_inp_ready;
   logic [N_OUP-1:0] int_oup_valid,  int_oup_ready;
 
+  genvar gen_i;
+
   // Output handshaking
-  for (genvar i = 0; i < N_OUP; i++) begin : gen_oups
-    always_comb begin
-      valid_o[i]       = 1'b0;
-      int_oup_ready[i] = 1'b0;
-      if (sel_valid_i) begin
-        if (sel_i[i]) begin
-          valid_o[i]       = int_oup_valid[i];
-          int_oup_ready[i] = ready_i[i];
-        end else begin
-          int_oup_ready[i] = 1'b1;
+  generate
+    for (gen_i = 0; gen_i < N_OUP; gen_i++) begin : gen_oups
+      always_comb begin
+        valid_o[gen_i]       = 1'b0;
+        int_oup_ready[gen_i] = 1'b0;
+        if (sel_valid_i) begin
+          if (sel_i[gen_i]) begin
+            valid_o[gen_i]       = int_oup_valid[gen_i];
+            int_oup_ready[gen_i] = ready_i[gen_i];
+          end else begin
+            int_oup_ready[gen_i] = 1'b1;
+          end
         end
       end
     end
-  end
+  endgenerate
 
   // Input handshaking
   always_comb begin

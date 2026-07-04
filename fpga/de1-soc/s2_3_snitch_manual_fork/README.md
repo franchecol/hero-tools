@@ -79,7 +79,7 @@ cd /home/ftv/builds/hero-tools/fpga/de1-soc/s2_3_snitch_manual_fork
 
 ## Current Result
 
-Attempt 9 was run locally with Quartus Prime Lite 25.1std.0.
+Attempt 10 was run locally with Quartus Prime Lite 25.1std.0.
 
 Result:
 
@@ -113,16 +113,19 @@ count is now 302 files.
 The active lzc.sv generate-syntax errors are gone, and another unused
 Common Cells helper group was removed from the Quartus preflight file list.
 The source count is now 296 files.
+The stream/spill wrapper parser errors in spill_register.sv, stream_fifo.sv,
+stream_fork_dynamic.sv, and fall_through_register.sv are gone. The unused
+stream_delay.sv helper was removed from the preflight list, so the source count
+is now 295 files.
 ```
 
 New first blocker:
 
 ```text
-snitch_cluster/.bender/git/checkouts/common_cells-*/src/spill_register.sv:18
+snitch_cluster/.bender/git/checkouts/common_cells-*/src/id_queue.sv:56
 Error (10170): near text: "type"; expecting an identifier
 ```
 
 The fix now exists as direct edits in the local Snitch fork. The next class is
-common_cells stream/spill wrapper syntax porting: `spill_register`,
-`stream_delay`, `stream_fifo`, `stream_fork_dynamic`, and
-`fall_through_register`.
+common_cells queue/memory-stream syntax porting: `id_queue` and
+`stream_to_mem`.

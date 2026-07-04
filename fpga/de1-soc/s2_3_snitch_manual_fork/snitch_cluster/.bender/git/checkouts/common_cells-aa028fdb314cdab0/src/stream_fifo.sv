@@ -17,7 +17,6 @@ module stream_fifo #(
     parameter int unsigned DATA_WIDTH   = 32,
     /// Depth can be arbitrary from 0 to 2**32
     parameter int unsigned DEPTH        = 8,
-    parameter type         T            = logic [DATA_WIDTH-1:0],
     // DO NOT OVERWRITE THIS PARAMETER
     parameter int unsigned ADDR_DEPTH  = (DEPTH > 1) ? $clog2(DEPTH) : 1
 ) (
@@ -27,11 +26,11 @@ module stream_fifo #(
     input  logic                  testmode_i, // test_mode to bypass clock gating
     output logic [ADDR_DEPTH-1:0] usage_o,    // fill pointer
     // input interface
-    input  T                      data_i,     // data to push into the fifo
+    input  logic [DATA_WIDTH-1:0] data_i,     // data to push into the fifo
     input  logic                  valid_i,    // input data valid
     output logic                  ready_o,    // fifo is not full
     // output interface
-    output T                      data_o,     // output data
+    output logic [DATA_WIDTH-1:0] data_o,     // output data
     output logic                  valid_o,    // fifo is not empty
     input  logic                  ready_i     // pop head from fifo
 );
@@ -47,8 +46,7 @@ module stream_fifo #(
     fifo_v3 #(
         .FALL_THROUGH   (FALL_THROUGH),
         .DATA_WIDTH     (DATA_WIDTH),
-        .DEPTH          (DEPTH),
-        .dtype(T)
+        .DEPTH          (DEPTH)
     ) fifo_i (
         .clk_i,
         .rst_ni,

@@ -15,22 +15,22 @@
 /// Wrapper around the flushable spill register to maintain back-ward
 /// compatibility.
 module spill_register #(
-  parameter type T      = logic,
-  parameter bit  Bypass = 1'b0     // make this spill register transparent
+  parameter int unsigned DATA_WIDTH = 1,
+  parameter bit          Bypass     = 1'b0     // make this spill register transparent
 ) (
   input  logic clk_i   ,
   input  logic rst_ni  ,
   input  logic valid_i ,
   output logic ready_o ,
-  input  T     data_i  ,
+  input  logic [DATA_WIDTH-1:0] data_i,
   output logic valid_o ,
   input  logic ready_i ,
-  output T     data_o
+  output logic [DATA_WIDTH-1:0] data_o
 );
 
   spill_register_flushable #(
-    .T(T),
-    .Bypass(Bypass)
+    .DATA_WIDTH(DATA_WIDTH),
+    .Bypass    (Bypass)
   ) spill_register_flushable_i (
     .clk_i,
     .rst_ni,

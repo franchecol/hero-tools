@@ -763,3 +763,84 @@ The parser has moved from decoder/utility modules to Common Cells stream/spill
 wrapper modules. These wrap lower-level modules that were already partially
 ported in earlier attempts.
 ```
+
+## Attempt 10: Stream/Spill Wrapper Common Cells Batch
+
+Status:
+
+```text
+FAIL
+quartus_map exit code: 3
+no .sof produced
+```
+
+Command:
+
+```bash
+cd /home/ftv/builds/hero-tools/fpga/de1-soc/s2_3_snitch_manual_fork
+./scripts/quartus_preflight.sh
+```
+
+Manual source edits:
+
+```text
+source_list/snitch_cluster.flist-plus.in
+snitch_cluster/.bender/git/checkouts/common_cells-*/src/spill_register.sv
+snitch_cluster/.bender/git/checkouts/common_cells-*/src/stream_fifo.sv
+snitch_cluster/.bender/git/checkouts/common_cells-*/src/stream_fork_dynamic.sv
+snitch_cluster/.bender/git/checkouts/common_cells-*/src/fall_through_register.sv
+```
+
+What changed:
+
+```text
+source list:
+  removed unused stream_delay.sv from the preflight list
+
+spill_register.sv:
+  replaced T type parameter with DATA_WIDTH vector ports
+  changed the flushable spill-register override to .DATA_WIDTH(...)
+
+stream_fifo.sv:
+  removed T type parameter
+  used DATA_WIDTH vector ports
+  removed stale fifo_v3 .dtype(...) override
+
+stream_fork_dynamic.sv:
+  wrapped module-level generate-for logic with explicit generate/endgenerate
+  replaced inline for-loop genvar with a separately declared genvar
+
+fall_through_register.sv:
+  replaced T type parameter with DATA_WIDTH vector ports
+  changed the fifo_v3 override to .DATA_WIDTH(...)
+```
+
+Important progress:
+
+```text
+The previous first errors in spill_register.sv, stream_delay.sv, stream_fifo.sv,
+stream_fork_dynamic.sv, and fall_through_register.sv are gone.
+The broad preflight list was reduced from files=296 to files=295.
+```
+
+New first Quartus error:
+
+```text
+common_cells/src/id_queue.sv:56
+Error (10170): Verilog HDL syntax error near text: "type";
+expecting an identifier ("type" is a reserved keyword)
+```
+
+Other errors in the same run:
+
+```text
+common_cells/src/id_queue.sv: parameter type and implicit module-level generate-for
+common_cells/src/stream_to_mem.sv: parameter type
+```
+
+Interpretation:
+
+```text
+The parser has moved to queue/memory-stream Common Cells utilities. The stream
+wrapper layer is now syntactically acceptable to Quartus.
+```
