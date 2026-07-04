@@ -204,13 +204,15 @@ snitch.sv now has an S2_3_QUARTUS width-parameterized boundary for data,
 accelerator, and VM ports while preserving internal packed-struct logic.
 snitch.sv top-level debug, ITLB, ALU reverse-loop, and DTLB generate blocks now
 use explicit generate/endgenerate syntax.
+snitch.sv no longer uses unsupported `inside` membership tests, and the one
+S2_3-empty assertion macro call no longer leaves a stray semicolon.
 ```
 
 New first blocker:
 
 ```text
-snitch_cluster/hw/snitch/src/snitch.sv:930
-Error (10170): near text: "inside"; expecting ")"
+snitch_cluster/hw/snitch_vm/src/snitch_ptw.sv:14
+Error (10170): near text: "type"; expecting an identifier
 ```
 
 The next class is the actual Snitch core RTL.

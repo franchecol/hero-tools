@@ -199,6 +199,35 @@ module snitch import snitch_pkg::*; import riscv_instr::*; #(
   localparam int unsigned PPNSize = AddrWidth - PageShift;
   localparam bit NSX = XF16 | XF16ALT | XF8 | XFVEC;
 
+  function automatic logic is_scalar_s_divsqrt(input logic [31:0] instr);
+    return (instr == FDIV_S) || (instr == FSQRT_S);
+  endfunction
+
+  function automatic logic is_vector_s_divsqrt(input logic [31:0] instr);
+    return (instr == VFDIV_S) || (instr == VFDIV_R_S) || (instr == VFSQRT_S);
+  endfunction
+
+  function automatic logic is_scalar_d_divsqrt(input logic [31:0] instr);
+    return (instr == FDIV_D) || (instr == FSQRT_D);
+  endfunction
+
+  function automatic logic is_scalar_h_divsqrt(input logic [31:0] instr);
+    return (instr == FDIV_H) || (instr == FSQRT_H);
+  endfunction
+
+  function automatic logic is_vector_h_divsqrt(input logic [31:0] instr);
+    return (instr == VFDIV_H) || (instr == VFDIV_R_H) || (instr == VFSQRT_H);
+  endfunction
+
+  function automatic logic is_vector_b_divsqrt(input logic [31:0] instr);
+    return (instr == VFDIV_B) || (instr == VFDIV_R_B) || (instr == VFSQRT_B);
+  endfunction
+
+  function automatic logic is_control_transfer(input logic [31:0] instr);
+    return (instr == JAL) || (instr == JALR) || (instr == BEQ) || (instr == BNE) ||
+           (instr == BLT) || (instr == BLTU) || (instr == BGE) || (instr == BGEU);
+  endfunction
+
   logic illegal_inst, illegal_csr;
   logic interrupt, ecall, ebreak;
   logic zero_lsb;
@@ -927,12 +956,12 @@ module snitch import snitch_pkg::*; import riscv_instr::*; #(
       // Environment return
       SRET: begin
         write_rd = 1'b0;
-        if (priv_lvl_q inside {snitch_pkg::PrivLvlM, snitch_pkg::PrivLvlS}) next_pc = SRet;
+        if ((priv_lvl_q == snitch_pkg::PrivLvlM) || (priv_lvl_q == snitch_pkg::PrivLvlS)) next_pc = SRet;
         else illegal_inst = 1'b1;
       end
       MRET: begin
         write_rd = 1'b0;
-        if (priv_lvl_q inside {snitch_pkg::PrivLvlM}) next_pc = MRet;
+        if (priv_lvl_q == snitch_pkg::PrivLvlM) next_pc = MRet;
         else illegal_inst = 1'b1;
       end
       DRET: begin
@@ -1193,7 +1222,7 @@ module snitch import snitch_pkg::*; import riscv_instr::*; #(
       FNMSUB_S,
       FNMADD_S: begin
         if (FP_EN && RVF
-          && (!(inst_data_i inside {FDIV_S, FSQRT_S}) || XDivSqrt)) begin
+          && (!is_scalar_s_divsqrt(inst_data_i) || XDivSqrt)) begin
           write_rd = 1'b0;
           acc_qvalid_o = valid_instr;
         end else begin
@@ -1227,7 +1256,7 @@ module snitch import snitch_pkg::*; import riscv_instr::*; #(
       VFCPKA_S_S,
       VFCPKA_S_D: begin
         if (FP_EN && XFVEC && RVF && RVD
-            && (!(inst_data_i inside {VFDIV_S, VFDIV_R_S, VFSQRT_S}) || XDivSqrt)) begin
+            && (!is_vector_s_divsqrt(inst_data_i) || XDivSqrt)) begin
           write_rd = 1'b0;
           acc_qvalid_o = valid_instr;
         end else begin
@@ -1258,7 +1287,7 @@ module snitch import snitch_pkg::*; import riscv_instr::*; #(
       FMSUB_D,
       FNMSUB_D,
       FNMADD_D: begin
-        if (FP_EN && RVD && (!(inst_data_i inside {FDIV_D, FSQRT_D}) || XDivSqrt)) begin
+        if (FP_EN && RVD && (!is_scalar_d_divsqrt(inst_data_i) || XDivSqrt)) begin
           write_rd = 1'b0;
           acc_qvalid_o = valid_instr;
         end else begin
@@ -1290,11 +1319,11 @@ module snitch import snitch_pkg::*; import riscv_instr::*; #(
       FMIN_H,
       FMAX_H: begin
         if (FP_EN && XF16 && fcsr_q.fmode.dst == 1'b0 &&
-            (!(inst_data_i inside {FDIV_H, FSQRT_H}) || XDivSqrt)) begin
+            (!is_scalar_h_divsqrt(inst_data_i) || XDivSqrt)) begin
           write_rd = 1'b0;
           acc_qvalid_o = valid_instr;
         end else if (FP_EN && XF16ALT && fcsr_q.fmode.dst == 1'b1 &&
-            (!(inst_data_i inside {VFDIV_H, VFDIV_R_H, VFSQRT_H}) || XDivSqrt)) begin
+            (!is_vector_h_divsqrt(inst_data_i) || XDivSqrt)) begin
           write_rd = 1'b0;
           acc_qvalid_o = valid_instr;
         end else begin
@@ -1390,11 +1419,11 @@ module snitch import snitch_pkg::*; import riscv_instr::*; #(
       VFSGNJX_R_H: begin
         if (FP_EN && XFVEC && FLEN >= 32) begin
           if (XF16 && fcsr_q.fmode.dst == 1'b0 &&
-              (!(inst_data_i inside {VFDIV_H, VFDIV_R_H, VFSQRT_H}) || XDivSqrt)) begin
+              (!is_vector_h_divsqrt(inst_data_i) || XDivSqrt)) begin
             write_rd = 1'b0;
             acc_qvalid_o = valid_instr;
           end else if (XF16ALT && fcsr_q.fmode.dst == 1'b1 &&
-              (!(inst_data_i inside {VFDIV_H, VFDIV_R_H, VFSQRT_H}) || XDivSqrt)) begin
+              (!is_vector_h_divsqrt(inst_data_i) || XDivSqrt)) begin
             write_rd = 1'b0;
             acc_qvalid_o = valid_instr;
           end else begin
@@ -1638,7 +1667,7 @@ module snitch import snitch_pkg::*; import riscv_instr::*; #(
       VFSGNJX_B,
       VFSGNJX_R_B: begin
         if (FP_EN && XFVEC && XF8 && FLEN >= 16
-          && (!(inst_data_i inside {VFDIV_B, VFDIV_R_B, VFSQRT_B}) || XDivSqrt)) begin
+          && (!is_vector_b_divsqrt(inst_data_i) || XDivSqrt)) begin
           write_rd = 1'b0;
           acc_qvalid_o = valid_instr;
         end else begin
@@ -3014,16 +3043,7 @@ module snitch import snitch_pkg::*; import riscv_instr::*; #(
     end
   end
 
-  assign inst_addr_misaligned = (inst_data_i inside {
-    JAL,
-    JALR,
-    BEQ,
-    BNE,
-    BLT,
-    BLTU,
-    BGE,
-    BGEU
-  }) && (consec_pc[1:0] != 2'b0);
+  assign inst_addr_misaligned = is_control_transfer(inst_data_i) && (consec_pc[1:0] != 2'b0);
 
   // ----------
   // Assertions
@@ -3042,7 +3062,7 @@ module snitch import snitch_pkg::*; import riscv_instr::*; #(
                                     |-> !$isunknown(gpr_wdata))
   // Check that PMA rule counts do not exceed maximum number of rules
   `ASSERT_INIT(CheckPMANonIdempotent,
-    SnitchPMACfg.NrNonIdempotentRegionRules <= snitch_pma_pkg::NrMaxRules);
+    SnitchPMACfg.NrNonIdempotentRegionRules <= snitch_pma_pkg::NrMaxRules)
   `ASSERT_INIT(CheckPMAExecute, SnitchPMACfg.NrExecuteRegionRules <= snitch_pma_pkg::NrMaxRules)
   `ASSERT_INIT(CheckPMACached, SnitchPMACfg.NrCachedRegionRules <= snitch_pma_pkg::NrMaxRules)
   `ASSERT_INIT(CheckPMAAMORegion, SnitchPMACfg.NrAMORegionRules <= snitch_pma_pkg::NrMaxRules)

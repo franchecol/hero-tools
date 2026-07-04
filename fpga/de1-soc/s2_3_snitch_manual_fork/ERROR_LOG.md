@@ -3735,3 +3735,76 @@ Interpretation:
 The Snitch core body now parses past top-level generate syntax. The next class
 is membership tests written with SystemVerilog `inside`.
 ```
+
+## Attempt 50: Rewrite Snitch inside Expressions
+
+Status:
+
+```text
+FAIL
+quartus_map exit code: 3
+no .sof produced
+```
+
+Command:
+
+```bash
+cd /home/ftv/builds/hero-tools/fpga/de1-soc/s2_3_snitch_manual_fork
+./scripts/quartus_preflight.sh
+```
+
+Manual edits:
+
+```text
+snitch_cluster/hw/snitch/src/snitch.sv
+```
+
+What changed:
+
+```text
+added local predicate functions for repeated instruction membership tests:
+  scalar/vector divsqrt checks
+  control-transfer instruction checks
+
+replaced all `inside { ... }` expressions in snitch.sv with explicit
+comparisons or predicate function calls
+
+removed the stray semicolon after CheckPMANonIdempotent ASSERT_INIT because the
+assertion macro expands to nothing under S2_3_QUARTUS
+```
+
+Why this is acceptable:
+
+```text
+The rewritten predicates preserve the same membership checks while avoiding
+Quartus' unsupported `inside` expression syntax.
+```
+
+Important progress:
+
+```text
+The previous snitch.sv inside-expression parser errors are gone.
+The late snitch.sv assertion-macro empty-item parser error is gone.
+Quartus now reaches snitch_ptw.sv as the first blocker.
+```
+
+New first Quartus error:
+
+```text
+hw/snitch_vm/src/snitch_ptw.sv:14
+Error (10170): near text: "type"; expecting an identifier
+```
+
+Other errors in the same run:
+
+```text
+snitch_dma helper files: parameter type errors
+snitch_icache_l0.sv: generate parser errors
+```
+
+Interpretation:
+
+```text
+The main Snitch core source now parses through Quartus' front end. The next
+active VM support block is the page-table walker.
+```
