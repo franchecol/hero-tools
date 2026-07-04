@@ -2461,3 +2461,70 @@ The AXI parser frontier moved through the interleaved memory bridge. The next
 AXI blocker is the top-level crossbar wrapper. The run is also now consistently
 showing later FPU and atomics parser issues.
 ```
+
+## Attempt 34: AXI Top-Level Crossbar S2.3 Stub
+
+Status:
+
+```text
+FAIL
+quartus_map exit code: 3
+no .sof produced
+```
+
+Command:
+
+```bash
+cd /home/ftv/builds/hero-tools/fpga/de1-soc/s2_3_snitch_manual_fork
+./scripts/quartus_preflight.sh
+```
+
+Manual source edits:
+
+```text
+snitch_cluster/.bender/git/checkouts/axi-*/src/axi_xbar.sv
+```
+
+What changed:
+
+```text
+axi_xbar.sv:
+  added an S2_3_QUARTUS-only zero-output crossbar stub
+  skipped the original type-parameterized crossbar and interface wrapper
+```
+
+Important limitation:
+
+```text
+This is not a full semantic port of the top-level AXI crossbar. It performs no
+request routing, response routing, ID adaptation, or address decoding; it only
+drives crossbar outputs to zero.
+```
+
+Important progress:
+
+```text
+The previous axi_xbar.sv type-parameter and wrapper parser errors are bypassed.
+Quartus now reaches the FPU divider/square-root dependency.
+```
+
+New first Quartus error:
+
+```text
+fpu_div_sqrt_mvp/hdl/control_mvp.sv:2344
+Error (10644): this block requires a name
+```
+
+Other errors in the same run:
+
+```text
+axi_riscv_atomics/*.sv: localparam, genvar, and unnamed-block parser errors
+```
+
+Interpretation:
+
+```text
+The parser frontier has moved out of the core AXI package. The remaining
+reported blockers are now in the FPU divider/square-root dependency and the
+AXI RISC-V atomics dependency.
+```

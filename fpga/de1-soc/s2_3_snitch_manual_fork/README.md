@@ -79,7 +79,7 @@ cd /home/ftv/builds/hero-tools/fpga/de1-soc/s2_3_snitch_manual_fork
 
 ## Current Result
 
-Attempt 33 was run locally with Quartus Prime Lite 25.1std.0.
+Attempt 34 was run locally with Quartus Prime Lite 25.1std.0.
 
 Result:
 
@@ -163,13 +163,15 @@ The active axi_xbar_unmuxed.sv parser errors are bypassed with an S2_3_QUARTUS
 zero-output crossbar stub.
 The active axi_to_mem_interleaved.sv parser errors are bypassed with an
 S2_3_QUARTUS no-request memory wrapper stub.
+The active axi_xbar.sv parser errors are bypassed with an S2_3_QUARTUS
+zero-output crossbar stub.
 ```
 
 New first blocker:
 
 ```text
-snitch_cluster/.bender/git/checkouts/axi-*/src/axi_xbar.sv:28
-Error (10170): near text: "type"; expecting an identifier
+snitch_cluster/.bender/git/checkouts/fpu_div_sqrt_mvp-*/hdl/control_mvp.sv:2344
+Error (10644): this block requires a name
 ```
 
 The fix now exists as direct edits in the local Snitch fork. The next class is
