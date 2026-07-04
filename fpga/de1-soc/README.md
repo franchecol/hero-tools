@@ -39,6 +39,10 @@ S11: HPS/ARM Linux loads a Snitch-Lite payload image
 S12: HPS/ARM Linux loads the payload from a file
     Reuse the S11 bitstream, but keep the ARM host loader and Snitch payload
     image as separate Linux files.
+
+S13: HPS/ARM Linux observes a Snitch-Lite done IRQ
+    Add an FPGA-side done interrupt latch, connect it to HPS f2h_irq0 through
+    Qsys, and verify IRQ enable/pending/clear from ARM Linux.
 ```
 
 ## Current Board State After microSD Boot
@@ -159,6 +163,15 @@ s12_snitch_hps_file_loader/
   payload file before writing it into FPGA instruction memory.
   Current result: local software build, UART transfer of separate host/payload
   files, S11-bitstream reuse, and ARM Linux runtime file-payload test pass.
+
+s13_snitch_hps_irq_done/
+  ARM/HPS Linux Snitch-Lite done-IRQ path:
+  add IRQ_ENABLE and IRQ_PENDING registers to the S11/S12 payload-loader
+  hardware, connect the wrapper interrupt sender to HPS f2h_irq0 through Qsys,
+  and verify from ARM Linux that the done IRQ line asserts and clears.
+  Current result: payload build, ARM tester build, sv2v, Yosys, Qsys, Quartus
+  map/fit/assembler/timing, RBF conversion, JTAG programming, UART transfer,
+  and ARM Linux MMIO runtime IRQ-pending/clear test pass.
 ```
 
 Manual GUI scratch projects should use a `*_gui_manual/` directory name. Those
@@ -243,4 +256,15 @@ S12: HPS/Linux Snitch-Lite file payload loader
     Verified status: ARM Linux reads `/tmp/s12_payload.bin`, writes its 9
     instruction words into FPGA instruction memory, runs the payload twice, and
     reads the expected Snitch-computed results.
+
+S13: HPS/Linux Snitch-Lite done IRQ
+    Add an interrupt-producing done latch around the Snitch-Lite payload-loader
+    wrapper and connect it to HPS f2h_irq0.
+    Verified status: ARM Linux enables the done IRQ, runs the file-loaded
+    payload twice, observes IRQ_PENDING/irq-line assertion after each run,
+    clears the pending bit, and sees the irq line deassert.
+
+    Current limitation: S13 verifies the FPGA/HPS interrupt path at hardware
+    and MMIO level, but does not yet use a Linux kernel/UIO driver to sleep on
+    the interrupt.
 ```
