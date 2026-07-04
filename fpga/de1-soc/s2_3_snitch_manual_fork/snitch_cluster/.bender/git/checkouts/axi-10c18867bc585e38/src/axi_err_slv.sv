@@ -16,6 +16,30 @@
 // AXI Error Slave: This module always responds with an AXI error for transactions that are sent to
 // it.  This module optionally supports ATOPs if the `ATOPs` parameter is set.
 
+`ifdef S2_3_QUARTUS
+// S2.3 parser/bring-up shim: expose a vector boundary without type parameters.
+// This does not generate real AXI error responses.
+module axi_err_slv #(
+  parameter int unsigned          AxiIdWidth  = 0,
+  parameter int unsigned          AxiReqWidth = 1,
+  parameter int unsigned          AxiRespWidth = 1,
+  parameter axi_pkg::resp_t       Resp        = axi_pkg::RESP_DECERR,
+  parameter int unsigned          RespWidth   = 32'd64,
+  parameter logic [RespWidth-1:0] RespData    = 64'hCA11AB1EBADCAB1E,
+  parameter bit                   ATOPs       = 1'b1,
+  parameter int unsigned          MaxTrans    = 1
+) (
+  input  logic                       clk_i,
+  input  logic                       rst_ni,
+  input  logic                       test_i,
+  input  logic [AxiReqWidth-1:0]     slv_req_i,
+  output logic [AxiRespWidth-1:0]    slv_resp_o
+);
+
+  assign slv_resp_o = '0;
+
+endmodule
+`else
 module axi_err_slv #(
   parameter int unsigned          AxiIdWidth  = 0,                    // AXI ID Width
   parameter type                  axi_req_t   = logic,                // AXI 4 request struct, with atop field
@@ -259,3 +283,4 @@ module axi_err_slv #(
   // pragma translate_on
 
 endmodule
+`endif
