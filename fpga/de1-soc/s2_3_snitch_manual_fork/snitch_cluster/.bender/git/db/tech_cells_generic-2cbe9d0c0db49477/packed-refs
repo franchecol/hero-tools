@@ -1,0 +1,74 @@
+# pack-refs with: peeled fully-peeled sorted 
+ef99266fb0c58f897d2ff9237f45cf2df98d8def refs/remotes/origin/add_clk_OR2
+2d4030b502fd5e05d3d6d64ecdff4defcc09fd21 refs/remotes/origin/bender-patch-fpga
+bc74aa5b1383660c95e90a0800abb545e917a5f1 refs/remotes/origin/bender-synth-fix
+90b9296cb8d840b0d4d42cc74f42add0ff7e7778 refs/remotes/origin/bender-warning
+7e92d7aae3af501b7f0d96bf902ee84b50e1b5c6 refs/remotes/origin/ck/feature/tc_sram_macro
+46f5584b0b81be9d9736ff3be3cb5c2c593763a4 refs/remotes/origin/disable_init
+8149cde5a03521065ce602891f227df53b128581 refs/remotes/origin/fc/verilator
+d630579ee989bcef62414373fca3a4854e504bbb refs/remotes/origin/feature/tc_sram_impl
+f994e040cf2e2858456b14f8264260240a39bf9c refs/remotes/origin/feature/tc_sram_pwrgate
+86188d33d0204aa8b3079b33f7e15abfdb0b4272 refs/remotes/origin/features/snitch
+27cf9567c250a85ae28d0210a755d7b220176e0e refs/remotes/origin/fix-tc-sram-synth-guard
+360fe59db4b37975a3f1b4f33ef385b7f2e0cd92 refs/remotes/origin/fix/fpga_clk_mux
+c815e3a9673522a01c1192fb543a9fd186a32737 refs/remotes/origin/fix/verilator
+0fee529f0e39d7ca0ec6076029ef996cd2e26cb3 refs/remotes/origin/fix_bender_targets
+e0447821bf690fcabbc9fcf0794c19d30b56922e refs/remotes/origin/fix_missing_legacy_file
+2cf66b7ed589954bcf90fd9c883053264d7aefb6 refs/remotes/origin/fpga
+313ffafcfb65d7ca80a1c046bf5730848809ef81 refs/remotes/origin/gwt
+3a3de73632a06826b1bd9c65a0a2e92b32016845 refs/remotes/origin/master
+5912352c9a9461de64e93355436f8efe3b6bc310 refs/remotes/origin/mattia_s
+43816f4895f25eba74b5fbae3226553f38148760 refs/remotes/origin/nw/update-readme
+951a71cd31f8b3cdac104e5328fa163a8ecabe09 refs/remotes/origin/phsauter/tc_sram-random
+9b0af47613f7e8991da0b2c10defc0c5957090bf refs/remotes/origin/release/v0.2.14
+e03526018b5e3ce41591514e2e5b61ca2b94d14f refs/remotes/origin/siracusa
+425a2a04c7e2e6c4c3da6a6f1f6e1efe07cb1bc5 refs/remotes/origin/sm/cp
+f931329a80140b3c04ed8671ca14008d4f18e76a refs/remotes/origin/tc_sync
+82de1055df313e25596b116e437b8eb657f368fb refs/remotes/origin/verilator
+bccdf7bf4d813b12f66fcc18b45300759c7e0fea refs/tags/gwt_v0.1.11
+^313ffafcfb65d7ca80a1c046bf5730848809ef81
+5872932739d21f486c5206c8fcb436ef4c563470 refs/tags/pulpissimo-v1.0
+04b7b2735d42e4715c1bc9227027a3d8fb770c08 refs/tags/v.0.1.16
+5b1df8611c96460ee8594bee7bcdad611844c3aa refs/tags/v0.1.0
+e679a06138bd54b3f852ff61ac7752c58bc4e500 refs/tags/v0.1.1
+04b7b2735d42e4715c1bc9227027a3d8fb770c08 refs/tags/v0.1.16
+ad374a95828041458020fca5560947fbb327b862 refs/tags/v0.1.2
+^fa209e8605e79a241f33ce206aba6912dc2bd84e
+984c6de3d9b28f426ca752bfdedcd7331e4e84ac refs/tags/v0.1.3
+^f0b4b9401328603b852b848deee833712ae9f3d5
+4570531039504676702e4b51ccc43d58eddb1908 refs/tags/v0.1.4
+^cb0a573497c3f9ee28b324f542c3db25c72e91a5
+b84fd2e9cce42b25c9e7dcb285c197c0a15bebd2 refs/tags/v0.1.5
+04b7b2735d42e4715c1bc9227027a3d8fb770c08 refs/tags/v0.1.6
+c333ef001f4fa3fe53f2fec121230d36b28ba870 refs/tags/v0.2.0
+627fd6c50733159354df82ea488aeac9b2e076ea refs/tags/v0.2.1
+aef525b2dc7670525fc293dfc55f167e371b8c35 refs/tags/v0.2.10
+a9cae21902e75b1434328ecf36f85327ba5717de refs/tags/v0.2.11
+298b7297d220ba2601d0f24f684f97ff32f61123 refs/tags/v0.2.12
+7968dd6e6180df2c644636bc6d2908a49f2190cf refs/tags/v0.2.13
+3a3de73632a06826b1bd9c65a0a2e92b32016845 refs/tags/v0.2.14
+f5919f811921e5fc30c9ddaedd001b8a9b1dab1f refs/tags/v0.2.2
+63da15065d2270788634562bb2240514a70f76cc refs/tags/v0.2.3
+203038f857158ae4634c47ce0281f402cc2a1344 refs/tags/v0.2.4
+7191279a0b5a82d12c75635fcb104cd9e1596683 refs/tags/v0.2.5
+^78e817972307bcb9f6c77d18d64480ef595f03c9
+9b157726db2709c0e2b95f2caddb4865f8f5144a refs/tags/v0.2.6
+^8ed192c7be993bc8daba5467284a76539e5cfac6
+ba50faa536feef2689a791307f2686707b0f58e9 refs/tags/v0.2.7
+^d21dc2e967fa82b6d7eb103bd07d9cf1e4fad808
+84e9873dd9fb9f40839f83923715e4ded4ff424b refs/tags/v0.2.8
+^8ed192c7be993bc8daba5467284a76539e5cfac6
+5936b1486e942324063fcf2ccd966344259bca04 refs/tags/v0.2.9
+^e6226a6f374eb88fed84d4989bb3f066cb470f33
+b96bc0082e4ae4ee4ea8f939b10393d9d902147b refs/tags/vega-0.1.10
+^72443fa56fbff51cdefc17cd032bbe1e1b795daa
+9af22db664f3cc5e5a917f0ba0b586dd6599ba88 refs/tags/vega-0.1.5
+^b84fd2e9cce42b25c9e7dcb285c197c0a15bebd2
+8fb120a4df2057ec68e8ba16ccd2755496f6616c refs/tags/vega-0.1.6
+^57d9059ec9050380e3d804a3b6d0c9dca321403d
+920039730070a537e0858eae476674ae40ece99a refs/tags/vega-0.1.7
+^be2079f8545958c3551d9006e01da8a987af768c
+67d760a2538d59a47a834ef1b5c93082e44d0c07 refs/tags/vega-0.1.8
+^a5ea156fc3ac4f0d865659730b787f182abea078
+d383ac9b4b2ae323dddf5f99495ee1be6aa77b62 refs/tags/vega-0.1.9
+^d6bde3a28ff045916ad23b0ade1b530d4b3c0fa2

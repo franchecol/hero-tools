@@ -1,0 +1,6 @@
+/generated/
+snitch_cluster/target/snitch_cluster/bin/
+snitch_cluster/target/snitch_cluster/logs/
+snitch_cluster/target/snitch_cluster/work-vlt/
+*.log
+*.dump

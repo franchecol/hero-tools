@@ -1,0 +1,33 @@
+# pack-refs with: peeled fully-peeled sorted 
+06447fbae1f1e1a1dc75d2a5d179ea68844a2410 refs/remotes/origin/ci-lint
+7b8394d19e7c36e972b8187cceed84d82be7a085 refs/remotes/origin/common-cells-v2
+ff108e6ab88e98d22bc1798febfff87dd666ac3a refs/remotes/origin/common-cells-v2-test
+c3060752e60266f577c275fa3b62e38af0f1ef57 refs/remotes/origin/fix-ordering
+6b238f78c279577b289dfeb297200b4261f23cce refs/remotes/origin/flamingo
+e7c8cc93b2f6141366bb843995665c262784966c refs/remotes/origin/lrsc-v2
+97a1dd2ac643c276880420a0cf8eea697f228aa9 refs/remotes/origin/master
+7a7bf9831137defa7517821951e5bcf8390286d2 refs/remotes/origin/multicore/devel
+59754465b50372926d5acb243e52455855824725 refs/remotes/origin/perf-counters
+7cf828edff80984b62d005b5e4f39f344dcb8fbd refs/remotes/origin/yt/xcelium
+3ab9ba525c1d86efcb8f8ee83d815cfb349b6a3e refs/tags/v0.1.0
+^390aa6bf697dfab62a1c85deae30691782c9dfcd
+6c2b29cca4e8a610728bb7b32bb87d23c4522d27 refs/tags/v0.1.1
+^de089e8ef0bb4019878a1a1bbcb66cb40baf3c99
+4c82ed116a21483cd7322133e4526916342c3087 refs/tags/v0.2.0
+^aacd82ffddb7cd8c5ae735542f29c36cbeb95129
+dec9da25deb597a79bdda1f646888e0ee87e921d refs/tags/v0.2.1
+^ad7e139f9d27d8f9c5d429ec9e7746a2c0506489
+b844efd39b2984de790dcd98561e8ff3fdadfc10 refs/tags/v0.2.2
+^afac53a91b45f5fa8b5f6e7ad5f0eb69354f0fdb
+366d9c584f5ec4525fe882f91c799c310ffb4da9 refs/tags/v0.3.0
+^706320c4ede6de541a0950a52ad1d8133544e8c6
+e15b97d64fbbddc5825d0686df50e6f076a1c905 refs/tags/v0.4.0
+^7c4ffa41ac9199b69719b7ede45bc4fb20e68d88
+38b96582a4d36be43d9e0638e4def7b2451beb0a refs/tags/v0.5.0
+^0c049715abc91a74e2292057fb16333af628d3fc
+430838a10a9bdf1e381d4fcb33907428f3273420 refs/tags/v0.6.0
+97dcb14ef057cbe5bd70dda2060b5bb9e7e04c6d refs/tags/v0.7.0
+368fa5d324caaea7fec4b507941fed9f2d527c6c refs/tags/v0.8.0
+c3c3f2b65071841035c4e081c61c9b7be801d749 refs/tags/v0.8.1
+0ac3a78fe342c5a5b9b10bff49d58897f773059e refs/tags/v0.8.2
+97a1dd2ac643c276880420a0cf8eea697f228aa9 refs/tags/v0.8.3
