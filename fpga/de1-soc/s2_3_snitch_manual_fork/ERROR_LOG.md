@@ -2678,3 +2678,79 @@ The parser frontier moved from unused AXI atomics into the active floating-point
 unit stack. Because the one-core config currently uses rv32imafd plus Xssr/Xfrep,
 FPnew is likely part of the intended design path, not just dead parser baggage.
 ```
+
+## Attempt 37: Stub Snitch FPU Boundary and Prune FPnew Implementation
+
+Status:
+
+```text
+FAIL
+quartus_map exit code: 3
+no .sof produced
+```
+
+Command:
+
+```bash
+cd /home/ftv/builds/hero-tools/fpga/de1-soc/s2_3_snitch_manual_fork
+./scripts/quartus_preflight.sh
+```
+
+Manual source edits:
+
+```text
+snitch_cluster/hw/snitch_cluster/src/snitch_fpu.sv
+source_list/snitch_cluster.flist-plus.in
+```
+
+What changed:
+
+```text
+snitch_fpu.sv:
+  added an S2_3_QUARTUS-only no-op FPU wrapper
+
+source_list/snitch_cluster.flist-plus.in:
+  removed fpu_div_sqrt_mvp implementation files
+  removed FPnew implementation files
+  kept fpnew_pkg.sv so Snitch FP package types/enums remain available
+```
+
+Important limitation:
+
+```text
+This is not a floating-point implementation and does not port FPnew to Quartus.
+The S2_3_QUARTUS FPU wrapper accepts requests immediately, returns zero result
+and zero status, forwards the tag, and mirrors input valid to output valid.
+```
+
+Important progress:
+
+```text
+The previous FPnew parameter-type parser errors are gone.
+The previous snitch_fpu.sv TagType override parser error is bypassed.
+The source count dropped from 222 to 201 files.
+Quartus now reaches the register-interface/OpenTitan subregister dependency.
+```
+
+New first Quartus error:
+
+```text
+register_interface/vendor/lowrisc_opentitan/src/prim_subreg_arb.sv:28
+Error (10170): near text: "if"; expecting "endmodule"
+```
+
+Other errors in the same run:
+
+```text
+prim_subreg_arb.sv: generate-if parser errors and repeated declarations after
+parse recovery
+apb_to_reg_v2.sv: parameter type parser error
+```
+
+Interpretation:
+
+```text
+The parser frontier moved beyond the floating-point implementation stack. The
+next blocker class is the register-interface dependency, which includes
+OpenTitan primitive subregister modules and type-parameterized register bridges.
+```

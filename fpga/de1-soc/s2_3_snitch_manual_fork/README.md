@@ -79,7 +79,7 @@ cd /home/ftv/builds/hero-tools/fpga/de1-soc/s2_3_snitch_manual_fork
 
 ## Current Result
 
-Attempt 36 was run locally with Quartus Prime Lite 25.1std.0.
+Attempt 37 was run locally with Quartus Prime Lite 25.1std.0.
 
 Result:
 
@@ -169,14 +169,18 @@ The active fpu_div_sqrt_mvp/control_mvp.sv unnamed generate-loop errors are
 gone after adding explicit generate block labels.
 The unused AXI RISC-V atomics dependency block was removed from the preflight
 list. The source count is now 222 files.
+The FPnew implementation files and FPU divider/square-root implementation files
+were removed from the preflight list, leaving fpnew_pkg.sv for type definitions.
+snitch_fpu.sv now has an S2_3_QUARTUS no-op FPU boundary stub. The source count
+is now 201 files.
 ```
 
 New first blocker:
 
 ```text
-snitch_cluster/.bender/git/checkouts/fpnew-*/src/fpnew_cast_multi.sv:24
-Error (10170): near text: "type"; expecting an identifier
+snitch_cluster/.bender/git/checkouts/register_interface-*/vendor/lowrisc_opentitan/src/prim_subreg_arb.sv:28
+Error (10170): near text: "if"; expecting "endmodule"
 ```
 
 The fix now exists as direct edits in the local Snitch fork. The next class is
-FPnew type-parameter compatibility.
+register-interface and OpenTitan subregister compatibility.

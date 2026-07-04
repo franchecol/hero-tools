@@ -3,6 +3,48 @@
 // SPDX-License-Identifier: SHL-0.51
 
 /// FPU Synthesis Wrapper
+`ifdef S2_3_QUARTUS
+module snitch_fpu import snitch_pkg::*; #(
+  parameter fpnew_pkg::fpu_implementation_t FPUImplementation = '0,
+  parameter bit          RVF                = 1,
+  parameter bit          RVD                = 1,
+  parameter bit          XF16               = 0,
+  parameter bit          XF16ALT            = 0,
+  parameter bit          XF8                = 0,
+  parameter bit          XF8ALT             = 0,
+  parameter bit          XFVEC              = 0,
+  parameter int unsigned FLEN               = 0,
+  parameter bit          RegisterFPUIn      = 0,
+  parameter bit          RegisterFPUOut     = 0
+) (
+  input logic                               clk_i,
+  input logic                               rst_ni,
+  input logic [2:0][FLEN-1:0]               operands_i,
+  input fpnew_pkg::roundmode_e              rnd_mode_i,
+  input fpnew_pkg::operation_e              op_i,
+  input logic                               op_mod_i,
+  input fpnew_pkg::fp_format_e              src_fmt_i,
+  input fpnew_pkg::fp_format_e              dst_fmt_i,
+  input fpnew_pkg::int_format_e             int_fmt_i,
+  input logic                               vectorial_op_i,
+  input logic [6:0]                         tag_i,
+  input  logic                              in_valid_i,
+  output logic                              in_ready_o,
+  output logic [FLEN-1:0]                   result_o,
+  output logic [4:0]                        status_o,
+  output logic [6:0]                        tag_o,
+  output logic                              out_valid_o,
+  input  logic                              out_ready_i
+);
+
+  assign in_ready_o  = 1'b1;
+  assign result_o    = '0;
+  assign status_o    = '0;
+  assign tag_o       = tag_i;
+  assign out_valid_o = in_valid_i;
+
+endmodule
+`else
 module snitch_fpu import snitch_pkg::*; #(
   parameter fpnew_pkg::fpu_implementation_t FPUImplementation = '0,
   parameter bit          RVF                = 1,
@@ -144,3 +186,4 @@ module snitch_fpu import snitch_pkg::*; #(
   assign tag_o = fpu_out_q.tag;
 
 endmodule
+`endif
