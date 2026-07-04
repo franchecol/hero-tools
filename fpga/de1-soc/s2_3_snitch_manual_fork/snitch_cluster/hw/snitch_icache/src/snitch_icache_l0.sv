@@ -104,54 +104,62 @@ module snitch_icache_l0 import snitch_icache_pkg::*; #(
   // ------------
   // Tag Compare
   // ------------
-  for (genvar i = 0; i < CFG.L0_LINE_COUNT; i++) begin : gen_cmp_fetch
-    assign hit_early[i] = tag[i].vld &
-      (tag[i].tag[CFG.L0_EARLY_TAG_WIDTH-1:0] == addr_tag[CFG.L0_EARLY_TAG_WIDTH-1:0]);
-    // The two signals calculate the same.
-    if (CFG.L0_TAG_WIDTH == CFG.L0_EARLY_TAG_WIDTH) begin : gen_hit_assign
-      assign hit[i] = hit_early[i];
-    // Compare the rest of the tag.
-    end else begin : gen_hit
-      assign hit[i] = hit_early[i] &
-        (tag[i].tag[CFG.L0_TAG_WIDTH-1:CFG.L0_EARLY_TAG_WIDTH]
-          == addr_tag[CFG.L0_TAG_WIDTH-1:CFG.L0_EARLY_TAG_WIDTH]);
+  generate
+    genvar gen_cmp_fetch_i;
+    for (gen_cmp_fetch_i = 0; gen_cmp_fetch_i < CFG.L0_LINE_COUNT; gen_cmp_fetch_i++) begin : gen_cmp_fetch
+      assign hit_early[gen_cmp_fetch_i] = tag[gen_cmp_fetch_i].vld &
+        (tag[gen_cmp_fetch_i].tag[CFG.L0_EARLY_TAG_WIDTH-1:0] ==
+          addr_tag[CFG.L0_EARLY_TAG_WIDTH-1:0]);
+      // The two signals calculate the same.
+      if (CFG.L0_TAG_WIDTH == CFG.L0_EARLY_TAG_WIDTH) begin : gen_hit_assign
+        assign hit[gen_cmp_fetch_i] = hit_early[gen_cmp_fetch_i];
+      // Compare the rest of the tag.
+      end else begin : gen_hit
+        assign hit[gen_cmp_fetch_i] = hit_early[gen_cmp_fetch_i] &
+          (tag[gen_cmp_fetch_i].tag[CFG.L0_TAG_WIDTH-1:CFG.L0_EARLY_TAG_WIDTH]
+            == addr_tag[CFG.L0_TAG_WIDTH-1:CFG.L0_EARLY_TAG_WIDTH]);
+      end
+      assign hit_prefetch[gen_cmp_fetch_i] =
+        tag[gen_cmp_fetch_i].vld & (tag[gen_cmp_fetch_i].tag == addr_tag_prefetch);
     end
-    assign hit_prefetch[i] = tag[i].vld & (tag[i].tag == addr_tag_prefetch);
-  end
+  endgenerate
 
   assign hit_any = |hit;
   assign hit_prefetch_any = |hit_prefetch;
   assign miss = ~hit_any & in_valid_i & ~pending_refill_q;
 
-  for (genvar i = 0; i < CFG.L0_LINE_COUNT; i++) begin : gen_array
-    // Tag Array
-    always_ff @(posedge clk_i or negedge rst_ni) begin
-      if (!rst_ni) begin
-        tag[i].vld <= 0;
-        tag[i].tag <= 0;
-      end else begin
-        if (evict_strb[i]) begin
-          tag[i].vld <= 1'b0;
-          tag[i].tag <= evict_because_prefetch ? addr_tag_prefetch : addr_tag;
-        end else if (validate_strb[i]) begin
-          tag[i].vld <= 1'b1;
-        end
-        if (flush_strb[i]) begin
-          tag[i].vld <= 1'b0;
-        end
-      end
-    end
-    if (CFG.EARLY_LATCH) begin : gen_latch
-      // Data Array
-      always_latch begin
-        if (clk_i && validate_strb[i]) begin
-          data[i] <= out_rsp_data_i;
+  generate
+    genvar gen_array_i;
+    for (gen_array_i = 0; gen_array_i < CFG.L0_LINE_COUNT; gen_array_i++) begin : gen_array
+      // Tag Array
+      always_ff @(posedge clk_i or negedge rst_ni) begin
+        if (!rst_ni) begin
+          tag[gen_array_i].vld <= 0;
+          tag[gen_array_i].tag <= 0;
+        end else begin
+          if (evict_strb[gen_array_i]) begin
+            tag[gen_array_i].vld <= 1'b0;
+            tag[gen_array_i].tag <= evict_because_prefetch ? addr_tag_prefetch : addr_tag;
+          end else if (validate_strb[gen_array_i]) begin
+            tag[gen_array_i].vld <= 1'b1;
+          end
+          if (flush_strb[gen_array_i]) begin
+            tag[gen_array_i].vld <= 1'b0;
+          end
         end
       end
-    end else begin : gen_ff
-      `FFLNR(data[i], out_rsp_data_i, validate_strb[i], clk_i)
+      if (CFG.EARLY_LATCH) begin : gen_latch
+        // Data Array
+        always_latch begin
+          if (clk_i && validate_strb[gen_array_i]) begin
+            data[gen_array_i] <= out_rsp_data_i;
+          end
+        end
+      end else begin : gen_ff
+        `FFLNR(data[gen_array_i], out_rsp_data_i, validate_strb[gen_array_i], clk_i)
+      end
     end
-  end
+  endgenerate
 
   // ----
   // HIT
@@ -170,16 +178,18 @@ module snitch_icache_l0 import snitch_icache_pkg::*; #(
 
   // Check whether we had an early multi-hit (e.g., the portion of the tag matched
   // multiple entries in the tag array)
-  if (CFG.L0_TAG_WIDTH != CFG.L0_EARLY_TAG_WIDTH) begin : gen_multihit_detection
-    cc_onehot #(
-      .Width (CFG.L0_LINE_COUNT)
-    ) i_onehot_hit_early (
-      .d_i (hit_early),
-      .is_onehot_o (hit_early_is_onehot)
-    );
-  end else begin : gen_no_multihit_detection
-    assign hit_early_is_onehot = 1'b1;
-  end
+  generate
+    if (CFG.L0_TAG_WIDTH != CFG.L0_EARLY_TAG_WIDTH) begin : gen_multihit_detection
+      cc_onehot #(
+        .Width (CFG.L0_LINE_COUNT)
+      ) i_onehot_hit_early (
+        .d_i (hit_early),
+        .is_onehot_o (hit_early_is_onehot)
+      );
+    end else begin : gen_no_multihit_detection
+      assign hit_early_is_onehot = 1'b1;
+    end
+  endgenerate
 
   // -------
   // Evictor
@@ -283,12 +293,14 @@ module snitch_icache_l0 import snitch_icache_pkg::*; #(
   assign mask = '1 << in_addr_i[CFG.LINE_ALIGN-1:2];
 
   // Instruction aware pre-fetching
-  for (genvar i = 0; i < FetchPkts; i++) begin : gen_pre_decode
-    // iterate over the fetch packets (32 bits per instruction)
-    always_comb begin
-      is_branch_taken[i] = 1'b0;
-      is_jal[i] = 1'b0;
-      unique casez (ins_data[i*32+:32])
+  generate
+    genvar gen_pre_decode_i;
+    for (gen_pre_decode_i = 0; gen_pre_decode_i < FetchPkts; gen_pre_decode_i++) begin : gen_pre_decode
+      // iterate over the fetch packets (32 bits per instruction)
+      always_comb begin
+        is_branch_taken[gen_pre_decode_i] = 1'b0;
+        is_jal[gen_pre_decode_i] = 1'b0;
+        unique casez (ins_data[gen_pre_decode_i*32+:32])
         // static prediction
         riscv_instr::BEQ,
         riscv_instr::BNE,
@@ -299,17 +311,18 @@ module snitch_icache_l0 import snitch_icache_pkg::*; #(
           // look at the sign bit of the immediate field
           // backward branches (immediate negative) taken
           // forward branches not taken
-          is_branch_taken[i] = ins_data[i*32+31];
+          is_branch_taken[gen_pre_decode_i] = ins_data[gen_pre_decode_i*32+31];
         end
         riscv_instr::JAL: begin
-          is_jal[i] = 1'b1;
+          is_jal[gen_pre_decode_i] = 1'b1;
         end
         // we can't do anything about the JALR case as we don't
         // know the destination.
         default:;
-      endcase
+        endcase
+      end
     end
-  end
+  endgenerate
 
   logic [$clog2(FetchPkts)-1:0] taken_idx;
   logic no_prefetch;

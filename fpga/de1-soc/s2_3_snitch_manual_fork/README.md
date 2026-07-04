@@ -211,13 +211,15 @@ while preserving the page-table-walker logic.
 Inactive Snitch DMA implementation files were removed from the S2.3 preflight
 source list while keeping axi_dma_pkg.sv for shared type definitions. The
 source count is now 145 files.
+snitch_icache_l0.sv top-level compare, array, multihit, and predecode generate
+blocks now use explicit generate/endgenerate syntax.
 ```
 
 New first blocker:
 
 ```text
-snitch_cluster/hw/snitch_icache/src/snitch_icache_l0.sv:107
-Error (10170): near text: "for"; expecting "endmodule"
+snitch_cluster/hw/snitch_icache/src/snitch_icache_refill.sv:10
+Error (10170): near text: "type"; expecting an identifier
 ```
 
 The next class is the actual Snitch core RTL.

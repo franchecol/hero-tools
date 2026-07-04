@@ -3970,3 +3970,74 @@ Interpretation:
 The parser frontier moved beyond inactive DMA implementation files. The next
 active support block is the instruction-cache L0 module.
 ```
+
+## Attempt 53: Port Snitch ICache L0 Generate Syntax
+
+Status:
+
+```text
+FAIL
+quartus_map exit code: 3
+no .sof produced
+```
+
+Command:
+
+```bash
+cd /home/ftv/builds/hero-tools/fpga/de1-soc/s2_3_snitch_manual_fork
+./scripts/quartus_preflight.sh
+```
+
+Manual edits:
+
+```text
+snitch_cluster/hw/snitch_icache/src/snitch_icache_l0.sv
+```
+
+What changed:
+
+```text
+wrapped these top-level generate constructs in explicit generate/endgenerate:
+  tag compare loop
+  tag/data array loop
+  multihit detection generate-if
+  instruction predecode loop
+
+rewrote genvar declarations to the older separate-declaration style
+```
+
+Why this is acceptable:
+
+```text
+This is a syntax-only rewrite. The L0 instruction-cache compare, storage, and
+predecode behavior is preserved.
+```
+
+Important progress:
+
+```text
+The previous snitch_icache_l0.sv generate parser errors are gone.
+Quartus now reaches snitch_icache_refill.sv as the first blocker.
+```
+
+New first Quartus error:
+
+```text
+hw/snitch_icache/src/snitch_icache_refill.sv:10
+Error (10170): near text: "type"; expecting an identifier
+```
+
+Other errors in the same run:
+
+```text
+snitch_icache_refill.sv: parameter type and generate parser errors
+snitch_icache_lfsr.sv: generate parser errors
+snitch_icache_lookup.sv: parameter type and generate parser errors
+```
+
+Interpretation:
+
+```text
+The L0 instruction-cache module is past Quartus. The next class is the rest of
+the instruction-cache refill/lookup support stack.
+```
