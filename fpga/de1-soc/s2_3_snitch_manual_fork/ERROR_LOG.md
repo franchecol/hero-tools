@@ -1149,3 +1149,73 @@ Common Cells source-list pruning/porting has reached the APB dependency
 boundary. The next decision is whether APB files are active in this reduced
 DE1 Snitch-cluster preflight or only included by the broad original file list.
 ```
+
+## Attempt 15: APB Dependency Pruning Batch
+
+Status:
+
+```text
+FAIL
+quartus_map exit code: 3
+no .sof produced
+```
+
+Command:
+
+```bash
+cd /home/ftv/builds/hero-tools/fpga/de1-soc/s2_3_snitch_manual_fork
+./scripts/quartus_preflight.sh
+```
+
+Manual source edits:
+
+```text
+source_list/snitch_cluster.flist-plus.in
+```
+
+What changed:
+
+```text
+source list:
+  removed the apb_pkg.sv/apb_intf.sv/apb_*.sv dependency block
+```
+
+Why this is safe for this experiment:
+
+```text
+The active snitch_cluster/hw and snitch_cluster/target trees have no APB
+module or package references in this one-core DE1 preflight. The APB files
+were only present because the original dependency file list is broad.
+```
+
+Important progress:
+
+```text
+The previous apb_err_slv.sv, apb_regs.sv, apb_cdc.sv, and apb_demux.sv parser
+errors are gone by pruning an unused dependency block.
+The broad preflight list was reduced from files=277 to files=271.
+```
+
+New first Quartus error:
+
+```text
+axi/src/axi_demux_id_counters.sv:23
+Error (10170): near text: "type"; expecting an identifier
+```
+
+Other errors in the same run:
+
+```text
+axi_atop_filter.sv: parameter type
+axi_burst_splitter_gran.sv: parameter type and implicit generate syntax
+many later axi/*.sv files also still use parser features unsupported by this
+Quartus flow
+```
+
+Interpretation:
+
+```text
+The parser has moved from APB into the broad AXI dependency set. The next step
+is to separate AXI files that are genuinely required by the generated one-core
+cluster from AXI files that only belong to unused full-system infrastructure.
+```

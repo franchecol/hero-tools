@@ -89,12 +89,6 @@
 @SNITCH_ROOT@/.bender/git/checkouts/common_cells-aa028fdb314cdab0/src/edge_propagator_ack.sv
 @SNITCH_ROOT@/.bender/git/checkouts/common_cells-aa028fdb314cdab0/src/edge_propagator.sv
 @SNITCH_ROOT@/.bender/git/checkouts/common_cells-aa028fdb314cdab0/src/edge_propagator_rx.sv
-@SNITCH_ROOT@/.bender/git/checkouts/apb-0b8df27abad700ff/src/apb_pkg.sv
-@SNITCH_ROOT@/.bender/git/checkouts/apb-0b8df27abad700ff/src/apb_intf.sv
-@SNITCH_ROOT@/.bender/git/checkouts/apb-0b8df27abad700ff/src/apb_err_slv.sv
-@SNITCH_ROOT@/.bender/git/checkouts/apb-0b8df27abad700ff/src/apb_regs.sv
-@SNITCH_ROOT@/.bender/git/checkouts/apb-0b8df27abad700ff/src/apb_cdc.sv
-@SNITCH_ROOT@/.bender/git/checkouts/apb-0b8df27abad700ff/src/apb_demux.sv
 @SNITCH_ROOT@/.bender/git/checkouts/axi-10c18867bc585e38/src/axi_pkg.sv
 @SNITCH_ROOT@/.bender/git/checkouts/axi-10c18867bc585e38/src/axi_demux_id_counters.sv
 @SNITCH_ROOT@/.bender/git/checkouts/axi-10c18867bc585e38/src/axi_intf.sv
