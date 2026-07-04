@@ -2839,3 +2839,89 @@ The parser frontier moved through the OpenTitan subregister primitive. The next
 active bridge is axi_to_reg. The riscv-dbg block appears as the next broad
 dependency class to check for reachability before patching.
 ```
+
+## Attempt 39: Cut Peripheral Register Bridge and Prune Debug Dependency
+
+Status:
+
+```text
+FAIL
+quartus_map exit code: 3
+no .sof produced
+```
+
+Command:
+
+```bash
+cd /home/ftv/builds/hero-tools/fpga/de1-soc/s2_3_snitch_manual_fork
+./scripts/quartus_preflight.sh
+```
+
+Manual source edits:
+
+```text
+snitch_cluster/hw/snitch_cluster/src/snitch_cluster.sv
+source_list/snitch_cluster.flist-plus.in
+```
+
+What changed:
+
+```text
+snitch_cluster.sv:
+  added an S2_3_QUARTUS peripheral-register boundary cut
+  drives the ClusterPeripherals AXI slave response to zero
+  drives the generated register request to zero
+  skips deprecated axi_to_reg for the Quartus preflight
+
+source_list/snitch_cluster.flist-plus.in:
+  removed deprecated/axi_to_reg.sv
+  removed the riscv-dbg dependency block
+```
+
+Why this is acceptable for this preflight:
+
+```text
+The riscv-dbg files had no design-side references in the one-core cluster path.
+The deprecated axi_to_reg module is active, but it depends on type parameters
+and already-pruned AXI-Lite/register bridge helpers. For this parser-frontier
+experiment, cutting the peripheral-register bridge is more coherent than
+reintroducing the full bridge stack.
+```
+
+Important limitation:
+
+```text
+This disables real AXI access to the cluster peripheral register file in the
+S2_3_QUARTUS preflight. It is not a semantic bridge replacement.
+```
+
+Important progress:
+
+```text
+The previous axi_to_reg.sv parser errors are gone.
+The previous riscv-dbg parser errors are gone.
+The source count dropped from 184 to 172 files.
+Quartus now reaches hw/future DMA/interconnect helpers.
+```
+
+New first Quartus error:
+
+```text
+hw/future/src/mem_to_axi_lite.sv:26
+Error (10170): near text: "type"; expecting an identifier
+```
+
+Other errors in the same run:
+
+```text
+hw/future/src/dma/axi_dma_data_path.sv: generate parser error
+hw/future/src/axi_interleaved_xbar.sv: parameter type and generate parser errors
+```
+
+Interpretation:
+
+```text
+The parser frontier moved beyond the active cluster peripheral register bridge
+and the unused debug dependency. The next dependency class is hw/future, which
+should be checked against the xdma:false one-core config before patching.
+```

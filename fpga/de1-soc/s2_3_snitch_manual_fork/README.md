@@ -79,7 +79,7 @@ cd /home/ftv/builds/hero-tools/fpga/de1-soc/s2_3_snitch_manual_fork
 
 ## Current Result
 
-Attempt 38 was run locally with Quartus Prime Lite 25.1std.0.
+Attempt 39 was run locally with Quartus Prime Lite 25.1std.0.
 
 Result:
 
@@ -176,15 +176,18 @@ is now 201 files.
 Unused register-interface bridge variants were removed from the preflight list,
 and prim_subreg_arb.sv now has an explicit generate/endgenerate wrapper. The
 source count is now 184 files.
+The active AXI-to-register bridge is bypassed with an S2_3_QUARTUS
+peripheral-register boundary cut inside snitch_cluster.sv, and the unused
+riscv-dbg dependency block was removed from the preflight list. The source count
+is now 172 files.
 ```
 
 New first blocker:
 
 ```text
-snitch_cluster/.bender/git/checkouts/register_interface-*/src/deprecated/axi_to_reg.sv:36
+snitch_cluster/hw/future/src/mem_to_axi_lite.sv:26
 Error (10170): near text: "type"; expecting an identifier
 ```
 
 The fix now exists as direct edits in the local Snitch fork. The next class is
-active AXI-to-register bridge compatibility and likely unused debug dependency
-pruning.
+likely unused hw/future DMA/interconnect dependency pruning.

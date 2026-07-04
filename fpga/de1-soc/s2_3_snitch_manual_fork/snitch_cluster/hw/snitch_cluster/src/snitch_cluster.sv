@@ -1148,6 +1148,10 @@ module snitch_cluster
   );
 
   // 2. Peripherals
+`ifdef S2_3_QUARTUS
+  assign narrow_axi_slv_rsp[ClusterPeripherals] = '0;
+  assign reg_req = '0;
+`else
   axi_to_reg #(
     .ADDR_WIDTH (PhysicalAddrWidth),
     .DATA_WIDTH (NarrowDataWidth),
@@ -1169,6 +1173,7 @@ module snitch_cluster
     .reg_req_o (reg_req),
     .reg_rsp_i (reg_rsp)
   );
+`endif
 
   snitch_cluster_peripheral #(
     .AddrWidth (PhysicalAddrWidth),
