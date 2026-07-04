@@ -33,21 +33,21 @@ module generic_memory
    logic [DATA_WIDTH-1:0]                   M;
    genvar                         i,j;
 
-   generate
-      for (i=0; i<BE_WIDTH; i++)
-        begin
-           for (j=0; j<8; j++)
-             begin
-                assign M[i*8+j] = BEN[i];
-             end
-        end
-   endgenerate
+	 generate
+	      for (i=0; i<BE_WIDTH; i++)
+	        begin : gen_be
+	           for (j=0; j<8; j++)
+	             begin : gen_be_bit
+	                assign M[i*8+j] = BEN[i];
+	             end
+	        end
+	 endgenerate
 
-   generate
-      for (i=0; i < DATA_WIDTH ; i++)
-        begin
-           always @ (posedge CLK)
-             begin
+	 generate
+	      for (i=0; i < DATA_WIDTH ; i++)
+	        begin : gen_mem_bit
+	           always @ (posedge CLK)
+	             begin
                 if ( INITN == 1'b1 )
                   begin
                      if ( CEN == 1'b0 )

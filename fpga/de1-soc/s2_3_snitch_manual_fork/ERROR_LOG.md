@@ -96,3 +96,80 @@ The manual fork now proves the same result as S2.2 without patch-generation
 scripts: the first problem is fixable, but the full generated Snitch cluster
 still has additional Quartus syntax-compatibility blockers.
 ```
+
+## Attempt 2: Explicit Generate Syntax Patch
+
+Status:
+
+```text
+FAIL
+quartus_map exit code: 3
+no .sof produced
+```
+
+Command:
+
+```bash
+cd /home/ftv/builds/hero-tools/fpga/de1-soc/s2_3_snitch_manual_fork
+./scripts/quartus_preflight.sh
+```
+
+Manual source edits:
+
+```text
+snitch_cluster/.bender/git/checkouts/tech_cells_generic-*/src/rtl/tc_sram.sv
+snitch_cluster/.bender/git/checkouts/tech_cells_generic-*/src/deprecated/generic_memory.sv
+snitch_cluster/.bender/git/checkouts/common_cells-*/src/cc_onehot.sv
+snitch_cluster/.bender/git/checkouts/common_cells-*/src/clk_int_div.sv
+```
+
+What changed:
+
+```text
+tc_sram.sv:
+  wrapped module-level generate-if regions with explicit generate/endgenerate
+  replaced inline genvar declaration with a separately declared genvar
+
+generic_memory.sv:
+  named previously unnamed generate begin blocks
+
+cc_onehot.sv:
+  wrapped module-level generate-if/for logic with explicit generate/endgenerate
+  replaced inline genvar declarations with separately declared genvars
+
+clk_int_div.sv:
+  wrapped the elaboration parameter check with explicit generate/endgenerate
+  moved the Quartus-hostile bare $error into an initial block
+```
+
+Important progress:
+
+```text
+The previous tc_sram.sv, generic_memory.sv, cc_onehot.sv, and clk_int_div.sv
+generate-syntax parser errors are gone.
+```
+
+New first Quartus error:
+
+```text
+common_cells/include/common_cells/registers.svh:47
+Error (10115): Verilog HDL Macro Definition syntax error
+illegal character in macro parameter near "= `REG_DFLT_CLK, __arst_n = `REG_DFLT_RST)"
+```
+
+New compatibility class:
+
+```text
+Quartus rejects default values in Verilog macro parameter lists.
+The same run reports the same macro-default syntax issue in:
+
+common_cells/include/common_cells/registers.svh
+common_cells/include/common_cells/assertions.svh
+```
+
+Interpretation:
+
+```text
+The manual fork is now past the first generate-style incompatibilities.
+The next class is preprocessor macro syntax rather than module generate syntax.
+```

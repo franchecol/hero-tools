@@ -77,7 +77,7 @@ cd /home/ftv/builds/hero-tools/fpga/de1-soc/s2_3_snitch_manual_fork
 
 ## Current Result
 
-Attempt 1 was run locally with Quartus Prime Lite 25.1std.0.
+Attempt 2 was run locally with Quartus Prime Lite 25.1std.0.
 
 Result:
 
@@ -90,14 +90,18 @@ Important progress:
 
 ```text
 The original tc_sram.sv/tc_sram_impl.sv "parameter type" errors are gone.
+The first generate-syntax errors in tc_sram.sv, generic_memory.sv,
+cc_onehot.sv, and clk_int_div.sv are gone.
 ```
 
 New first blocker:
 
 ```text
-snitch_cluster/.bender/git/checkouts/tech_cells_generic-*/src/rtl/tc_sram.sv:114
-Error (10170): near text: "if"; expecting "endmodule"
+snitch_cluster/.bender/git/checkouts/common_cells-*/include/common_cells/registers.svh:47
+Error (10115): Verilog HDL Macro Definition syntax error
+illegal character in macro parameter near "= `REG_DFLT_CLK, __arst_n = `REG_DFLT_RST)"
 ```
 
-This matches the S2.2 overlay result, but now the fix exists as direct edits in
-the local Snitch fork.
+The fix now exists as direct edits in the local Snitch fork. Because the edited
+files were already tracked before Attempt 2, the Attempt 2 commit itself shows a
+normal line-level Git diff.

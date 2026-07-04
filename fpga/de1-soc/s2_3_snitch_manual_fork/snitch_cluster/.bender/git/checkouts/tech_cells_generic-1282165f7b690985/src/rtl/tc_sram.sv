@@ -111,101 +111,107 @@ module tc_sram #(
 
   // read data output assignment
   logic [NumPorts-1:0][Latency-1:0][DataWidth-1:0] rdata_q, rdata_d;
-  if (Latency == 32'd0) begin : gen_no_read_lat
-    for (genvar i = 0; i < NumPorts; i++) begin : gen_port
-      assign rdata_o[i] = (req_i[i] && !we_i[i]) ? sram[addr_i[i]] : sram[r_addr_q[i]];
-    end
-  end else begin : gen_read_lat
+  genvar gen_read_port;
+  generate
+    if (Latency == 32'd0) begin : gen_no_read_lat
+      for (gen_read_port = 0; gen_read_port < NumPorts; gen_read_port++) begin : gen_port
+        assign rdata_o[gen_read_port] = (req_i[gen_read_port] && !we_i[gen_read_port]) ?
+            sram[addr_i[gen_read_port]] : sram[r_addr_q[gen_read_port]];
+      end
+    end else begin : gen_read_lat
 
-    always_comb begin
-      for (int unsigned i = 0; i < NumPorts; i++) begin
-        rdata_o[i] = rdata_q[i][0];
-        for (int unsigned j = 0; j < (Latency-1); j++) begin
-          rdata_d[i][j] = rdata_q[i][j+1];
+      always_comb begin
+        for (int unsigned i = 0; i < NumPorts; i++) begin
+          rdata_o[i] = rdata_q[i][0];
+          for (int unsigned j = 0; j < (Latency-1); j++) begin
+            rdata_d[i][j] = rdata_q[i][j+1];
+          end
+          rdata_d[i][Latency-1] = (req_i[i] && !we_i[i]) ? sram[addr_i[i]] : sram[r_addr_q[i]];
         end
-        rdata_d[i][Latency-1] = (req_i[i] && !we_i[i]) ? sram[addr_i[i]] : sram[r_addr_q[i]];
       end
     end
-  end
+  endgenerate
 
   // In case simulation initialization is disabled (SimInit == 'none'), don't assign to the sram
   // content at all. This improves simulation performance in tools like verilator
-  if (SimInit == "none") begin
-    // write memory array without initialization
-    always_ff @(posedge clk_i or negedge rst_ni) begin
-      if (!rst_ni) begin
-        for (int i = 0; i < NumPorts; i++) begin
-          r_addr_q[i] <= {AddrWidth{1'b0}};
-        end
-      end else begin
-        // read value latch happens before new data is written to the sram
-        for (int unsigned i = 0; i < NumPorts; i++) begin
-          if (Latency != 0) begin
-            for (int unsigned j = 0; j < Latency; j++) begin
-              rdata_q[i][j] <= rdata_d[i][j];
-            end
+  generate
+    if (SimInit == "none") begin : gen_no_sim_init
+      // write memory array without initialization
+      always_ff @(posedge clk_i or negedge rst_ni) begin
+        if (!rst_ni) begin
+          for (int i = 0; i < NumPorts; i++) begin
+            r_addr_q[i] <= {AddrWidth{1'b0}};
           end
-        end
-        // there is a request for the SRAM, latch the required register
-        for (int unsigned i = 0; i < NumPorts; i++) begin
-          if (req_i[i]) begin
-            if (we_i[i]) begin
-              // update value when write is set at clock
-              for (int unsigned j = 0; j < BeWidth; j++) begin
-                if (be_i[i][j]) begin
-                  sram[addr_i[i]][j*ByteWidth+:ByteWidth] <= wdata_i[i][j*ByteWidth+:ByteWidth];
-                end
+        end else begin
+          // read value latch happens before new data is written to the sram
+          for (int unsigned i = 0; i < NumPorts; i++) begin
+            if (Latency != 0) begin
+              for (int unsigned j = 0; j < Latency; j++) begin
+                rdata_q[i][j] <= rdata_d[i][j];
               end
-            end else begin
-              // otherwise update read address for subsequent non request cycles
-              r_addr_q[i] <= addr_i[i];
-            end
-          end // if req_i
-        end // for ports
-      end // if !rst_ni
-    end
-  end else begin
-    // write memory array
-    always_ff @(posedge clk_i or negedge rst_ni) begin
-      if (!rst_ni) begin
-        sram <= init_val;
-        for (int i = 0; i < NumPorts; i++) begin
-          r_addr_q[i] <= {AddrWidth{1'b0}};
-          // initialize the read output register for each port
-          if (Latency != 32'd0) begin
-            for (int unsigned j = 0; j < Latency; j++) begin
-              rdata_q[i][j] <= init_val[{AddrWidth{1'b0}}];
             end
           end
-        end
-      end else begin
-        // read value latch happens before new data is written to the sram
-        for (int unsigned i = 0; i < NumPorts; i++) begin
-          if (Latency != 0) begin
-            for (int unsigned j = 0; j < Latency; j++) begin
-              rdata_q[i][j] <= rdata_d[i][j];
-            end
-          end
-        end
-        // there is a request for the SRAM, latch the required register
-        for (int unsigned i = 0; i < NumPorts; i++) begin
-          if (req_i[i]) begin
-            if (we_i[i]) begin
-              // update value when write is set at clock
-              for (int unsigned j = 0; j < BeWidth; j++) begin
-                if (be_i[i][j]) begin
-                  sram[addr_i[i]][j*ByteWidth+:ByteWidth] <= wdata_i[i][j*ByteWidth+:ByteWidth];
+          // there is a request for the SRAM, latch the required register
+          for (int unsigned i = 0; i < NumPorts; i++) begin
+            if (req_i[i]) begin
+              if (we_i[i]) begin
+                // update value when write is set at clock
+                for (int unsigned j = 0; j < BeWidth; j++) begin
+                  if (be_i[i][j]) begin
+                    sram[addr_i[i]][j*ByteWidth+:ByteWidth] <= wdata_i[i][j*ByteWidth+:ByteWidth];
+                  end
                 end
+              end else begin
+                // otherwise update read address for subsequent non request cycles
+                r_addr_q[i] <= addr_i[i];
               end
-            end else begin
-              // otherwise update read address for subsequent non request cycles
-              r_addr_q[i] <= addr_i[i];
+            end // if req_i
+          end // for ports
+        end // if !rst_ni
+      end
+    end else begin : gen_sim_init
+      // write memory array
+      always_ff @(posedge clk_i or negedge rst_ni) begin
+        if (!rst_ni) begin
+          sram <= init_val;
+          for (int i = 0; i < NumPorts; i++) begin
+            r_addr_q[i] <= {AddrWidth{1'b0}};
+            // initialize the read output register for each port
+            if (Latency != 32'd0) begin
+              for (int unsigned j = 0; j < Latency; j++) begin
+                rdata_q[i][j] <= init_val[{AddrWidth{1'b0}}];
+              end
             end
-          end // if req_i
-        end // for ports
-      end // if !rst_ni
+          end
+        end else begin
+          // read value latch happens before new data is written to the sram
+          for (int unsigned i = 0; i < NumPorts; i++) begin
+            if (Latency != 0) begin
+              for (int unsigned j = 0; j < Latency; j++) begin
+                rdata_q[i][j] <= rdata_d[i][j];
+              end
+            end
+          end
+          // there is a request for the SRAM, latch the required register
+          for (int unsigned i = 0; i < NumPorts; i++) begin
+            if (req_i[i]) begin
+              if (we_i[i]) begin
+                // update value when write is set at clock
+                for (int unsigned j = 0; j < BeWidth; j++) begin
+                  if (be_i[i][j]) begin
+                    sram[addr_i[i]][j*ByteWidth+:ByteWidth] <= wdata_i[i][j*ByteWidth+:ByteWidth];
+                  end
+                end
+              end else begin
+                // otherwise update read address for subsequent non request cycles
+                r_addr_q[i] <= addr_i[i];
+              end
+            end // if req_i
+          end // for ports
+        end // if !rst_ni
+      end
     end
-  end
+  endgenerate
 
 // Validate parameters.
 // pragma translate_off

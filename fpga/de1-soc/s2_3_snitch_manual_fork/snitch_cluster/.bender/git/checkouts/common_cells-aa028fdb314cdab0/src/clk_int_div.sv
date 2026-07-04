@@ -105,11 +105,14 @@ module clk_int_div #(
   output logic [DIV_VALUE_WIDTH-1:0] cycl_count_o
 );
 
-  if ($clog2(DEFAULT_DIV_VALUE+1) > DIV_VALUE_WIDTH) begin : gen_elab_error
-    $error("Default divider value %0d is not representable with the configured",
-            "div value width of %0d bits.",
-           DEFAULT_DIV_VALUE, DIV_VALUE_WIDTH);
-  end
+  generate
+    if ($clog2(DEFAULT_DIV_VALUE+1) > DIV_VALUE_WIDTH) begin : gen_elab_error
+      initial begin
+        $error("Default divider value %0d is not representable with the configured div value width of %0d bits.",
+            DEFAULT_DIV_VALUE, DIV_VALUE_WIDTH);
+      end
+    end
+  endgenerate
 
   // We have to preset the div_q register with a value larger than one to avoid
   // an infinite loop in the WAIT_END_PERIOD state. If the default state of the
