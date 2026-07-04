@@ -1,0 +1,7 @@
+build/
+generated/
+*.elf
+*.bin
+*.dump
+*.map
+*.nm

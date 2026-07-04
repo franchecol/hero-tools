@@ -35,6 +35,10 @@ S10: HPS/ARM Linux passes input data to Snitch-Lite
 S11: HPS/ARM Linux loads a Snitch-Lite payload image
     ARM writes RISC-V instruction words into FPGA instruction memory, writes
     ARG0/ARG1/EXPECTED, starts Snitch-Lite, and reads back the result.
+
+S12: HPS/ARM Linux loads the payload from a file
+    Reuse the S11 bitstream, but keep the ARM host loader and Snitch payload
+    image as separate Linux files.
 ```
 
 ## Current Board State After microSD Boot
@@ -147,6 +151,14 @@ s11_snitch_hps_payload_loader/
   Current result: payload build, sv2v, Yosys, Qsys, Quartus
   map/fit/assembler/timing, RBF conversion, JTAG programming, ARM tester
   cross-build, UART transfer, and two ARM Linux MMIO runtime payload runs pass.
+
+s12_snitch_hps_file_loader/
+  ARM/HPS Linux file-payload loader:
+  reuse the S11 FPGA bitstream, transfer an ARM loader executable plus a
+  separate RISC-V payload binary to Linux, and have the ARM loader read the
+  payload file before writing it into FPGA instruction memory.
+  Current result: local software build, UART transfer of separate host/payload
+  files, S11-bitstream reuse, and ARM Linux runtime file-payload test pass.
 ```
 
 Manual GUI scratch projects should use a `*_gui_manual/` directory name. Those
@@ -225,4 +237,10 @@ S11: HPS/Linux Snitch-Lite payload loader
     Verified status: ARM Linux writes a 9-word RISC-V payload into FPGA
     instruction memory, runs it twice with different input data, and reads the
     expected Snitch-computed results.
+
+S12: HPS/Linux Snitch-Lite file payload loader
+    Split the ARM host executable from the RISC-V/Snitch payload image.
+    Verified status: ARM Linux reads `/tmp/s12_payload.bin`, writes its 9
+    instruction words into FPGA instruction memory, runs the payload twice, and
+    reads the expected Snitch-computed results.
 ```
