@@ -1905,3 +1905,72 @@ The AXI parser frontier moved through the top-level burst splitter wrapper.
 The next blocker is the top-level AXI demux wrapper, separate from the
 axi_demux_simple shim already added earlier.
 ```
+
+## Attempt 26: AXI Demux Wrapper S2.3 Shim
+
+Status:
+
+```text
+FAIL
+quartus_map exit code: 3
+no .sof produced
+```
+
+Command:
+
+```bash
+cd /home/ftv/builds/hero-tools/fpga/de1-soc/s2_3_snitch_manual_fork
+./scripts/quartus_preflight.sh
+```
+
+Manual source edits:
+
+```text
+snitch_cluster/.bender/git/checkouts/axi-*/src/axi_demux.sv
+```
+
+What changed:
+
+```text
+axi_demux.sv:
+  added an S2_3_QUARTUS-only vector-boundary demux shim
+  skipped the original type-parameterized wrapper and interface wrapper
+```
+
+Important limitation:
+
+```text
+This is not a full semantic port of the original AXI demux wrapper. It routes
+the whole request vector by the selected port and returns one selected response
+vector. It does not preserve channel-specific locking, ID tracking, or response
+arbitration.
+```
+
+Important progress:
+
+```text
+The previous axi_demux.sv type-parameter and wrapper parser errors are
+bypassed.
+Quartus now reaches axi_err_slv.sv.
+```
+
+New first Quartus error:
+
+```text
+axi/src/axi_err_slv.sv:21
+Error (10170): near text: "type"; expecting an identifier
+```
+
+Other errors in the same run:
+
+```text
+axi_multicut.sv: parameter type and interface wrappers
+axi_to_axi_lite.sv: parameter type
+```
+
+Interpretation:
+
+```text
+The AXI parser frontier moved through the top-level demux wrapper. The next
+blocker is the AXI error slave helper.
+```
