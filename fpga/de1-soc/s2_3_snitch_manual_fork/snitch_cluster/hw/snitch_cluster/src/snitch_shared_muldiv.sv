@@ -194,7 +194,7 @@ module snitch_shared_muldiv_multiplier #(
     if (valid_q & ready_i) valid_d = 0;
     if (valid_i & ready_o) valid_d = 1;
   end
-  `FF(valid_q, valid_d, '0)
+  `FF(valid_q, valid_d, '0, clk_i, rst_ni)
   // Pipe-line registers
   `FFLNR(id_q, id_i, (valid_i & ready_o), clk_i)
   `FFLNR(result_q, result_d, (valid_i & ready_o), clk_i)

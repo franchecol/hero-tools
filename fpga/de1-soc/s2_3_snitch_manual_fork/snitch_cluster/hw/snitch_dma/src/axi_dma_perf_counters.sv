@@ -189,7 +189,7 @@ module axi_dma_perf_counters #(
     assign dma_events_o = dma_events;
 
     if (EnablePerfCounters) begin : gen_perf_counters
-      `FF(dma_perf_q, dma_perf_d, 0);
+      `FF(dma_perf_q, dma_perf_d, 0, clk_i, rst_ni);
       assign dma_perf_o = dma_perf_q;
     end
 

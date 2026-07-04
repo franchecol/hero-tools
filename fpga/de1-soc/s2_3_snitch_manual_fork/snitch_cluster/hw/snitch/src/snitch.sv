@@ -2927,16 +2927,15 @@ module snitch import snitch_pkg::*; import riscv_instr::*; #(
   // Make sure the instruction interface is stable. Otherwise, Snitch might violate the protocol at
   // the LSU or accelerator interface by withdrawing the valid signal.
   // TODO: Remove cacheability attribute, that should hold true for all instruction fetch transacitons.
-  `ASSERT(InstructionInterfaceStable,
-      (inst_valid_o && inst_ready_i && inst_cacheable_o) ##1 (inst_valid_o && $stable(inst_addr_o))
-      |-> inst_ready_i && $stable(inst_data_i), clk_i, rst_i)
+  `ASSERT(InstructionInterfaceStable, (inst_valid_o && inst_ready_i && inst_cacheable_o) ##1 (inst_valid_o && $stable(inst_addr_o))
+      |-> inst_ready_i && $stable(inst_data_i))
 
   // Snitch is a 32-bit processor so in case the memory subsystem is 64 bit
   // wide, there is a potential of `x`s to be returned. Its a bit of a nasty
   // hack but in case of retiring a load we want to relax the unknown
   // constraints a bit.
   `ASSERT(RegWriteKnown, gpr_we & (gpr_waddr != 0) & !retire_load
-                                    |-> !$isunknown(gpr_wdata), clk_i, rst_i)
+                                    |-> !$isunknown(gpr_wdata))
   // Check that PMA rule counts do not exceed maximum number of rules
   `ASSERT_INIT(CheckPMANonIdempotent,
     SnitchPMACfg.NrNonIdempotentRegionRules <= snitch_pma_pkg::NrMaxRules);
@@ -2945,9 +2944,9 @@ module snitch import snitch_pkg::*; import riscv_instr::*; #(
   `ASSERT_INIT(CheckPMAAMORegion, SnitchPMACfg.NrAMORegionRules <= snitch_pma_pkg::NrMaxRules);
 
   // Make sure that without virtual memory support, translation is never enabled
-  `ASSERT(NoVMSupportNoTranslation, (~VMSupport |-> ~trans_active), clk_i, rst_i)
+  `ASSERT(NoVMSupportNoTranslation, (~VMSupport |-> ~trans_active))
 
   // Make sure debug IRQ line is not raised when debug mode is not supported
-  `ASSERT(DebugModeUnsupported, irq_i.debug == 1'b1 |-> DebugSupport == 1, clk_i, rst_i)
+  `ASSERT(DebugModeUnsupported, irq_i.debug == 1'b1 |-> DebugSupport == 1)
 
 endmodule

@@ -44,7 +44,7 @@
 // __reset_value: value assigned upon reset
 // (__clk: clock input)
 // (__arst_n: asynchronous reset, active-low)
-`define FF(__q, __d, __reset_value, __clk = `REG_DFLT_CLK, __arst_n = `REG_DFLT_RST) \
+`define FF(__q, __d, __reset_value, __clk, __arst_n)                                  \
   always_ff @(posedge (__clk) or negedge (__arst_n)) begin                           \
     if (!__arst_n) begin                                                             \
       __q <= (__reset_value);                                                        \
@@ -122,7 +122,7 @@
 // __reset_value: value assigned upon reset
 // (__clk: clock input)
 // (__arst_n: asynchronous reset, active-low)
-`define FFL(__q, __d, __load, __reset_value, __clk = `REG_DFLT_CLK, __arst_n = `REG_DFLT_RST) \
+`define FFL(__q, __d, __load, __reset_value, __clk, __arst_n)                                  \
   always_ff @(posedge (__clk) or negedge (__arst_n)) begin                                    \
     if (!__arst_n) begin                                                                      \
       __q <= (__reset_value);                                                                 \

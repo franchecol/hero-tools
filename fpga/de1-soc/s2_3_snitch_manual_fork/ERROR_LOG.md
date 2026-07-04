@@ -173,3 +173,81 @@ Interpretation:
 The manual fork is now past the first generate-style incompatibilities.
 The next class is preprocessor macro syntax rather than module generate syntax.
 ```
+
+## Attempt 3: Quartus-Safe Macro Mode
+
+Status:
+
+```text
+FAIL
+quartus_map exit code: 3
+no .sof produced
+```
+
+Command:
+
+```bash
+cd /home/ftv/builds/hero-tools/fpga/de1-soc/s2_3_snitch_manual_fork
+./scripts/quartus_preflight.sh
+```
+
+Manual source edits:
+
+```text
+source_list/snitch_cluster.flist-plus.in
+snitch_cluster/.bender/git/checkouts/common_cells-*/include/common_cells/registers.svh
+snitch_cluster/.bender/git/checkouts/common_cells-*/include/common_cells/assertions.svh
+selected source files using `FF, `FFL, and assertion macros
+```
+
+What changed:
+
+```text
+source list:
+  added S2_3_QUARTUS define
+
+registers.svh:
+  removed default macro arguments from `FF and `FFL
+  explicit clock/reset arguments are now required
+
+assertions.svh:
+  added S2_3_QUARTUS mode with fixed-arity no-op assertion macros
+  this avoids parsing simulation/formal assertion syntax during Quartus synthesis
+
+call sites:
+  added clk_i/rst_ni to implicit `FF and `FFL calls
+  dropped optional clock/reset/description arguments from no-op assertion calls
+```
+
+Important progress:
+
+```text
+The previous registers.svh/assertions.svh default macro argument errors are gone.
+The generated source list now reports defines=5, including S2_3_QUARTUS.
+```
+
+New first Quartus error:
+
+```text
+common_cells/src/credit_counter.sv:17
+Error (10170): Verilog HDL syntax error near text: "type";
+expecting an identifier ("type" is a reserved keyword)
+```
+
+Other errors in the same run:
+
+```text
+common_cells/src/delta_counter.sv: implicit module-level generate-if
+common_cells/src/fifo_v3.sv: parameter type and implicit generate-if
+common_cells/src/gray_to_binary.sv: implicit module-level generate-for
+common_cells/src/heaviside.sv: type-like localparam syntax rejected
+common_cells/src/isochronous_spill_register.sv: parameter type and implicit generate-if
+```
+
+Interpretation:
+
+```text
+The manual fork is now past macro-preprocessor incompatibilities.
+The next class is common_cells module syntax: more parameter type usage plus
+more implicit generate blocks.
+```

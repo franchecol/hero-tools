@@ -33,7 +33,7 @@ module lzc #(
 );
 
   `ifndef COMMON_CELLS_ASSERTS_OFF
-    `ASSERT_INIT(width_0, WIDTH > 0, "input must be at least one bit wide")
+    `ASSERT_INIT(width_0, WIDTH > 0)
   `endif
 
   if (WIDTH <= 1) begin : gen_degenerate_lzc

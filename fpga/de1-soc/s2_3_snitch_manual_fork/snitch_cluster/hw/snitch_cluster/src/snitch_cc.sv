@@ -650,9 +650,9 @@ module snitch_cc #(
     logic [31:0] cfg_rsp_data;
     assign cfg_req_ready = ~cfg_req.write | cfg_req_wready;
     assign cfg_req_hs = cfg_req_valid & cfg_req_ready;
-    `FF(cfg_req_valid_q, cfg_req_hs, 0)
-    `FFL(cfg_rsp.id, ssr_cfg_req.id, cfg_req_hs, 0)
-    `FFL(cfg_rsp.data, cfg_rsp_data, cfg_req_hs, 0)
+    `FF(cfg_req_valid_q, cfg_req_hs, 0, clk_i, rst_ni)
+    `FFL(cfg_rsp.id, ssr_cfg_req.id, cfg_req_hs, 0, clk_i, rst_ni)
+    `FFL(cfg_rsp.data, cfg_rsp_data, cfg_req_hs, 0, clk_i, rst_ni)
 
     always_comb begin
       import riscv_instr::*;

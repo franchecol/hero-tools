@@ -453,8 +453,8 @@ module fpnew_opgroup_multifmt_slice #(
       // Enable register if pipleine ready and a valid data item is present
       assign reg_ena = byp_pipe_ready[i] & byp_pipe_valid_q[i];
       // Generate the pipeline registers within the stages, use enable-registers
-      `FFL(byp_pipe_target_q[i+1],  byp_pipe_target_q[i],  reg_ena, '0)
-      `FFL(byp_pipe_aux_q[i+1],     byp_pipe_aux_q[i],     reg_ena, '0)
+      `FFL(byp_pipe_target_q[i+1], byp_pipe_target_q[i], reg_ena, '0, clk_i, rst_ni)
+      `FFL(byp_pipe_aux_q[i+1], byp_pipe_aux_q[i], reg_ena, '0, clk_i, rst_ni)
     end
     // Output stage: Ready travels backwards from output side, driven by downstream circuitry
     assign byp_pipe_ready[NumPipeRegs] = out_ready_i & result_is_vector;

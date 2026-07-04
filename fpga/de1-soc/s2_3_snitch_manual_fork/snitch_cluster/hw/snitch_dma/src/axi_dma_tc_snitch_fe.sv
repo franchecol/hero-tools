@@ -166,8 +166,8 @@ module axi_dma_tc_snitch_fe #(
     logic [31:0] next_id;
     logic [31:0] completed_id;
 
-    `FFL(next_id, next_id + 'h1, twod_req_valid & twod_req_ready, 0)
-    `FFL(completed_id, completed_id + 'h1, oned_trans_complete & twod_req_last_realigned, 0)
+    `FFL(next_id, next_id + 'h1, twod_req_valid & twod_req_ready, 0, clk_i, rst_ni)
+    `FFL(completed_id, completed_id + 'h1, oned_trans_complete & twod_req_last_realigned, 0, clk_i, rst_ni)
 
     // dma is busy when it is not idle
     assign dma_busy_o = next_id != completed_id;
@@ -358,6 +358,6 @@ module axi_dma_tc_snitch_fe #(
     //--------------------------------------
     // State
     //--------------------------------------
-    `FF(twod_req_q, twod_req_d, '0)
+    `FF(twod_req_q, twod_req_d, '0, clk_i, rst_ni)
 
 endmodule

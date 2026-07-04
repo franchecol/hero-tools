@@ -129,10 +129,10 @@ module reqrsp_to_axi import reqrsp_pkg::*; #(
   // Counter Management
   // ------------------
   // Count the number of in-fligh reads.
-  `FF(read_cnt_q, read_cnt_d, '0)
+  `FF(read_cnt_q, read_cnt_d, '0, clk_i, rst_ni)
   // Count the number of in-fligh writes.
-  `FF(write_cnt_q, write_cnt_d, '0)
-  `FF(atomic_in_flight_q, atomic_in_flight_d, '0)
+  `FF(write_cnt_q, write_cnt_d, '0, clk_i, rst_ni)
+  `FF(atomic_in_flight_q, atomic_in_flight_d, '0, clk_i, rst_ni)
 
   always_comb begin
     atomic_in_flight_d = atomic_in_flight_q;
@@ -233,7 +233,7 @@ module reqrsp_to_axi import reqrsp_pkg::*; #(
   // Delay the signal for one cycle. We will never get the R response in the
   // same cycle as the request. (Except for when the W is after the AW and the R
   // comes in the same cycle, we will loose a cycle latency)
-  `FF(delay_r_for_atomic_q, delay_r_for_atomic, '0)
+  `FF(delay_r_for_atomic_q, delay_r_for_atomic, '0, clk_i, rst_ni)
 
   // As we can never have two read and write transactions in-flight (except for
   // atomics) simultaneously return path arbitration becomes quite an simply an

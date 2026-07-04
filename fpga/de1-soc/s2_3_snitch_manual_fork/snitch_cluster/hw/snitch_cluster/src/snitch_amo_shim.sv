@@ -142,9 +142,9 @@ module snitch_amo_shim
   // -----
   // LR/SC
   // -----
-  `FF(sc_successful_q, sc_successful, 1'b0)
-  `FF(sc_q, valid_i & ready_o & (amo_i == AMOSC), 1'b0)
-  `FF(reservation_q, reservation_d, '0)
+  `FF(sc_successful_q, sc_successful, 1'b0, clk_i, rst_ni)
+  `FF(sc_q, valid_i & ready_o & (amo_i == AMOSC), 1'b0, clk_i, rst_ni)
+  `FF(reservation_q, reservation_d, '0, clk_i, rst_ni)
 
   always_comb begin
     reservation_d = reservation_q;
@@ -188,7 +188,7 @@ module snitch_amo_shim
   logic [63:0] wdata;
   assign wdata = $unsigned(wdata_i);
 
-  `FF(state_q, state_d, Idle)
+  `FF(state_q, state_d, Idle, clk_i, rst_ni)
   `FFLNR(amo_op_q, amo_i, load_amo, clk_i)
   `FFLNR(addr_q, addr_i, load_amo, clk_i)
   // Which word to pick.

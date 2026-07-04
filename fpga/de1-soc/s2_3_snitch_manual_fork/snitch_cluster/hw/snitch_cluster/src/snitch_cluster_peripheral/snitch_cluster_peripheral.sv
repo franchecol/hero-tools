@@ -42,9 +42,9 @@ module snitch_cluster_peripheral
   tcdm_events_t tcdm_events_q;
   dma_events_t dma_events_q;
   snitch_icache_pkg::icache_events_t [NrCores-1:0] icache_events_q;
-  `FF(tcdm_events_q, tcdm_events_i, '0)
-  `FF(dma_events_q, dma_events_i, '0)
-  `FF(icache_events_q, icache_events_i, '0)
+  `FF(tcdm_events_q, tcdm_events_i, '0, clk_i, rst_ni)
+  `FF(dma_events_q, dma_events_i, '0, clk_i, rst_ni)
+  `FF(icache_events_q, icache_events_i, '0, clk_i, rst_ni)
 
   snitch_cluster_peripheral_reg2hw_t reg2hw;
   snitch_cluster_peripheral_hw2reg_t hw2reg;

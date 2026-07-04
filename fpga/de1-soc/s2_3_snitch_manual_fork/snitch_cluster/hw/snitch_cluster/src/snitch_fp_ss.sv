@@ -2667,5 +2667,5 @@ module snitch_fp_ss import snitch_pkg::*; #(
   // pragma translate_on
 
   /// Assertions
-  `ASSERT(RegWriteKnown, fpr_we |-> !$isunknown(fpr_wdata), clk_i, rst_i)
+  `ASSERT(RegWriteKnown, fpr_we |-> !$isunknown(fpr_wdata))
 endmodule

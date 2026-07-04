@@ -160,8 +160,8 @@ module axi_dma_twod_ext #(
     //--------------------------------------
     // Update Counters
     //--------------------------------------
-    `FF(num_bursts_q, num_bursts_d, '0)
-    `FF(src_address_q, src_address_d, '0)
-    `FF(dst_address_q, dst_address_d, '0)
+    `FF(num_bursts_q, num_bursts_d, '0, clk_i, rst_ni)
+    `FF(src_address_q, src_address_d, '0, clk_i, rst_ni)
+    `FF(dst_address_q, dst_address_d, '0, clk_i, rst_ni)
 
 endmodule

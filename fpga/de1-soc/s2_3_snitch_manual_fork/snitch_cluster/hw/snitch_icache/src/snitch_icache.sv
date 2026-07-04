@@ -685,6 +685,6 @@ module l0_to_bypass #(
                 rsp_valid[i], clk_i)
     end
 
-    `FF(state_q, state_d, '{default: Idle})
+    `FF(state_q, state_d, '{default: Idle}, clk_i, rst_ni)
 
 endmodule

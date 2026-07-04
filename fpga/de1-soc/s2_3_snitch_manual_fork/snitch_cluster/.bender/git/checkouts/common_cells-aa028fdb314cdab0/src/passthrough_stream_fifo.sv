@@ -115,8 +115,8 @@ module passthrough_stream_fifo #(
     `FFL(data_q, data_d, load_data, '0, clk_i, rst_ni)
 
     // no full push
-    `ASSERT_NEVER(CheckFullPush, (!ready_o & valid_i), clk_i, !rst_ni)
+    `ASSERT_NEVER(CheckFullPush, (!ready_o & valid_i))
     // empty pop
-    `ASSERT_NEVER(CheckEmptyPop, (!valid_o & ready_i), clk_i, !rst_ni)
+    `ASSERT_NEVER(CheckEmptyPop, (!valid_o & ready_i))
 
 endmodule

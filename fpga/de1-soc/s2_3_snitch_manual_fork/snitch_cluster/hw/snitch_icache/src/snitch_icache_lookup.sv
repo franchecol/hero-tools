@@ -250,6 +250,6 @@ module snitch_icache_lookup #(
 
     // Assertions
     `include "common_cells/assertions.svh"
-    `ASSERT(i_rsp_buffer_ready, (valid_q |-> buffer_ready), clk_i, !rst_ni)
+    `ASSERT(i_rsp_buffer_ready, (valid_q |-> buffer_ready))
 
 endmodule

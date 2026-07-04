@@ -132,36 +132,21 @@ module ring_buffer #(
     end
 
     // Read pointer should not overtake write pointer.
-    `ASSERT(
-        ReadPtrOvertakesWritePtr,
-        advance_i |-> step_i <= max_step,
-        clk_i, !rst_ni,
-        "Attempting to increment rptr beyond wptr"
-    );
+    `ASSERT(ReadPtrOvertakesWritePtr, advance_i |-> step_i <= max_step);
 
     // Write pointer should not overtake read pointer.
-    `ASSERT(
-        WritePtrOvertakesReadPtr,
-        wvalid_i && wready_o
-            |-> !((wptr_q[AddrWidth-1:0] == rptr_d[AddrWidth-1:0]) && !(wptr_q == rptr_d)),
-        clk_i, !rst_ni,
-        "Attempting to increment wptr beyond rptr"
-    );
+    `ASSERT(WritePtrOvertakesReadPtr, wvalid_i && wready_o
+            |-> !((wptr_q[AddrWidth-1:0] == rptr_d[AddrWidth-1:0]) && !(wptr_q == rptr_d)));
 
     // When rptr_o < wptr_o, the valid range is [rptr_o, wptr_o).
     // When rptr_o > wptr_o (wrap-around), the valid range is [rptr_o, Depth) U [0, wptr_o).
     // When rptr_o == wptr_o and !empty (buffer is full), all addresses are valid.
-    `ASSERT(
-        ReadAddrOutOfBounds,
-        rvalid_i && rready_o |->
+    `ASSERT(ReadAddrOutOfBounds, rvalid_i && rready_o |->
         (
             ((rptr_o < wptr_o) && ((raddr_i >= rptr_o) && (raddr_i < wptr_o))) ||
             ((rptr_o > wptr_o) && ((raddr_i >= rptr_o) || (raddr_i < wptr_o))) ||
             ((rptr_o == wptr_o) && !empty_o)
-        ),
-        clk_i, !rst_ni,
-        "raddr_i is not within the valid range defined by rptr_o and wptr_o"
-    );
+        ));
 
     // Interfaces should be stable when valid is asserted but not ready
     `ASSERT_STABLE(WriteStable, wvalid_i, wready_o, wdata_i)

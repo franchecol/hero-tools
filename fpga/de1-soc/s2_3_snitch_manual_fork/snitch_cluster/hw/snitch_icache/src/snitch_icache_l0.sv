@@ -79,8 +79,8 @@ module snitch_icache_l0 import snitch_icache_pkg::*; #(
   logic evict_req;
   logic last_cycle_was_miss_q;
 
-  `FF(last_cycle_was_miss_q, miss, '0)
-  `FF(last_cycle_was_prefetch_q, latch_prefetch, '0)
+  `FF(last_cycle_was_miss_q, miss, '0, clk_i, rst_ni)
+  `FF(last_cycle_was_prefetch_q, latch_prefetch, '0, clk_i, rst_ni)
 
   logic evict_because_miss, evict_because_prefetch;
 
@@ -213,7 +213,7 @@ module snitch_icache_l0 import snitch_icache_pkg::*; #(
     if (flush_valid_i) flush_strb = '1;
   end
 
-  `FF(cnt_q, cnt_d, '0)
+  `FF(cnt_q, cnt_d, '0, clk_i, rst_ni)
 
   // -------------
   // Miss Handling
@@ -223,7 +223,7 @@ module snitch_icache_l0 import snitch_icache_pkg::*; #(
   assign refill_valid = miss;
 
   `FFLNR(pending_line_refill_q, evict_strb, evict_req, clk_i)
-  `FF(pending_refill_q, pending_refill_d, '0)
+  `FF(pending_refill_q, pending_refill_d, '0, clk_i, rst_ni)
 
   always_comb begin
     pending_refill_d = pending_refill_q;
@@ -374,7 +374,7 @@ module snitch_icache_l0 import snitch_icache_pkg::*; #(
   assign prefetch.addr = prefetch_req_addr_q;
   assign prefetch_valid = prefetch_req_vld_q;
 
-  `FF(prefetch_req_vld_q, prefetch_req_vld_d, '0)
+  `FF(prefetch_req_vld_q, prefetch_req_vld_d, '0, clk_i, rst_ni)
   `FFNR(prefetch_req_addr_q, prefetch_req_addr_d, clk_i)
 
   // ------------------

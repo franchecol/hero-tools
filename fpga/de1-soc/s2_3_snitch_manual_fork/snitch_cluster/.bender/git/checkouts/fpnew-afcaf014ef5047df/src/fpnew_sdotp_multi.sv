@@ -211,19 +211,19 @@ module fpnew_sdotp_multi #(
     // Enable register if pipleine ready and a valid data item is present
     assign reg_ena = inp_pipe_ready[i] & inp_pipe_valid_q[i];
     // Generate the pipeline registers within the stages, use enable-registers
-    `FFL(inp_pipe_operand_a_q[i+1],    inp_pipe_operand_a_q[i],    reg_ena, '0)
-    `FFL(inp_pipe_operand_b_q[i+1],    inp_pipe_operand_b_q[i],    reg_ena, '0)
-    `FFL(inp_pipe_operand_c_q[i+1],    inp_pipe_operand_c_q[i],    reg_ena, '0)
-    `FFL(inp_pipe_operand_d_q[i+1],    inp_pipe_operand_d_q[i],    reg_ena, '0)
-    `FFL(inp_pipe_dst_operands_q[i+1], inp_pipe_dst_operands_q[i], reg_ena, '0)
-    `FFL(inp_pipe_is_boxed_q[i+1],     inp_pipe_is_boxed_q[i],     reg_ena, '0)
-    `FFL(inp_pipe_rnd_mode_q[i+1],     inp_pipe_rnd_mode_q[i],     reg_ena, fpnew_pkg::RNE)
-    `FFL(inp_pipe_op_q[i+1],           inp_pipe_op_q[i],           reg_ena, fpnew_pkg::SDOTP)
-    `FFL(inp_pipe_op_mod_q[i+1],       inp_pipe_op_mod_q[i],       reg_ena, '0)
-    `FFL(inp_pipe_src_fmt_q[i+1],      inp_pipe_src_fmt_q[i],      reg_ena, fpnew_pkg::FP8)
-    `FFL(inp_pipe_dst_fmt_q[i+1],      inp_pipe_dst_fmt_q[i],      reg_ena, fpnew_pkg::FP16)
-    `FFL(inp_pipe_tag_q[i+1],          inp_pipe_tag_q[i],          reg_ena, TagType'('0))
-    `FFL(inp_pipe_aux_q[i+1],          inp_pipe_aux_q[i],          reg_ena, AuxType'('0))
+    `FFL(inp_pipe_operand_a_q[i+1], inp_pipe_operand_a_q[i], reg_ena, '0, clk_i, rst_ni)
+    `FFL(inp_pipe_operand_b_q[i+1], inp_pipe_operand_b_q[i], reg_ena, '0, clk_i, rst_ni)
+    `FFL(inp_pipe_operand_c_q[i+1], inp_pipe_operand_c_q[i], reg_ena, '0, clk_i, rst_ni)
+    `FFL(inp_pipe_operand_d_q[i+1], inp_pipe_operand_d_q[i], reg_ena, '0, clk_i, rst_ni)
+    `FFL(inp_pipe_dst_operands_q[i+1], inp_pipe_dst_operands_q[i], reg_ena, '0, clk_i, rst_ni)
+    `FFL(inp_pipe_is_boxed_q[i+1], inp_pipe_is_boxed_q[i], reg_ena, '0, clk_i, rst_ni)
+    `FFL(inp_pipe_rnd_mode_q[i+1], inp_pipe_rnd_mode_q[i], reg_ena, fpnew_pkg::RNE, clk_i, rst_ni)
+    `FFL(inp_pipe_op_q[i+1], inp_pipe_op_q[i], reg_ena, fpnew_pkg::SDOTP, clk_i, rst_ni)
+    `FFL(inp_pipe_op_mod_q[i+1], inp_pipe_op_mod_q[i], reg_ena, '0, clk_i, rst_ni)
+    `FFL(inp_pipe_src_fmt_q[i+1], inp_pipe_src_fmt_q[i], reg_ena, fpnew_pkg::FP8, clk_i, rst_ni)
+    `FFL(inp_pipe_dst_fmt_q[i+1], inp_pipe_dst_fmt_q[i], reg_ena, fpnew_pkg::FP16, clk_i, rst_ni)
+    `FFL(inp_pipe_tag_q[i+1], inp_pipe_tag_q[i], reg_ena, TagType'('0), clk_i, rst_ni)
+    `FFL(inp_pipe_aux_q[i+1], inp_pipe_aux_q[i], reg_ena, AuxType'('0), clk_i, rst_ni)
   end
   // Output stage: assign selected pipe outputs to signals for later use
   assign operand_a_q    = inp_pipe_operand_a_q[NUM_INP_REGS];
@@ -1007,32 +1007,32 @@ module fpnew_sdotp_multi #(
     // Enable register if pipleine ready and a valid data item is present
     assign reg_ena = mid_pipe_ready[i] & mid_pipe_valid_q[i];
     // Generate the pipeline registers within the stages, use enable-registers
-    `FFL(mid_pipe_eff_sub_q[i+1],             mid_pipe_eff_sub_q[i],             reg_ena, '0)
-    `FFL(mid_pipe_final_sign_zero_q[i+1],     mid_pipe_final_sign_zero_q[i],     reg_ena, '0)
-    `FFL(mid_pipe_info_min_is_zero_q[i+1],    mid_pipe_info_min_is_zero_q[i],    reg_ena, '0)
-    `FFL(mid_pipe_info_max_is_zero_q[i+1],    mid_pipe_info_max_is_zero_q[i],    reg_ena, '0)
-    `FFL(mid_pipe_addend_min_sign_q[i+1],     mid_pipe_addend_min_sign_q[i],     reg_ena, '0)
-    `FFL(mid_pipe_sum_exact_zero_q[i+1],      mid_pipe_sum_exact_zero_q[i],      reg_ena, '0)
-    `FFL(mid_pipe_addend_min_q[i+1],          mid_pipe_addend_min_q[i],          reg_ena, '0)
-    `FFL(mid_pipe_exp_first_q[i+1],           mid_pipe_exp_first_q[i],           reg_ena, '0)
-    `FFL(mid_pipe_sticky_before_add_z_q[i+1], mid_pipe_sticky_before_add_z_q[i], reg_ena, '0)
-    `FFL(mid_pipe_add_min_after_shift_q[i+1], mid_pipe_add_min_after_shift_q[i], reg_ena, '0)
-    `FFL(mid_pipe_op_e_sign_q[i+1],           mid_pipe_op_e_sign_q[i],           reg_ena, '0)
-    `FFL(mid_pipe_prod_x_sign_q[i+1],         mid_pipe_prod_x_sign_q[i],         reg_ena, '0)
-    `FFL(mid_pipe_prod_y_sign_q[i+1],         mid_pipe_prod_y_sign_q[i],         reg_ena, '0)
-    `FFL(mid_pipe_exp_cmp_q[i+1],             mid_pipe_exp_cmp_q[i],             reg_ena, '0)
-    `FFL(mid_pipe_exp_min_q[i+1],             mid_pipe_exp_min_q[i],             reg_ena, '0)
-    `FFL(mid_pipe_sticky_q[i+1],              mid_pipe_sticky_q[i],              reg_ena, '0)
-    `FFL(mid_pipe_sum_q[i+1],                 mid_pipe_sum_q[i],                 reg_ena, '0)
-    `FFL(mid_pipe_final_sign_q[i+1],          mid_pipe_final_sign_q[i],          reg_ena, '0)
-    `FFL(mid_pipe_rnd_mode_q[i+1],            mid_pipe_rnd_mode_q[i],            reg_ena, fpnew_pkg::RNE)
-    `FFL(mid_pipe_dst_fmt_q[i+1],             mid_pipe_dst_fmt_q[i],             reg_ena, fpnew_pkg::FP16)
-    `FFL(mid_pipe_res_is_spec_q[i+1],         mid_pipe_res_is_spec_q[i],         reg_ena, '0)
-    `FFL(mid_pipe_spec_res_q[i+1],            mid_pipe_spec_res_q[i],            reg_ena, '0)
-    `FFL(mid_pipe_spec_stat_q[i+1],           mid_pipe_spec_stat_q[i],           reg_ena, '0)
-    `FFL(mid_pipe_tag_q[i+1],                 mid_pipe_tag_q[i],                 reg_ena, TagType'('0))
-    `FFL(mid_pipe_aux_q[i+1],                 mid_pipe_aux_q[i],                 reg_ena, AuxType'('0))
-    `FFL(mid_pipe_sum_carry_q[i+1],           mid_pipe_sum_carry_q[i],           reg_ena, '0)
+    `FFL(mid_pipe_eff_sub_q[i+1], mid_pipe_eff_sub_q[i], reg_ena, '0, clk_i, rst_ni)
+    `FFL(mid_pipe_final_sign_zero_q[i+1], mid_pipe_final_sign_zero_q[i], reg_ena, '0, clk_i, rst_ni)
+    `FFL(mid_pipe_info_min_is_zero_q[i+1], mid_pipe_info_min_is_zero_q[i], reg_ena, '0, clk_i, rst_ni)
+    `FFL(mid_pipe_info_max_is_zero_q[i+1], mid_pipe_info_max_is_zero_q[i], reg_ena, '0, clk_i, rst_ni)
+    `FFL(mid_pipe_addend_min_sign_q[i+1], mid_pipe_addend_min_sign_q[i], reg_ena, '0, clk_i, rst_ni)
+    `FFL(mid_pipe_sum_exact_zero_q[i+1], mid_pipe_sum_exact_zero_q[i], reg_ena, '0, clk_i, rst_ni)
+    `FFL(mid_pipe_addend_min_q[i+1], mid_pipe_addend_min_q[i], reg_ena, '0, clk_i, rst_ni)
+    `FFL(mid_pipe_exp_first_q[i+1], mid_pipe_exp_first_q[i], reg_ena, '0, clk_i, rst_ni)
+    `FFL(mid_pipe_sticky_before_add_z_q[i+1], mid_pipe_sticky_before_add_z_q[i], reg_ena, '0, clk_i, rst_ni)
+    `FFL(mid_pipe_add_min_after_shift_q[i+1], mid_pipe_add_min_after_shift_q[i], reg_ena, '0, clk_i, rst_ni)
+    `FFL(mid_pipe_op_e_sign_q[i+1], mid_pipe_op_e_sign_q[i], reg_ena, '0, clk_i, rst_ni)
+    `FFL(mid_pipe_prod_x_sign_q[i+1], mid_pipe_prod_x_sign_q[i], reg_ena, '0, clk_i, rst_ni)
+    `FFL(mid_pipe_prod_y_sign_q[i+1], mid_pipe_prod_y_sign_q[i], reg_ena, '0, clk_i, rst_ni)
+    `FFL(mid_pipe_exp_cmp_q[i+1], mid_pipe_exp_cmp_q[i], reg_ena, '0, clk_i, rst_ni)
+    `FFL(mid_pipe_exp_min_q[i+1], mid_pipe_exp_min_q[i], reg_ena, '0, clk_i, rst_ni)
+    `FFL(mid_pipe_sticky_q[i+1], mid_pipe_sticky_q[i], reg_ena, '0, clk_i, rst_ni)
+    `FFL(mid_pipe_sum_q[i+1], mid_pipe_sum_q[i], reg_ena, '0, clk_i, rst_ni)
+    `FFL(mid_pipe_final_sign_q[i+1], mid_pipe_final_sign_q[i], reg_ena, '0, clk_i, rst_ni)
+    `FFL(mid_pipe_rnd_mode_q[i+1], mid_pipe_rnd_mode_q[i], reg_ena, fpnew_pkg::RNE, clk_i, rst_ni)
+    `FFL(mid_pipe_dst_fmt_q[i+1], mid_pipe_dst_fmt_q[i], reg_ena, fpnew_pkg::FP16, clk_i, rst_ni)
+    `FFL(mid_pipe_res_is_spec_q[i+1], mid_pipe_res_is_spec_q[i], reg_ena, '0, clk_i, rst_ni)
+    `FFL(mid_pipe_spec_res_q[i+1], mid_pipe_spec_res_q[i], reg_ena, '0, clk_i, rst_ni)
+    `FFL(mid_pipe_spec_stat_q[i+1], mid_pipe_spec_stat_q[i], reg_ena, '0, clk_i, rst_ni)
+    `FFL(mid_pipe_tag_q[i+1], mid_pipe_tag_q[i], reg_ena, TagType'('0), clk_i, rst_ni)
+    `FFL(mid_pipe_aux_q[i+1], mid_pipe_aux_q[i], reg_ena, AuxType'('0), clk_i, rst_ni)
+    `FFL(mid_pipe_sum_carry_q[i+1], mid_pipe_sum_carry_q[i], reg_ena, '0, clk_i, rst_ni)
   end
   // Output stage: assign selected pipe outputs to signals for later use
   assign sum_carry_q                   = mid_pipe_sum_carry_q[NUM_MID_REGS];
@@ -1386,10 +1386,10 @@ module fpnew_sdotp_multi #(
     // Enable register if pipleine ready and a valid data item is present
     assign reg_ena = out_pipe_ready[i] & out_pipe_valid_q[i];
     // Generate the pipeline registers within the stages, use enable-registers
-    `FFL(out_pipe_result_q[i+1], out_pipe_result_q[i], reg_ena, '0)
-    `FFL(out_pipe_status_q[i+1], out_pipe_status_q[i], reg_ena, '0)
-    `FFL(out_pipe_tag_q[i+1],    out_pipe_tag_q[i],    reg_ena, TagType'('0))
-    `FFL(out_pipe_aux_q[i+1],    out_pipe_aux_q[i],    reg_ena, AuxType'('0))
+    `FFL(out_pipe_result_q[i+1], out_pipe_result_q[i], reg_ena, '0, clk_i, rst_ni)
+    `FFL(out_pipe_status_q[i+1], out_pipe_status_q[i], reg_ena, '0, clk_i, rst_ni)
+    `FFL(out_pipe_tag_q[i+1], out_pipe_tag_q[i], reg_ena, TagType'('0), clk_i, rst_ni)
+    `FFL(out_pipe_aux_q[i+1], out_pipe_aux_q[i], reg_ena, AuxType'('0), clk_i, rst_ni)
   end
   // Output stage: Ready travels backwards from output side, driven by downstream circuitry
   assign out_pipe_ready[NUM_OUT_REGS] = out_ready_i;

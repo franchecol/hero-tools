@@ -11,6 +11,7 @@
 +define+TARGET_RTL
 +define+TARGET_SNITCH_CLUSTER
 +define+SNITCH_ENABLE_PERF
++define+S2_3_QUARTUS
 @SNITCH_ROOT@/.bender/git/checkouts/tech_cells_generic-1282165f7b690985/src/rtl/tc_sram.sv
 @SNITCH_ROOT@/.bender/git/checkouts/tech_cells_generic-1282165f7b690985/src/rtl/tc_sram_impl.sv
 @SNITCH_ROOT@/.bender/git/checkouts/tech_cells_generic-1282165f7b690985/src/rtl/tc_clk.sv
@@ -323,4 +324,3 @@
 @SNITCH_ROOT@/hw/snitch_cluster/src/snitch_hive.sv
 @SNITCH_ROOT@/hw/snitch_cluster/src/snitch_cluster.sv
 @SNITCH_ROOT@/target/snitch_cluster/generated/snitch_cluster_wrapper.sv
-

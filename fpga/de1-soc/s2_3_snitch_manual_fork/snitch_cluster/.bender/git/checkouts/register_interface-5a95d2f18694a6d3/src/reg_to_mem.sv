@@ -37,7 +37,7 @@ module reg_to_mem #(
 );
 
   logic wait_read_d, wait_read_q;
-  `FF(wait_read_q, wait_read_d, 1'b0)
+  `FF(wait_read_q, wait_read_d, 1'b0, clk_i, rst_ni)
 
   always_comb begin
     wait_read_d = wait_read_q;

@@ -9,6 +9,29 @@
 `ifndef COMMON_CELLS_ASSERTIONS_SVH
 `define COMMON_CELLS_ASSERTIONS_SVH
 
+`ifdef S2_3_QUARTUS
+
+`define ASSERT_STRINGIFY(__x) `"__x`"
+`define ASSERT_RPT(__name, __desc)
+`define ASSERT_I(__name, __prop)
+`define ASSERT_INIT(__name, __prop)
+`define ASSERT_FINAL(__name, __prop)
+`define ASSERT(__name, __prop)
+`define ASSERT_NEVER(__name, __prop)
+`define ASSERT_KNOWN(__name, __sig)
+`define COVER(__name, __prop)
+`define ASSERT_PULSE(__name, __sig)
+`define ASSERT_IF(__name, __prop, __enable)
+`define ASSERT_KNOWN_IF(__name, __sig, __enable)
+`define ASSERT_STABLE(__name, __valid, __ready, __data)
+`define ASSUME(__name, __prop)
+`define ASSUME_I(__name, __prop)
+`define ASSUME_FPV(__name, __prop)
+`define ASSUME_I_FPV(__name, __prop)
+`define COVER_FPV(__name, __prop)
+
+`else
+
 `ifdef UVM
   // report assertion error with UVM if compiled
   package assert_rpt_pkg;
@@ -213,4 +236,5 @@
 `endif
 
 
+`endif // S2_3_QUARTUS
 `endif // COMMON_CELLS_ASSERTIONS_SVH
