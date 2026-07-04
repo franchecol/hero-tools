@@ -193,12 +193,15 @@ the S2.3 preflight source list as black-box/boundary candidates. The source
 count is now 149 files.
 snitch_regfile_ff.sv now uses an explicit generate/endgenerate block with a
 separately declared genvar for the read-port assignment loop.
+snitch_lsu.sv now has an S2_3_QUARTUS width-parameterized port wrapper that
+keeps the LSU logic intact while avoiding type parameters at the module
+boundary.
 ```
 
 New first blocker:
 
 ```text
-snitch_cluster/hw/snitch/src/snitch_lsu.sv:15
+snitch_cluster/hw/snitch/src/snitch_l0_tlb.sv:11
 Error (10170): near text: "type"; expecting an identifier
 ```
 

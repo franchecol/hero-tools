@@ -2583,9 +2583,13 @@ module snitch_fp_ss import snitch_pkg::*; #(
   snitch_lsu #(
     .AddrWidth (AddrWidth),
     .DataWidth (DataWidth),
+`ifdef S2_3_QUARTUS
+    .TagWidth (5),
+`else
     .dreq_t (dreq_t),
     .drsp_t (drsp_t),
     .tag_t (logic [4:0]),
+`endif
     .NumOutstandingMem (NumFPOutstandingMem),
     .NumOutstandingLoads (NumFPOutstandingLoads),
     .NaNBox (1'b1)

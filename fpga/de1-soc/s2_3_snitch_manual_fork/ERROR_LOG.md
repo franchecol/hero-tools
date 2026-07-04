@@ -3328,3 +3328,91 @@ The first syntax-only Snitch core issue is fixed. The next issue is harder:
 Snitch LSU uses type parameters for tags and request/response channel structs.
 That cannot be fixed with only a generate-style rewrite.
 ```
+
+## Attempt 45: Port Snitch LSU Boundary for Quartus
+
+Status:
+
+```text
+FAIL
+quartus_map exit code: 3
+no .sof produced
+```
+
+Command:
+
+```bash
+cd /home/ftv/builds/hero-tools/fpga/de1-soc/s2_3_snitch_manual_fork
+./scripts/quartus_preflight.sh
+```
+
+Manual edits:
+
+```text
+snitch_cluster/hw/snitch/src/snitch_lsu.sv
+snitch_cluster/hw/snitch/src/snitch.sv
+snitch_cluster/hw/snitch_cluster/src/snitch_fp_ss.sv
+```
+
+What changed:
+
+```text
+snitch_lsu.sv:
+  added an S2_3_QUARTUS module header using explicit widths instead of
+  parameter type
+  recreated the reqrsp request/response structs internally from AddrWidth and
+  DataWidth
+  kept the original typed-parameter LSU header for non-S2_3 builds
+  routed LSU logic through internal data_req/data_rsp aliases
+
+snitch.sv and snitch_fp_ss.sv:
+  pass TagWidth under S2_3_QUARTUS instead of type parameters
+  keep the original dreq_t/drsp_t/tag_t overrides outside S2_3_QUARTUS
+```
+
+Why this is acceptable:
+
+```text
+This preserves the LSU datapath and handshake logic. It only changes the
+Quartus-facing module boundary so the active LSU does not require parameter
+type syntax.
+```
+
+Important limitation:
+
+```text
+The S2_3_QUARTUS LSU wrapper assumes the connected data request/response
+channels use the standard reqrsp packed layout derived from AddrWidth and
+DataWidth.
+```
+
+Important progress:
+
+```text
+The previous snitch_lsu.sv parameter-type parser errors are gone.
+Quartus now reaches snitch_l0_tlb.sv as the first core blocker.
+```
+
+New first Quartus error:
+
+```text
+hw/snitch/src/snitch_l0_tlb.sv:11
+Error (10170): near text: "type"; expecting an identifier
+```
+
+Other errors in the same run:
+
+```text
+snitch_l0_tlb.sv: parameter type and generate parser errors
+snitch.sv: module import-list parser error
+snitch_ptw.sv: parameter type errors
+axi_dma_error_handler.sv and axi_dma_perf_counters.sv: parameter type errors
+```
+
+Interpretation:
+
+```text
+The LSU is the first active Snitch core block ported without black-boxing. The
+next active core-support block is the L0 TLB, which has the same type-parameter
+pattern plus generate syntax that Quartus rejects.
+```

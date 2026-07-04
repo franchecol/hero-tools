@@ -4,10 +4,62 @@
 
 // Author: Florian Zaruba <zarubaf@iis.ee.ethz.ch>
 
+`include "reqrsp_interface/typedef.svh"
+
 /// Load Store Unit (can handle `NumOutstandingLoads` outstanding loads and
 /// `NumOutstandingMem` requests in total) and optionally NaNBox if used in a
 /// floating-point setting. It expects its memory sub-system to keep order (as if
 /// issued with a single ID).
+`ifdef S2_3_QUARTUS
+module snitch_lsu #(
+  parameter int unsigned AddrWidth           = 32,
+  parameter int unsigned DataWidth           = 32,
+  parameter int unsigned TagWidth            = 5,
+  /// Number of outstanding memory transactions.
+  parameter int unsigned NumOutstandingMem   = 1,
+  /// Number of outstanding loads.
+  parameter int unsigned NumOutstandingLoads = 1,
+  /// Whether to NaN Box values. Used for floating-point load/stores.
+  parameter bit          NaNBox              = 0,
+  /// Derived parameter *Do not override*
+  parameter int unsigned ReqWidth            = AddrWidth + DataWidth + (DataWidth / 8) + 10,
+  parameter int unsigned RspWidth            = DataWidth + 3
+) (
+  input  logic                 clk_i,
+  input  logic                 rst_i,
+  // request channel
+  input  logic [TagWidth-1:0]  lsu_qtag_i,
+  input  logic                 lsu_qwrite_i,
+  input  logic                 lsu_qsigned_i,
+  input  logic [AddrWidth-1:0] lsu_qaddr_i,
+  input  logic [DataWidth-1:0] lsu_qdata_i,
+  input  logic [1:0]           lsu_qsize_i,
+  input  reqrsp_pkg::amo_op_e  lsu_qamo_i,
+  input  logic                 lsu_qvalid_i,
+  output logic                 lsu_qready_o,
+  // response channel
+  output logic [DataWidth-1:0] lsu_pdata_o,
+  output logic [TagWidth-1:0]  lsu_ptag_o,
+  output logic                 lsu_perror_o,
+  output logic                 lsu_pvalid_o,
+  input  logic                 lsu_pready_i,
+  /// High if there is currently no transaction pending.
+  output logic                 lsu_empty_o,
+  // Memory Interface Channel
+  output logic [ReqWidth-1:0]  data_req_o,
+  input  logic [RspWidth-1:0]  data_rsp_i
+);
+
+  typedef logic [TagWidth-1:0] tag_t;
+  typedef logic [AddrWidth-1:0] addr_t;
+  typedef logic [DataWidth-1:0] data_t;
+  typedef logic [DataWidth/8-1:0] strb_t;
+
+  `REQRSP_TYPEDEF_ALL(reqrsp, addr_t, data_t, strb_t)
+
+  reqrsp_req_t data_req;
+  reqrsp_rsp_t data_rsp;
+`else
 module snitch_lsu #(
   parameter int unsigned AddrWidth           = 32,
   parameter int unsigned DataWidth           = 32,
@@ -50,6 +102,13 @@ module snitch_lsu #(
   input  drsp_t                data_rsp_i
 );
 
+  dreq_t data_req;
+  drsp_t data_rsp;
+`endif
+
+  assign data_req_o = data_req;
+  assign data_rsp = data_rsp_i;
+
   localparam int unsigned DataAlign = $clog2(DataWidth/8);
   logic [63:0] ld_result;
   logic [63:0] lsu_qdata, data_qdata;
@@ -82,7 +141,7 @@ module snitch_lsu #(
     .data_i (laq_in),
     .push_i (laq_push),
     .data_o (laq_out),
-    .pop_i (data_rsp_i.p_valid & data_req_o.p_ready & ~mem_out)
+    .pop_i (data_rsp.p_valid & data_req.p_ready & ~mem_out)
   );
 
   // For each memory transaction save whether this was a load or a store. We
@@ -100,9 +159,9 @@ module snitch_lsu #(
     .empty_o (lsu_empty_o),
     .usage_o ( /* open */ ),
     .data_i (lsu_qwrite_i),
-    .push_i (data_req_o.q_valid & data_rsp_i.q_ready),
+    .push_i (data_req.q_valid & data_rsp.q_ready),
     .data_o (mem_out),
-    .pop_i (data_rsp_i.p_valid & data_req_o.p_ready)
+    .pop_i (data_rsp.p_valid & data_req.p_ready)
   );
 
   assign laq_in = '{
@@ -115,20 +174,20 @@ module snitch_lsu #(
   // Only make a request when we got a valid request and if it is a load also
   // check that we can actually store the necessary information to process it in
   // the upcoming cycle(s).
-  assign data_req_o.q_valid = lsu_qvalid_i & (lsu_qwrite_i | ~laq_full) & ~mem_full;
-  assign data_req_o.q.write = lsu_qwrite_i;
-  assign data_req_o.q.addr = lsu_qaddr_i;
-  assign data_req_o.q.amo  = lsu_qamo_i;
-  assign data_req_o.q.size = lsu_qsize_i;
+  assign data_req.q_valid = lsu_qvalid_i & (lsu_qwrite_i | ~laq_full) & ~mem_full;
+  assign data_req.q.write = lsu_qwrite_i;
+  assign data_req.q.addr = lsu_qaddr_i;
+  assign data_req.q.amo  = lsu_qamo_i;
+  assign data_req.q.size = lsu_qsize_i;
 
   // Generate byte enable mask.
   always_comb begin
     unique case (lsu_qsize_i)
-      2'b00: data_req_o.q.strb = ('b1 << lsu_qaddr_i[DataAlign-1:0]);
-      2'b01: data_req_o.q.strb = ('b11 << lsu_qaddr_i[DataAlign-1:0]);
-      2'b10: data_req_o.q.strb = ('b1111 << lsu_qaddr_i[DataAlign-1:0]);
-      2'b11: data_req_o.q.strb = '1;
-      default: data_req_o.q.strb = '0;
+      2'b00: data_req.q.strb = ('b1 << lsu_qaddr_i[DataAlign-1:0]);
+      2'b01: data_req.q.strb = ('b11 << lsu_qaddr_i[DataAlign-1:0]);
+      2'b10: data_req.q.strb = ('b1111 << lsu_qaddr_i[DataAlign-1:0]);
+      2'b11: data_req.q.strb = '1;
+      default: data_req.q.strb = '0;
     endcase
   end
 
@@ -148,18 +207,18 @@ module snitch_lsu #(
       default: data_qdata = lsu_qdata;
     endcase
   end
-  assign data_req_o.q.data = data_qdata[DataWidth-1:0];
+  assign data_req.q.data = data_qdata[DataWidth-1:0];
   /* verilator lint_on WIDTH */
 
   // The interface didn't accept our request yet
-  assign lsu_qready_o = ~(data_req_o.q_valid & ~data_rsp_i.q_ready)
+  assign lsu_qready_o = ~(data_req.q_valid & ~data_rsp.q_ready)
                       & (lsu_qwrite_i | ~laq_full) & ~mem_full;
-  assign laq_push = ~lsu_qwrite_i & data_rsp_i.q_ready & data_req_o.q_valid & ~laq_full;
+  assign laq_push = ~lsu_qwrite_i & data_rsp.q_ready & data_req.q_valid & ~laq_full;
 
   // Return Path
   // shift the load data back
   logic [63:0] shifted_data;
-  assign shifted_data = data_rsp_i.p.data >> {laq_out.offset, 3'b000};
+  assign shifted_data = data_rsp.p.data >> {laq_out.offset, 3'b000};
   always_comb begin
     unique case (laq_out.size)
       2'b00: ld_result = {{56{(shifted_data[7] | NaNBox) & laq_out.sign_ext}}, shifted_data[7:0]};
@@ -170,12 +229,12 @@ module snitch_lsu #(
     endcase
   end
 
-  assign lsu_perror_o = data_rsp_i.p.error;
+  assign lsu_perror_o = data_rsp.p.error;
   assign lsu_pdata_o = ld_result[DataWidth-1:0];
   assign lsu_ptag_o = laq_out.tag;
   // In case of a write, don't signal a valid transaction. Stores are always
   // without ans answer to the core.
-  assign lsu_pvalid_o = data_rsp_i.p_valid & ~mem_out;
-  assign data_req_o.p_ready = lsu_pready_i | mem_out;
+  assign lsu_pvalid_o = data_rsp.p_valid & ~mem_out;
+  assign data_req.p_ready = lsu_pready_i | mem_out;
 
 endmodule

@@ -2807,9 +2807,13 @@ module snitch import snitch_pkg::*; import riscv_instr::*; #(
   snitch_lsu #(
     .AddrWidth (AddrWidth),
     .DataWidth (DataWidth),
+`ifdef S2_3_QUARTUS
+    .TagWidth (RegWidth),
+`else
     .dreq_t (dreq_t),
     .drsp_t (drsp_t),
     .tag_t (logic[RegWidth-1:0]),
+`endif
     .NumOutstandingMem (NumIntOutstandingMem),
     .NumOutstandingLoads (NumIntOutstandingLoads)
   ) i_snitch_lsu (
