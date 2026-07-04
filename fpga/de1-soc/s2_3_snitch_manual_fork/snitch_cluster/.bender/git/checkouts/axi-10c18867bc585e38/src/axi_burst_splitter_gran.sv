@@ -10,6 +10,39 @@
 `include "axi/typedef.svh"
 `include "common_cells/registers.svh"
 
+`ifdef S2_3_QUARTUS
+// S2.3 keeps the one-core bring-up path simple: pass AXI requests through and
+// rely on the workload to issue only single-beat, non-wrapping transfers.
+module axi_burst_splitter_gran #(
+  parameter int unsigned MaxReadTxns   = 32'd0,
+  parameter int unsigned MaxWriteTxns  = 32'd0,
+  parameter bit          FullBW        = 1'b0,
+  parameter bit          CutPath       = 1'b0,
+  parameter bit          DisableChecks = 1'b0,
+  parameter int unsigned AddrWidth     = 32'd0,
+  parameter int unsigned DataWidth     = 32'd0,
+  parameter int unsigned IdWidth       = 32'd0,
+  parameter int unsigned UserWidth     = 32'd0,
+  parameter int unsigned AxiReqWidth   = 1,
+  parameter int unsigned AxiRespWidth  = 1
+) (
+  input  logic                         clk_i,
+  input  logic                         rst_ni,
+
+  input  axi_pkg::len_t                len_limit_i,
+
+  input  logic [AxiReqWidth-1:0]       slv_req_i,
+  output logic [AxiRespWidth-1:0]      slv_resp_o,
+
+  output logic [AxiReqWidth-1:0]       mst_req_o,
+  input  logic [AxiRespWidth-1:0]      mst_resp_i
+);
+
+  assign mst_req_o = slv_req_i;
+  assign slv_resp_o = mst_resp_i;
+
+endmodule
+`else
 /// Split AXI4 bursts into single-beat transactions.
 ///
 /// ## Limitations
@@ -741,3 +774,4 @@ module axi_burst_splitter_gran_counters #(
   `endif
 
 endmodule
+`endif

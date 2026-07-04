@@ -79,7 +79,7 @@ cd /home/ftv/builds/hero-tools/fpga/de1-soc/s2_3_snitch_manual_fork
 
 ## Current Result
 
-Attempt 18 was run locally with Quartus Prime Lite 25.1std.0.
+Attempt 19 was run locally with Quartus Prime Lite 25.1std.0.
 
 Result:
 
@@ -133,12 +133,14 @@ A conservative unused AXI helper slice was removed from the preflight list.
 The source count is now 230 files.
 The active axi_demux_id_counters.sv parser errors are gone.
 The active axi_atop_filter.sv parser errors are gone.
+The active axi_burst_splitter_gran.sv parser errors are bypassed with an
+S2_3_QUARTUS single-beat pass-through shim.
 ```
 
 New first blocker:
 
 ```text
-snitch_cluster/.bender/git/checkouts/axi-*/src/axi_burst_splitter_gran.sv:38
+snitch_cluster/.bender/git/checkouts/axi-*/src/axi_cut.sv:29
 Error (10170): near text: "type"; expecting an identifier
 ```
 

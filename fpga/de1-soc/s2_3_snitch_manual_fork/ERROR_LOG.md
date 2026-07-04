@@ -1423,3 +1423,71 @@ The AXI parser frontier moved through the ATOP filter. Later elaboration may
 still require call-site width parameters for axi_atop_filter, but the immediate
 parser blocker in that file is gone.
 ```
+
+## Attempt 19: AXI Burst Splitter S2.3 Shim
+
+Status:
+
+```text
+FAIL
+quartus_map exit code: 3
+no .sof produced
+```
+
+Command:
+
+```bash
+cd /home/ftv/builds/hero-tools/fpga/de1-soc/s2_3_snitch_manual_fork
+./scripts/quartus_preflight.sh
+```
+
+Manual source edits:
+
+```text
+snitch_cluster/.bender/git/checkouts/axi-*/src/axi_burst_splitter_gran.sv
+```
+
+What changed:
+
+```text
+axi_burst_splitter_gran.sv:
+  added an S2_3_QUARTUS-only pass-through implementation
+  skipped the original granular burst splitter and helper modules in this mode
+```
+
+Important limitation:
+
+```text
+This is not a full semantic port of the burst splitter. It assumes the S2.3
+bring-up software issues simple single-beat, non-wrapping transfers on this
+path. Bursts are not split in the Quartus shim.
+```
+
+Important progress:
+
+```text
+The previous first axi_burst_splitter_gran.sv type-parameter and helper-module
+parser errors are bypassed.
+Quartus now reaches axi_cut.sv.
+```
+
+New first Quartus error:
+
+```text
+axi/src/axi_cut.sv:29
+Error (10170): near text: "type"; expecting an identifier
+```
+
+Other errors in the same run:
+
+```text
+axi_demux_simple.sv: parameter type and implicit generate syntax
+```
+
+Interpretation:
+
+```text
+The AXI parser frontier moved to a simpler active helper, axi_cut.sv. The
+burst-splitting behavior remains a documented S2.3 simplification rather than
+a complete Quartus port.
+```
