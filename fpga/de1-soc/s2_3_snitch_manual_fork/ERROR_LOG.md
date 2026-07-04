@@ -1560,3 +1560,72 @@ Interpretation:
 The parser frontier moved past axi_cut.sv. The next blocker is the active AXI
 demux, which still uses type parameters at its module boundary.
 ```
+
+## Attempt 21: AXI Demux Simple S2.3 Shim
+
+Status:
+
+```text
+FAIL
+quartus_map exit code: 3
+no .sof produced
+```
+
+Command:
+
+```bash
+cd /home/ftv/builds/hero-tools/fpga/de1-soc/s2_3_snitch_manual_fork
+./scripts/quartus_preflight.sh
+```
+
+Manual source edits:
+
+```text
+snitch_cluster/.bender/git/checkouts/axi-*/src/axi_demux_simple.sv
+```
+
+What changed:
+
+```text
+axi_demux_simple.sv:
+  added an S2_3_QUARTUS-only vector-boundary demux shim
+  skipped the original type-parameterized AXI demux implementation in this mode
+```
+
+Important limitation:
+
+```text
+This is not a full semantic port of the original AXI demux. The shim routes the
+whole request vector to selected master ports and returns one selected response
+vector. It does not reproduce the original AW/W/B/R channel-specific locking,
+ID accounting, or response arbitration.
+```
+
+Important progress:
+
+```text
+The previous axi_demux_simple.sv type-parameter and generate-parser errors are
+bypassed.
+Quartus now reaches axi_id_prepend.sv.
+```
+
+New first Quartus error:
+
+```text
+axi/src/axi_id_prepend.sv:22
+Error (10170): near text: "type"; expecting an identifier
+```
+
+Other errors in the same run:
+
+```text
+axi_mux.sv: parameter type and implicit generate syntax
+```
+
+Interpretation:
+
+```text
+The AXI parser frontier moved through axi_demux_simple.sv. This is useful for
+mapping the remaining Quartus-incompatible AXI helpers, but the demux shim is
+only an S2.3 bring-up simplification.
+```

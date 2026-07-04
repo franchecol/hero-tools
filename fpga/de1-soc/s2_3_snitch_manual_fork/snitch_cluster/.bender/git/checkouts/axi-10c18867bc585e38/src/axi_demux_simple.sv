@@ -40,6 +40,45 @@
 ///
 /// Beats on the B and R channel are multiplexed from the master ports to the slave port with
 /// a round-robin arbitration tree.
+`ifdef S2_3_QUARTUS
+// S2.3 parser/bring-up shim: this keeps the one-core Quartus experiment moving
+// without relying on module type parameters.
+module axi_demux_simple #(
+  parameter int unsigned AxiIdWidth     = 32'd0,
+  parameter bit          AtopSupport    = 1'b1,
+  parameter int unsigned AxiReqWidth    = 32'd1,
+  parameter int unsigned AxiRespWidth   = 32'd1,
+  parameter int unsigned NoMstPorts     = 32'd1,
+  parameter int unsigned MaxTrans       = 32'd8,
+  parameter int unsigned AxiLookBits    = 32'd3,
+  parameter bit          UniqueIds      = 1'b0,
+  parameter int unsigned SelectWidth    = (NoMstPorts > 32'd1) ? $clog2(NoMstPorts) : 32'd1
+) (
+  input  logic                                      clk_i,
+  input  logic                                      rst_ni,
+  input  logic                                      test_i,
+  input  logic [AxiReqWidth-1:0]                   slv_req_i,
+  input  logic [SelectWidth-1:0]                   slv_aw_select_i,
+  input  logic [SelectWidth-1:0]                   slv_ar_select_i,
+  output logic [AxiRespWidth-1:0]                  slv_resp_o,
+  output logic [NoMstPorts-1:0][AxiReqWidth-1:0]   mst_reqs_o,
+  input  logic [NoMstPorts-1:0][AxiRespWidth-1:0]  mst_resps_i
+);
+
+  always_comb begin
+    mst_reqs_o = '0;
+    slv_resp_o = mst_resps_i[slv_ar_select_i];
+
+    for (int unsigned i = 0; i < NoMstPorts; i++) begin
+      if ((slv_aw_select_i == i[SelectWidth-1:0]) ||
+          (slv_ar_select_i == i[SelectWidth-1:0])) begin
+        mst_reqs_o[i] = slv_req_i;
+      end
+    end
+  end
+
+endmodule
+`else
 module axi_demux_simple #(
   parameter int unsigned AxiIdWidth     = 32'd0,
   parameter bit          AtopSupport    = 1'b1,
@@ -510,3 +549,4 @@ module axi_demux_simple #(
 // pragma translate_on
   end
 endmodule
+`endif
