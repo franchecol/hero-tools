@@ -2528,3 +2528,70 @@ The parser frontier has moved out of the core AXI package. The remaining
 reported blockers are now in the FPU divider/square-root dependency and the
 AXI RISC-V atomics dependency.
 ```
+
+## Attempt 35: FPU Divider Generate-Block Labels
+
+Status:
+
+```text
+FAIL
+quartus_map exit code: 3
+no .sof produced
+```
+
+Command:
+
+```bash
+cd /home/ftv/builds/hero-tools/fpga/de1-soc/s2_3_snitch_manual_fork
+./scripts/quartus_preflight.sh
+```
+
+Manual source edits:
+
+```text
+snitch_cluster/.bender/git/checkouts/fpu_div_sqrt_mvp-*/hdl/control_mvp.sv
+```
+
+What changed:
+
+```text
+control_mvp.sv:
+  named the outer divider iteration generate-for block
+  named the inner mask-bit generate-for block
+```
+
+Important limitation:
+
+```text
+This is a syntax-only Quartus compatibility fix. It does not change the FPU
+divider/square-root algorithm.
+```
+
+Important progress:
+
+```text
+The previous fpu_div_sqrt_mvp/control_mvp.sv unnamed-block errors are gone.
+Quartus now reaches the AXI RISC-V atomics dependency.
+```
+
+New first Quartus error:
+
+```text
+axi_riscv_atomics/src/axi_res_tbl.sv:38
+Error (10170): near text: "genvar"; expecting an identifier
+```
+
+Other errors in the same run:
+
+```text
+axi_riscv_atomics/*.sv: localparam and unnamed-block parser errors
+```
+
+Interpretation:
+
+```text
+The FPU divider/square-root file parsed past its first Quartus-only syntax
+blocker. The next blocker class is AXI RISC-V atomics, which should be checked
+against the one-core target before deciding between pruning, syntax porting, or
+stub replacement.
+```

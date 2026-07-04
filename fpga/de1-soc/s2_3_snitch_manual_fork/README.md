@@ -79,7 +79,7 @@ cd /home/ftv/builds/hero-tools/fpga/de1-soc/s2_3_snitch_manual_fork
 
 ## Current Result
 
-Attempt 34 was run locally with Quartus Prime Lite 25.1std.0.
+Attempt 35 was run locally with Quartus Prime Lite 25.1std.0.
 
 Result:
 
@@ -165,14 +165,16 @@ The active axi_to_mem_interleaved.sv parser errors are bypassed with an
 S2_3_QUARTUS no-request memory wrapper stub.
 The active axi_xbar.sv parser errors are bypassed with an S2_3_QUARTUS
 zero-output crossbar stub.
+The active fpu_div_sqrt_mvp/control_mvp.sv unnamed generate-loop errors are
+gone after adding explicit generate block labels.
 ```
 
 New first blocker:
 
 ```text
-snitch_cluster/.bender/git/checkouts/fpu_div_sqrt_mvp-*/hdl/control_mvp.sv:2344
-Error (10644): this block requires a name
+snitch_cluster/.bender/git/checkouts/axi_riscv_atomics-*/src/axi_res_tbl.sv:38
+Error (10170): near text: "genvar"; expecting an identifier
 ```
 
 The fix now exists as direct edits in the local Snitch fork. The next class is
-AXI dependency pruning or syntax porting.
+AXI RISC-V atomics dependency pruning or syntax porting.

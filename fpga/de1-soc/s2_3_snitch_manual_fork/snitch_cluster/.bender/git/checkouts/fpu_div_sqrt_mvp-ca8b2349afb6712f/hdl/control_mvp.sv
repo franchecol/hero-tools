@@ -2340,8 +2340,8 @@ module control_mvp
   generate
     genvar i,j;
       for (i=0; i <= Iteration_unit_num_S ; i++)
-        begin
-          for (j = 0; j <= C_MANT_FP64+5; j++) begin
+        begin : gen_iteration_cell
+          for (j = 0; j <= C_MANT_FP64+5; j++) begin : gen_mask_bits
               assign Iteration_cell_a_D[i][j] = Mask_bits_ctl_S[j] && Iteration_cell_a_BMASK_D[i][j];
               assign Iteration_cell_b_D[i][j] = Mask_bits_ctl_S[j] && Iteration_cell_b_BMASK_D[i][j];
               assign Iteration_cell_sum_AMASK_D[i][j] = Mask_bits_ctl_S[j] && Iteration_cell_sum_D[i][j];
