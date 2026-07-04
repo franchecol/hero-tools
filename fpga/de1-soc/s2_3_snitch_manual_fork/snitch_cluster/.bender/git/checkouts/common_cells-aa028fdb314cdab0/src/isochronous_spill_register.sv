@@ -39,8 +39,8 @@
 /// There are _no_ restrictions on which clock domain should be the faster, any integer
 /// ratio will work.
 module isochronous_spill_register #(
-  /// Data type of spill register.
-  parameter type T      = logic,
+  /// Width of spill register payload.
+  parameter int unsigned DATA_WIDTH = 1,
   /// Make this spill register transparent.
   parameter bit  Bypass = 1'b0
 ) (
@@ -53,7 +53,7 @@ module isochronous_spill_register #(
   /// Source is ready to accept.
   output logic src_ready_o,
   /// Source input data.
-  input  T     src_data_i,
+  input  logic [DATA_WIDTH-1:0] src_data_i,
   /// Clock of destination clock domain.
   input  logic dst_clk_i,
   /// Active low async reset in destination domain.
@@ -63,38 +63,40 @@ module isochronous_spill_register #(
   /// Destination is ready to accept.
   input  logic dst_ready_i,
   /// Destination output data.
-  output T     dst_data_o
+  output logic [DATA_WIDTH-1:0] dst_data_o
 );
   // Don't generate the spill register.
-  if (Bypass) begin : gen_bypass
-    assign dst_valid_o = src_valid_i;
-    assign src_ready_o = dst_ready_i;
-    assign dst_data_o  = src_data_i;
-  // Generate the spill register
-  end else begin : gen_isochronous_spill_register
-    /// Read/write pointer are one bit wider than necessary.
-    /// We implicitly capture the full and empty state with the second bit:
-    /// If all but the topmost bit of `rd_pointer_q` and `wr_pointer_q` agree, the
-    /// FIFO is in a critical state. If the topmost bit is equal, the FIFO is
-    /// empty, otherwise it is full.
-    logic [1:0] rd_pointer_q, wr_pointer_q;
-    // Advance write pointer if we pushed a new item into the FIFO. (Source clock domain)
-    `FFLARN(wr_pointer_q, wr_pointer_q+1, (src_valid_i && src_ready_o), '0, src_clk_i, src_rst_ni)
-    // Advance read pointer if downstream consumed an item. (Destination clock domain)
-    `FFLARN(rd_pointer_q, rd_pointer_q+1, (dst_valid_o && dst_ready_i), '0, dst_clk_i, dst_rst_ni)
+  generate
+    if (Bypass) begin : gen_bypass
+      assign dst_valid_o = src_valid_i;
+      assign src_ready_o = dst_ready_i;
+      assign dst_data_o  = src_data_i;
+    // Generate the spill register
+    end else begin : gen_isochronous_spill_register
+      /// Read/write pointer are one bit wider than necessary.
+      /// We implicitly capture the full and empty state with the second bit:
+      /// If all but the topmost bit of `rd_pointer_q` and `wr_pointer_q` agree, the
+      /// FIFO is in a critical state. If the topmost bit is equal, the FIFO is
+      /// empty, otherwise it is full.
+      logic [1:0] rd_pointer_q, wr_pointer_q;
+      // Advance write pointer if we pushed a new item into the FIFO. (Source clock domain)
+      `FFLARN(wr_pointer_q, wr_pointer_q+1, (src_valid_i && src_ready_o), '0, src_clk_i, src_rst_ni)
+      // Advance read pointer if downstream consumed an item. (Destination clock domain)
+      `FFLARN(rd_pointer_q, rd_pointer_q+1, (dst_valid_o && dst_ready_i), '0, dst_clk_i, dst_rst_ni)
 
-    T [1:0] mem_d, mem_q;
-    `FFL(mem_q, mem_d, (src_valid_i && src_ready_o), '0, src_clk_i, src_rst_ni)
-    always_comb begin
-      mem_d = mem_q;
-      mem_d[wr_pointer_q[0]] = src_data_i;
+      logic [1:0][DATA_WIDTH-1:0] mem_d, mem_q;
+      `FFL(mem_q, mem_d, (src_valid_i && src_ready_o), '0, src_clk_i, src_rst_ni)
+      always_comb begin
+        mem_d = mem_q;
+        mem_d[wr_pointer_q[0]] = src_data_i;
+      end
+
+      assign src_ready_o = (rd_pointer_q ^ wr_pointer_q) != 2'b10;
+
+      assign dst_valid_o = (rd_pointer_q ^ wr_pointer_q) != '0;
+      assign dst_data_o = mem_q[rd_pointer_q[0]];
     end
-
-    assign src_ready_o = (rd_pointer_q ^ wr_pointer_q) != 2'b10;
-
-    assign dst_valid_o = (rd_pointer_q ^ wr_pointer_q) != '0;
-    assign dst_data_o = mem_q[rd_pointer_q[0]];
-  end
+  endgenerate
 
   // stability guarantees
   `ifndef COMMON_CELLS_ASSERTS_OFF

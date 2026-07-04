@@ -16,7 +16,6 @@ module fifo_v3 #(
     parameter bit          FALL_THROUGH = 1'b0, // fifo is in fall-through mode
     parameter int unsigned DATA_WIDTH   = 32,   // default data width if the fifo is of type logic
     parameter int unsigned DEPTH        = 8,    // depth can be arbitrary from 0 to 2**32
-    parameter type dtype                = logic [DATA_WIDTH-1:0],
     // DO NOT OVERWRITE THIS PARAMETER
     parameter int unsigned ADDR_DEPTH   = (DEPTH > 1) ? $clog2(DEPTH) : 1
 )(
@@ -29,10 +28,10 @@ module fifo_v3 #(
     output logic  empty_o,          // queue is empty
     output logic  [ADDR_DEPTH-1:0] usage_o,  // fill pointer
     // as long as the queue is not full we can push new data
-    input  dtype  data_i,           // data to push into the queue
+    input  logic [DATA_WIDTH-1:0] data_i,  // data to push into the queue
     input  logic  push_i,           // data is valid and can be pushed to the queue
     // as long as the queue is not empty we can pop new elements
-    output dtype  data_o,           // output data
+    output logic [DATA_WIDTH-1:0] data_o,  // output data
     input  logic  pop_i             // pop head from queue
 );
     // local parameter
@@ -46,17 +45,19 @@ module fifo_v3 #(
     // this integer will be truncated by the synthesis tool
     logic [ADDR_DEPTH:0] status_cnt_n, status_cnt_q;
     // actual memory
-    dtype [FifoDepth - 1:0] mem_n, mem_q;
+    logic [FifoDepth-1:0][DATA_WIDTH-1:0] mem_n, mem_q;
 
     assign usage_o = status_cnt_q[ADDR_DEPTH-1:0];
 
-    if (DEPTH == 0) begin : gen_pass_through
-        assign empty_o     = ~push_i;
-        assign full_o      = ~pop_i;
-    end else begin : gen_fifo
-        assign full_o       = (status_cnt_q == FifoDepth[ADDR_DEPTH:0]);
-        assign empty_o      = (status_cnt_q == 0) & ~(FALL_THROUGH & push_i);
-    end
+    generate
+        if (DEPTH == 0) begin : gen_pass_through
+            assign empty_o     = ~push_i;
+            assign full_o      = ~pop_i;
+        end else begin : gen_fifo
+            assign full_o       = (status_cnt_q == FifoDepth[ADDR_DEPTH:0]);
+            assign empty_o      = (status_cnt_q == 0) & ~(FALL_THROUGH & push_i);
+        end
+    endgenerate
     // status flags
 
     // read and write queue logic
@@ -133,7 +134,7 @@ module fifo_v3 #(
 
     always_ff @(posedge clk_i or negedge rst_ni) begin
         if(~rst_ni) begin
-            mem_q <= {FifoDepth{dtype'('0)}};
+            mem_q <= '0;
         end else if (!gate_clock) begin
             mem_q <= mem_n;
         end

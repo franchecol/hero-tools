@@ -18,6 +18,10 @@ module gray_to_binary #(
     input  logic [N-1:0] A,
     output logic [N-1:0] Z
 );
-    for (genvar i = 0; i < N; i++)
-        assign Z[i] = ^A[N-1:i];
+    genvar gen_bit;
+    generate
+        for (gen_bit = 0; gen_bit < N; gen_bit++) begin : gen_gray_to_binary
+            assign Z[gen_bit] = ^A[N-1:gen_bit];
+        end
+    endgenerate
 endmodule

@@ -12,12 +12,10 @@
 module heaviside #(
     parameter int unsigned Width = 32,
     /// Derived parameter *Do not override*
-    localparam int unsigned IdxWidth = cf_math_pkg::idx_width(Width),
-    localparam type idx_t = logic [IdxWidth-1:0],
-    localparam type mask_t = logic [Width-1:0]
+    parameter int unsigned IdxWidth = cf_math_pkg::idx_width(Width)
 ) (
-    input idx_t x_i,
-    output mask_t mask_o
+    input logic [IdxWidth-1:0] x_i,
+    output logic [Width-1:0] mask_o
 );
 
     assign mask_o = (1 << (x_i + 1)) - 1;

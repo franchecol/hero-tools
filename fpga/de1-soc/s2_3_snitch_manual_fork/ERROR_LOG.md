@@ -251,3 +251,89 @@ The manual fork is now past macro-preprocessor incompatibilities.
 The next class is common_cells module syntax: more parameter type usage plus
 more implicit generate blocks.
 ```
+
+## Attempt 4: First Common Cells Type/Generate Batch
+
+Status:
+
+```text
+FAIL
+quartus_map exit code: 3
+no .sof produced
+```
+
+Command:
+
+```bash
+cd /home/ftv/builds/hero-tools/fpga/de1-soc/s2_3_snitch_manual_fork
+./scripts/quartus_preflight.sh
+```
+
+Manual source edits:
+
+```text
+snitch_cluster/.bender/git/checkouts/common_cells-*/src/credit_counter.sv
+snitch_cluster/.bender/git/checkouts/common_cells-*/src/delta_counter.sv
+snitch_cluster/.bender/git/checkouts/common_cells-*/src/fifo_v3.sv
+snitch_cluster/.bender/git/checkouts/common_cells-*/src/gray_to_binary.sv
+snitch_cluster/.bender/git/checkouts/common_cells-*/src/heaviside.sv
+snitch_cluster/.bender/git/checkouts/common_cells-*/src/isochronous_spill_register.sv
+```
+
+What changed:
+
+```text
+credit_counter.sv:
+  removed the credit_cnt_t type parameter
+  used explicit logic vector widths for the counter ports/registers
+
+delta_counter.sv:
+  wrapped module-level generate-if with explicit generate/endgenerate
+
+fifo_v3.sv:
+  replaced dtype type parameter with DATA_WIDTH vector ports/storage
+  wrapped module-level generate-if with explicit generate/endgenerate
+
+gray_to_binary.sv:
+  replaced inline genvar generate-for with explicit genvar plus generate/endgenerate
+
+heaviside.sv:
+  removed localparam type parameters
+  changed the derived parameter list syntax to Quartus-accepted parameter syntax
+
+isochronous_spill_register.sv:
+  replaced T type parameter with DATA_WIDTH vector ports/storage
+  wrapped module-level generate-if with explicit generate/endgenerate
+```
+
+Important progress:
+
+```text
+The previous first errors in credit_counter.sv, delta_counter.sv, fifo_v3.sv,
+gray_to_binary.sv, heaviside.sv, and isochronous_spill_register.sv are gone.
+```
+
+New first Quartus error:
+
+```text
+common_cells/src/lfsr.sv:254
+Error (10170): Verilog HDL syntax error near text: "if"; expecting "endmodule"
+```
+
+Other errors in the same run:
+
+```text
+common_cells/src/lossy_valid_to_stream.sv: parameter type
+common_cells/src/onehot_to_bin.sv: implicit module-level generate-for
+common_cells/src/passthrough_stream_fifo.sv: parameter type
+common_cells/src/popcount.sv: localparam in parameter list
+common_cells/src/ring_buffer.sv: parameter type
+common_cells/src/rr_arb_tree.sv: parameter type
+```
+
+Interpretation:
+
+```text
+Quartus is now deeper into common_cells. The remaining blockers are the same
+families repeated across more reusable utility modules.
+```

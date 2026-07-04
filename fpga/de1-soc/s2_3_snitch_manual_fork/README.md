@@ -77,7 +77,7 @@ cd /home/ftv/builds/hero-tools/fpga/de1-soc/s2_3_snitch_manual_fork
 
 ## Current Result
 
-Attempt 3 was run locally with Quartus Prime Lite 25.1std.0.
+Attempt 4 was run locally with Quartus Prime Lite 25.1std.0.
 
 Result:
 
@@ -93,15 +93,19 @@ The original tc_sram.sv/tc_sram_impl.sv "parameter type" errors are gone.
 The first generate-syntax errors in tc_sram.sv, generic_memory.sv,
 cc_onehot.sv, and clk_int_div.sv are gone.
 The default macro argument errors in registers.svh and assertions.svh are gone.
+The first common_cells utility-module errors in credit_counter.sv,
+delta_counter.sv, fifo_v3.sv, gray_to_binary.sv, heaviside.sv, and
+isochronous_spill_register.sv are gone.
 ```
 
 New first blocker:
 
 ```text
-snitch_cluster/.bender/git/checkouts/common_cells-*/src/credit_counter.sv:17
-Error (10170): near text: "type"; expecting an identifier
+snitch_cluster/.bender/git/checkouts/common_cells-*/src/lfsr.sv:254
+Error (10170): near text: "if"; expecting "endmodule"
 ```
 
 The fix now exists as direct edits in the local Snitch fork. The next class is
-more common_cells syntax porting: parameter type removal and explicit generate
-syntax in additional utility modules.
+the same common_cells syntax porting repeated across more utility modules:
+`lfsr`, `lossy_valid_to_stream`, `onehot_to_bin`, `passthrough_stream_fifo`,
+`popcount`, `ring_buffer`, and `rr_arb_tree`.
