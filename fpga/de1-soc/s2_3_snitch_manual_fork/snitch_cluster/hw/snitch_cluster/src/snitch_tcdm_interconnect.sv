@@ -171,7 +171,7 @@ module snitch_tcdm_interconnect #(
     // A this is a fixed latency interconnect a simple shift register is
     // sufficient to track the arbitration decisions.
     shift_reg #(
-      .dtype ( rsp_t ),
+      .DATA_WIDTH ( $bits(rsp_t) ),
       .Depth ( MemoryResponseLatency )
     ) i_shift_reg (
       .clk_i,

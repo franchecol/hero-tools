@@ -157,7 +157,7 @@ module axi_dma_backend #(
 
   // buffer the input requests in a fifo
   fifo_v3 #(
-      .dtype(burst_req_t),
+      .DATA_WIDTH($bits(burst_req_t)),
       .DEPTH(TransFifoDepth)
   ) i_burst_request_fifo (
       .clk_i     (clk_i),

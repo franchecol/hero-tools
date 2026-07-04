@@ -748,7 +748,7 @@ module snitch_cluster
       );
 
       // Insert a pipeline register at the output of each SRAM.
-      shift_reg #( .dtype (data_t), .Depth (RegisterTCDMCuts)) i_sram_pipe (
+      shift_reg #( .DATA_WIDTH (NarrowDataWidth), .Depth (RegisterTCDMCuts)) i_sram_pipe (
         .clk_i, .rst_ni,
         .d_i (amo_rdata_local), .d_o (amo_rsp[j].p.data)
       );

@@ -431,3 +431,86 @@ The parser is still in Common Cells, but it has advanced to the shift-register
 and spill-register utility group. This confirms the previous batch was not just
 moving line numbers inside the same files; it cleared a full module group.
 ```
+
+## Attempt 6: Shift/Spill Register Common Cells Batch
+
+Status:
+
+```text
+FAIL
+quartus_map exit code: 3
+no .sof produced
+```
+
+Command:
+
+```bash
+cd /home/ftv/builds/hero-tools/fpga/de1-soc/s2_3_snitch_manual_fork
+./scripts/quartus_preflight.sh
+```
+
+Manual source edits:
+
+```text
+snitch_cluster/.bender/git/checkouts/common_cells-*/src/shift_reg.sv
+snitch_cluster/.bender/git/checkouts/common_cells-*/src/shift_reg_gated.sv
+snitch_cluster/.bender/git/checkouts/common_cells-*/src/spill_register_flushable.sv
+snitch_cluster/hw/snitch_cluster/src/snitch_cluster.sv
+snitch_cluster/hw/snitch_cluster/src/snitch_tcdm_interconnect.sv
+snitch_cluster/hw/snitch_cluster/src/snitch_sequencer.sv
+snitch_cluster/hw/future/src/dma/axi_dma_data_mover.sv
+snitch_cluster/hw/future/src/dma/axi_dma_backend.sv
+```
+
+What changed:
+
+```text
+shift_reg.sv:
+  replaced dtype type parameter with DATA_WIDTH vector ports
+  changed the internal shift_reg_gated override from .dtype(...) to .DATA_WIDTH(...)
+
+shift_reg_gated.sv:
+  replaced dtype type parameter with DATA_WIDTH vector ports/storage
+  wrapped module-level generate-if logic with explicit generate/endgenerate
+  replaced inline for-loop genvar with a separately declared genvar
+
+spill_register_flushable.sv:
+  replaced T type parameter with DATA_WIDTH vector ports/storage
+  wrapped module-level generate-if logic with explicit generate/endgenerate
+
+call sites:
+  changed active shift_reg and fifo_v3 type overrides to explicit DATA_WIDTH overrides
+```
+
+Important progress:
+
+```text
+The previous first errors in shift_reg.sv, shift_reg_gated.sv, and
+spill_register_flushable.sv are gone.
+```
+
+New first Quartus error:
+
+```text
+common_cells/src/stream_fork.sv:83
+Error (10170): Verilog HDL syntax error near text: "for"; expecting "endmodule"
+```
+
+Other errors in the same run:
+
+```text
+common_cells/src/stream_intf.sv: parameter type in simulation/DV helper code
+common_cells/src/stream_join_dynamic.sv: implicit module-level generate-for
+common_cells/src/stream_mux.sv: parameter type
+common_cells/src/stream_throttle.sv: parameter type
+common_cells/src/sub_per_hash.sv: implicit module-level generate-for
+common_cells/src/read.sv: parameter type
+```
+
+Interpretation:
+
+```text
+Quartus is now past the shift/spill-register utilities and has advanced into
+the stream-helper portion of Common Cells. This is another distinct source
+group, not the same failing files.
+```

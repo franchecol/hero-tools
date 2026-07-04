@@ -14,52 +14,56 @@
 
 module shift_reg_gated #(
   parameter int unsigned Depth = 32'd8,
-  parameter type         dtype = logic
+  parameter int unsigned DATA_WIDTH = 1
 ) (
   input  logic clk_i,    // Clock
   input  logic rst_ni,   // Asynchronous reset active low
 
   input  logic valid_i,
-  input  dtype data_i,
+  input  logic [DATA_WIDTH-1:0] data_i,
   output logic valid_o,
-  output dtype data_o
+  output logic [DATA_WIDTH-1:0] data_o
 );
 
+  genvar gen_i;
+
   // Register of depth 0 is a wire.
-  if (Depth == 0) begin : gen_pass_through
+  generate
+    if (Depth == 0) begin : gen_pass_through
 
-    assign valid_o = valid_i;
-    assign data_o  = data_i;
+      assign valid_o = valid_i;
+      assign data_o  = data_i;
 
-  // It's a shift register if depth is greater than 0
-  end else begin : gen_shift_reg
+    // It's a shift register if depth is greater than 0
+    end else begin : gen_shift_reg
 
-    logic [Depth-1 : 0] valid_d, valid_q;
-    dtype [Depth-1 : 0] data_d, data_q;
+      logic [Depth-1 : 0] valid_d, valid_q;
+      logic [Depth-1 : 0][DATA_WIDTH-1:0] data_d, data_q;
 
-    for (genvar i = 0; i < Depth; i++) begin : gen_regs
+      for (gen_i = 0; gen_i < Depth; gen_i++) begin : gen_regs
 
-      // Prepare D port for each shift register.
-      if (i == 0) begin : gen_shift_in
-        assign valid_d[i] = valid_i;
-        assign data_d[i]  = data_i;
-      end else begin : gen_shift
-        assign valid_d[i] = valid_q[i-1];
-        assign data_d[i]  = data_q[i-1];
+        // Prepare D port for each shift register.
+        if (gen_i == 0) begin : gen_shift_in
+          assign valid_d[gen_i] = valid_i;
+          assign data_d[gen_i]  = data_i;
+        end else begin : gen_shift
+          assign valid_d[gen_i] = valid_q[gen_i-1];
+          assign data_d[gen_i]  = data_q[gen_i-1];
+        end
+
+        // shift valid flag without clock gate
+        `FF(valid_q[gen_i], valid_d[gen_i], '0, clk_i, rst_ni)
+
+        // Gate each shift register with a valid flag to enable the synthsis tools to insert ICG for
+        // better power comsumption.
+        `FFL(data_q[gen_i], data_d[gen_i], valid_d[gen_i], '0, clk_i, rst_ni)
       end
 
-      // shift valid flag without clock gate
-      `FF(valid_q[i], valid_d[i], '0, clk_i, rst_ni)
+      // Output the shifted result.
+      assign valid_o = valid_q[Depth-1];
+      assign data_o  = data_q[Depth-1];
 
-      // Gate each shift register with a valid flag to enable the synthsis tools to insert ICG for
-      // better power comsumption.
-      `FFL(data_q[i], data_d[i], valid_d[i], dtype'('0), clk_i, rst_ni)
     end
-
-    // Output the shifted result.
-    assign valid_o = valid_q[Depth-1];
-    assign data_o  = data_q[Depth-1];
-
-  end
+  endgenerate
 
 endmodule

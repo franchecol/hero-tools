@@ -79,7 +79,7 @@ cd /home/ftv/builds/hero-tools/fpga/de1-soc/s2_3_snitch_manual_fork
 
 ## Current Result
 
-Attempt 5 was run locally with Quartus Prime Lite 25.1std.0.
+Attempt 6 was run locally with Quartus Prime Lite 25.1std.0.
 
 Result:
 
@@ -101,16 +101,18 @@ isochronous_spill_register.sv are gone.
 The second common_cells batch errors in lfsr.sv, lossy_valid_to_stream.sv,
 onehot_to_bin.sv, passthrough_stream_fifo.sv, popcount.sv, ring_buffer.sv, and
 rr_arb_tree.sv are gone.
+The shift-register/spill-register errors in shift_reg.sv, shift_reg_gated.sv,
+and spill_register_flushable.sv are gone.
 ```
 
 New first blocker:
 
 ```text
-snitch_cluster/.bender/git/checkouts/common_cells-*/src/shift_reg.sv:17
-Error (10170): near text: "type"; expecting an identifier
+snitch_cluster/.bender/git/checkouts/common_cells-*/src/stream_fork.sv:83
+Error (10170): near text: "for"; expecting "endmodule"
 ```
 
 The fix now exists as direct edits in the local Snitch fork. The next class is
-the same common_cells syntax porting repeated across the shift-register and
-spill-register utility modules: `shift_reg`, `shift_reg_gated`, and
-`spill_register_flushable`.
+common_cells stream-helper syntax porting: `stream_fork`, `stream_intf`,
+`stream_join_dynamic`, `stream_mux`, `stream_throttle`, plus nearby utility
+modules `sub_per_hash` and `read`.

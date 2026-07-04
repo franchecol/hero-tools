@@ -216,7 +216,7 @@ module snitch_sequencer import snitch_pkg::*; #(
   assign seq_cfg_buffer_push = core_rpt_valid & core_rpt_ready;
 
   fifo_v3 #(
-      .dtype(seq_cfg_t)
+      .DATA_WIDTH($bits(seq_cfg_t))
   ) seq_cfg_buffer (
       .clk_i,
       .rst_ni    (~rst_i),
