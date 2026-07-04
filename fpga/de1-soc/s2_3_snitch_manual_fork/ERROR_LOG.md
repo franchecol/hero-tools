@@ -1629,3 +1629,70 @@ The AXI parser frontier moved through axi_demux_simple.sv. This is useful for
 mapping the remaining Quartus-incompatible AXI helpers, but the demux shim is
 only an S2.3 bring-up simplification.
 ```
+
+## Attempt 22: AXI ID Prepend S2.3 Shim
+
+Status:
+
+```text
+FAIL
+quartus_map exit code: 3
+no .sof produced
+```
+
+Command:
+
+```bash
+cd /home/ftv/builds/hero-tools/fpga/de1-soc/s2_3_snitch_manual_fork
+./scripts/quartus_preflight.sh
+```
+
+Manual source edits:
+
+```text
+snitch_cluster/.bender/git/checkouts/axi-*/src/axi_id_prepend.sv
+```
+
+What changed:
+
+```text
+axi_id_prepend.sv:
+  added an S2_3_QUARTUS-only channel-vector pass-through implementation
+  skipped the original type-parameterized ID prepend/strip implementation
+```
+
+Important limitation:
+
+```text
+This is not a full semantic port of the original ID converter. It does not
+prepend or strip AXI ID bits; it only passes channel vectors and valid/ready
+signals through.
+```
+
+Important progress:
+
+```text
+The previous axi_id_prepend.sv type-parameter parser errors are bypassed.
+Quartus now reaches axi_mux.sv.
+```
+
+New first Quartus error:
+
+```text
+axi/src/axi_mux.sv:31
+Error (10170): near text: "type"; expecting an identifier
+```
+
+Other errors in the same run:
+
+```text
+axi_mux.sv: parameter type, implicit generate syntax, and interface wrapper
+axi_to_detailed_mem.sv: parameter type and struct literal syntax
+```
+
+Interpretation:
+
+```text
+The AXI parser frontier moved through axi_id_prepend.sv. The next blocker is
+the active AXI mux helper.
+```

@@ -15,6 +15,77 @@
 // AXI ID Prepend: This module prepends/strips the MSB from the AXI IDs.
 // Constraints enforced through assertions: ID width of slave and master port
 
+`ifdef S2_3_QUARTUS
+// S2.3 parser/bring-up shim: pass channel vectors through without relying on
+// type parameters. This does not implement ID prepend/strip semantics.
+module axi_id_prepend #(
+  parameter int unsigned NoBus             = 1,
+  parameter int unsigned AxiIdWidthSlvPort = 4,
+  parameter int unsigned AxiIdWidthMstPort = 6,
+  parameter int unsigned SlvAwChanWidth    = 1,
+  parameter int unsigned SlvWChanWidth     = 1,
+  parameter int unsigned SlvBChanWidth     = 1,
+  parameter int unsigned SlvArChanWidth    = 1,
+  parameter int unsigned SlvRChanWidth     = 1,
+  parameter int unsigned MstAwChanWidth    = 1,
+  parameter int unsigned MstWChanWidth     = 1,
+  parameter int unsigned MstBChanWidth     = 1,
+  parameter int unsigned MstArChanWidth    = 1,
+  parameter int unsigned MstRChanWidth     = 1,
+  parameter int unsigned PreIdWidth        = AxiIdWidthMstPort - AxiIdWidthSlvPort
+) (
+  input  logic [PreIdWidth-1:0]                  pre_id_i,
+  input  logic [NoBus-1:0][SlvAwChanWidth-1:0]   slv_aw_chans_i,
+  input  logic [NoBus-1:0]                       slv_aw_valids_i,
+  output logic [NoBus-1:0]                       slv_aw_readies_o,
+  input  logic [NoBus-1:0][SlvWChanWidth-1:0]    slv_w_chans_i,
+  input  logic [NoBus-1:0]                       slv_w_valids_i,
+  output logic [NoBus-1:0]                       slv_w_readies_o,
+  output logic [NoBus-1:0][SlvBChanWidth-1:0]    slv_b_chans_o,
+  output logic [NoBus-1:0]                       slv_b_valids_o,
+  input  logic [NoBus-1:0]                       slv_b_readies_i,
+  input  logic [NoBus-1:0][SlvArChanWidth-1:0]   slv_ar_chans_i,
+  input  logic [NoBus-1:0]                       slv_ar_valids_i,
+  output logic [NoBus-1:0]                       slv_ar_readies_o,
+  output logic [NoBus-1:0][SlvRChanWidth-1:0]    slv_r_chans_o,
+  output logic [NoBus-1:0]                       slv_r_valids_o,
+  input  logic [NoBus-1:0]                       slv_r_readies_i,
+  output logic [NoBus-1:0][MstAwChanWidth-1:0]   mst_aw_chans_o,
+  output logic [NoBus-1:0]                       mst_aw_valids_o,
+  input  logic [NoBus-1:0]                       mst_aw_readies_i,
+  output logic [NoBus-1:0][MstWChanWidth-1:0]    mst_w_chans_o,
+  output logic [NoBus-1:0]                       mst_w_valids_o,
+  input  logic [NoBus-1:0]                       mst_w_readies_i,
+  input  logic [NoBus-1:0][MstBChanWidth-1:0]    mst_b_chans_i,
+  input  logic [NoBus-1:0]                       mst_b_valids_i,
+  output logic [NoBus-1:0]                       mst_b_readies_o,
+  output logic [NoBus-1:0][MstArChanWidth-1:0]   mst_ar_chans_o,
+  output logic [NoBus-1:0]                       mst_ar_valids_o,
+  input  logic [NoBus-1:0]                       mst_ar_readies_i,
+  input  logic [NoBus-1:0][MstRChanWidth-1:0]    mst_r_chans_i,
+  input  logic [NoBus-1:0]                       mst_r_valids_i,
+  output logic [NoBus-1:0]                       mst_r_readies_o
+);
+
+  assign mst_aw_chans_o   = slv_aw_chans_i;
+  assign mst_w_chans_o    = slv_w_chans_i;
+  assign mst_ar_chans_o   = slv_ar_chans_i;
+  assign slv_b_chans_o    = mst_b_chans_i;
+  assign slv_r_chans_o    = mst_r_chans_i;
+
+  assign mst_aw_valids_o  = slv_aw_valids_i;
+  assign slv_aw_readies_o = mst_aw_readies_i;
+  assign mst_w_valids_o   = slv_w_valids_i;
+  assign slv_w_readies_o  = mst_w_readies_i;
+  assign slv_b_valids_o   = mst_b_valids_i;
+  assign mst_b_readies_o  = slv_b_readies_i;
+  assign mst_ar_valids_o  = slv_ar_valids_i;
+  assign slv_ar_readies_o = mst_ar_readies_i;
+  assign slv_r_valids_o   = mst_r_valids_i;
+  assign mst_r_readies_o  = slv_r_readies_i;
+
+endmodule
+`else
 module axi_id_prepend #(
   parameter int unsigned NoBus             = 1,     // Can take multiple axi busses
   parameter int unsigned AxiIdWidthSlvPort = 4,     // AXI ID Width of the Slave Ports
@@ -159,3 +230,4 @@ module axi_id_prepend #(
 `endif
 // pragma translate_on
 endmodule
+`endif
