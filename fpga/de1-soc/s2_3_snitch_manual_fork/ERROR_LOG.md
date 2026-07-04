@@ -3176,3 +3176,86 @@ Quartus moved beyond the reqrsp bridge implementation files. The next class is
 memory/TCDM wrappers and muxes that use parameterized interfaces and
 type-parameterized module boundaries.
 ```
+
+## Attempt 43: Black-Box Memory and TCDM Boundary Files
+
+Status:
+
+```text
+FAIL
+quartus_map exit code: 3
+no .sof produced
+```
+
+Command:
+
+```bash
+cd /home/ftv/builds/hero-tools/fpga/de1-soc/s2_3_snitch_manual_fork
+./scripts/quartus_preflight.sh
+```
+
+Manual source-list edits:
+
+```text
+source_list/snitch_cluster.flist-plus.in
+```
+
+What changed:
+
+```text
+removed these memory/TCDM implementation or interface files from the S2.3
+Quartus preflight list:
+  hw/mem_interface/src/mem_wide_narrow_mux.sv
+  hw/mem_interface/src/mem_interface.sv
+  hw/tcdm_interface/src/tcdm_interface.sv
+  hw/tcdm_interface/src/tcdm_mux.sv
+```
+
+Why this is acceptable for this preflight:
+
+```text
+These files expose another Quartus parser class: parameterized interface
+wrappers and type-parameterized mux boundaries. Removing them lets the
+experiment identify the next blocker after the memory/TCDM boundary.
+```
+
+Important limitation:
+
+```text
+This is not a memory/TCDM implementation. It black-boxes active components and
+therefore cannot be treated as a working Snitch cluster.
+```
+
+Important progress:
+
+```text
+The previous mem_wide_narrow_mux.sv first blocker is gone.
+The previous mem_interface.sv and tcdm_interface.sv parser errors are gone.
+The source count dropped from 153 to 149 files.
+Quartus now reaches the actual Snitch core RTL.
+```
+
+New first Quartus error:
+
+```text
+hw/snitch/src/snitch_regfile_ff.sv:55
+Error (10170): near text: "for"; expecting "endmodule"
+```
+
+Other errors in the same run:
+
+```text
+snitch_lsu.sv: parameter type errors
+snitch_l0_tlb.sv: parameter type and generate parser errors
+snitch.sv: module import-list parser error
+snitch_ptw.sv: parameter type errors
+axi_dma_error_handler.sv: parameter type errors
+```
+
+Interpretation:
+
+```text
+The parser frontier is now at the real Snitch core and tightly coupled core
+support blocks. Further progress either requires direct core compatibility
+patches or an explicit decision to stop preserving core semantics.
+```

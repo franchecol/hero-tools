@@ -188,14 +188,16 @@ removed from the preflight list. The source count is now 160 files.
 The request/response bridge implementation files and the AXI-to-TCDM wrapper
 were removed from the S2.3 preflight source list as black-box/boundary
 candidates. The source count is now 153 files.
+The memory/TCDM interface and mux implementation files were also removed from
+the S2.3 preflight source list as black-box/boundary candidates. The source
+count is now 149 files.
 ```
 
 New first blocker:
 
 ```text
-snitch_cluster/hw/mem_interface/src/mem_wide_narrow_mux.sv:33
-Error (10170): near text: "type"; expecting an identifier
+snitch_cluster/hw/snitch/src/snitch_regfile_ff.sv:55
+Error (10170): near text: "for"; expecting "endmodule"
 ```
 
-The next class is the memory/TCDM interface and mux boundary, which also uses
-`parameter type` and interface wrappers.
+The next class is the actual Snitch core RTL.
