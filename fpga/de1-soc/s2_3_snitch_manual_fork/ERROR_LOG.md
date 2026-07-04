@@ -844,3 +844,78 @@ Interpretation:
 The parser has moved to queue/memory-stream Common Cells utilities. The stream
 wrapper layer is now syntactically acceptable to Quartus.
 ```
+
+## Attempt 11: Stream-To-Memory Common Cells Batch
+
+Status:
+
+```text
+FAIL
+quartus_map exit code: 3
+no .sof produced
+```
+
+Command:
+
+```bash
+cd /home/ftv/builds/hero-tools/fpga/de1-soc/s2_3_snitch_manual_fork
+./scripts/quartus_preflight.sh
+```
+
+Manual source edits:
+
+```text
+source_list/snitch_cluster.flist-plus.in
+snitch_cluster/.bender/git/checkouts/common_cells-*/src/stream_to_mem.sv
+snitch_cluster/hw/tcdm_interface/src/reqrsp_to_tcdm.sv
+snitch_cluster/hw/snitch_cluster/src/snitch_cc.sv
+```
+
+What changed:
+
+```text
+source list:
+  removed unused id_queue.sv from the preflight list
+
+stream_to_mem.sv:
+  replaced mem_req_t and mem_resp_t type parameters with MemReqWidth and MemRespWidth
+  changed request/response payload ports to explicit packed vectors
+  wrapped module-level generate-if logic with explicit generate/endgenerate
+  changed the internal stream_fifo override to .DATA_WIDTH(...)
+
+reqrsp_to_tcdm.sv and snitch_cc.sv:
+  changed active stream_to_mem overrides from type parameters to width parameters
+```
+
+Important progress:
+
+```text
+The previous first id_queue.sv parser errors are gone by pruning an unused helper.
+The active stream_to_mem.sv type/generate errors are gone.
+The broad preflight list was reduced from files=295 to files=294.
+```
+
+New first Quartus error:
+
+```text
+common_cells/src/stream_arbiter_flushable.sv:17
+Error (10170): Verilog HDL syntax error near text: "type";
+expecting an identifier ("type" is a reserved keyword)
+```
+
+Other errors in the same run:
+
+```text
+common_cells/src/stream_arbiter_flushable.sv: parameter type and implicit generate-if
+common_cells/src/stream_fifo_optimal_wrap.sv: parameter type and implicit generate-if
+common_cells/src/stream_register.sv: parameter type
+common_cells/src/stream_xbar.sv: parameter type
+```
+
+Interpretation:
+
+```text
+The parser has moved into stream arbitration and crossbar helper modules.
+These are on the active TCDM interconnect path, so this likely requires real
+porting rather than broad pruning.
+```

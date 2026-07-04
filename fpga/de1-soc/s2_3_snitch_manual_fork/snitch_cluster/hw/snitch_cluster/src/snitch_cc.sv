@@ -700,9 +700,9 @@ module snitch_cc #(
     assign ssr_resp.data = ssr_cfg_rsp.data;
 
     stream_to_mem #(
-      .mem_req_t (ssr_cfg_req_t),
-      .mem_resp_t (ssr_cfg_rsp_t),
-      .BufDepth (1)
+      .MemReqWidth  ($bits(ssr_cfg_req_t)),
+      .MemRespWidth ($bits(ssr_cfg_rsp_t)),
+      .BufDepth     (1)
     ) i_stream_to_mem (
       .clk_i,
       .rst_ni,

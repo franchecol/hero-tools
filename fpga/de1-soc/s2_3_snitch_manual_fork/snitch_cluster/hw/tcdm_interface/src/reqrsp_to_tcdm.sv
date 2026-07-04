@@ -33,9 +33,9 @@ module reqrsp_to_tcdm #(
   rr_rsp_chan_t rsp;
 
   stream_to_mem #(
-    .mem_req_t (rr_req_chan_t),
-    .mem_resp_t (rr_rsp_chan_t),
-    .BufDepth (BufDepth)
+    .MemReqWidth  ($bits(rr_req_chan_t)),
+    .MemRespWidth ($bits(rr_rsp_chan_t)),
+    .BufDepth     (BufDepth)
   ) i_stream_to_mem (
     .clk_i,
     .rst_ni,

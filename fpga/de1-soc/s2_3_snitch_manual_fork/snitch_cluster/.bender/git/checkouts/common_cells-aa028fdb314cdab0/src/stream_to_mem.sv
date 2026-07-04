@@ -18,9 +18,9 @@
 /// control for output data to be used in streams.
 module stream_to_mem #(
   /// Memory request payload type, usually write enable, write data, etc.
-  parameter type         mem_req_t  = logic,
+  parameter int unsigned MemReqWidth  = 1,
   /// Memory response payload type, usually read data
-  parameter type         mem_resp_t = logic,
+  parameter int unsigned MemRespWidth = 1,
   /// Number of buffered responses (fall-through, thus no additional latency).  This defines the
   /// maximum number of outstanding requests on the memory interface. If the attached memory
   /// responds in the same cycle a request is applied, this MUST be 0. If the attached memory
@@ -33,25 +33,25 @@ module stream_to_mem #(
   /// Asynchronous reset, active low
   input  logic      rst_ni,
   /// Request stream interface, payload
-  input  mem_req_t  req_i,
+  input  logic [MemReqWidth-1:0] req_i,
   /// Request stream interface, payload is valid for transfer
   input  logic      req_valid_i,
   /// Request stream interface, payload can be accepted
   output logic      req_ready_o,
   /// Response stream interface, payload
-  output mem_resp_t resp_o,
+  output logic [MemRespWidth-1:0] resp_o,
   /// Response stream interface, payload is valid for transfer
   output logic      resp_valid_o,
   /// Response stream interface, payload can be accepted
   input  logic      resp_ready_i,
   /// Memory request interface, payload
-  output mem_req_t  mem_req_o,
+  output logic [MemReqWidth-1:0] mem_req_o,
   /// Memory request interface, payload is valid for transfer
   output logic      mem_req_valid_o,
   /// Memory request interface, payload can be accepted
   input  logic      mem_req_ready_i,
   /// Memory response interface, payload
-  input  mem_resp_t mem_resp_i,
+  input  logic [MemRespWidth-1:0] mem_resp_i,
   /// Memory response interface, payload is valid
   input  logic      mem_resp_valid_i
 );
@@ -62,6 +62,7 @@ module stream_to_mem #(
   logic buf_ready,
         req_ready;
 
+  generate
   if (BufDepth > 0) begin : gen_buf
     // Count number of outstanding requests.
     always_comb begin
@@ -86,7 +87,7 @@ module stream_to_mem #(
     stream_fifo #(
       .FALL_THROUGH ( 1'b1       ),
       .DEPTH        ( BufDepth   ),
-      .T            ( mem_resp_t )
+      .DATA_WIDTH   ( MemRespWidth )
     ) i_resp_buf (
       .clk_i,
       .rst_ni,
@@ -113,18 +114,21 @@ module stream_to_mem #(
     // Forward responses.
     assign resp_o = mem_resp_i;
   end
+  endgenerate
 
   // Forward requests.
   assign mem_req_o = req_i;
 
 // Assertions
 `ifndef COMMON_CELLS_ASSERTS_OFF
-  if (BufDepth > 0) begin : gen_buf_asserts
-    `ASSERT(memory_response_lost, mem_resp_valid_i |-> buf_ready)
-    `ASSERT(counter_underflowed, cnt_q == '0 |=> cnt_q != '1)
-    `ASSERT(counter_overflowed, cnt_q == BufDepth |=> cnt_q != BufDepth + 1)
-  end else begin : gen_no_buf_asserts
-    `ASSUME(no_memory_response, mem_req_valid_o & mem_req_ready_i |-> mem_resp_valid_i)
-  end
+  generate
+    if (BufDepth > 0) begin : gen_buf_asserts
+      `ASSERT(memory_response_lost, mem_resp_valid_i |-> buf_ready)
+      `ASSERT(counter_underflowed, cnt_q == '0 |=> cnt_q != '1)
+      `ASSERT(counter_overflowed, cnt_q == BufDepth |=> cnt_q != BufDepth + 1)
+    end else begin : gen_no_buf_asserts
+      `ASSUME(no_memory_response, mem_req_valid_o & mem_req_ready_i |-> mem_resp_valid_i)
+    end
+  endgenerate
 `endif
 endmodule
