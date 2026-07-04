@@ -85,10 +85,7 @@
 @SNITCH_ROOT@/.bender/git/checkouts/common_cells-aa028fdb314cdab0/src/stream_to_mem.sv
 @SNITCH_ROOT@/.bender/git/checkouts/common_cells-aa028fdb314cdab0/src/stream_arbiter_flushable.sv
 @SNITCH_ROOT@/.bender/git/checkouts/common_cells-aa028fdb314cdab0/src/stream_xbar.sv
-@SNITCH_ROOT@/.bender/git/checkouts/common_cells-aa028fdb314cdab0/src/mem_to_banks_detailed.sv
 @SNITCH_ROOT@/.bender/git/checkouts/common_cells-aa028fdb314cdab0/src/stream_arbiter.sv
-@SNITCH_ROOT@/.bender/git/checkouts/common_cells-aa028fdb314cdab0/src/stream_omega_net.sv
-@SNITCH_ROOT@/.bender/git/checkouts/common_cells-aa028fdb314cdab0/src/mem_to_banks.sv
 @SNITCH_ROOT@/.bender/git/checkouts/common_cells-aa028fdb314cdab0/src/deprecated/clock_divider_counter.sv
 @SNITCH_ROOT@/.bender/git/checkouts/common_cells-aa028fdb314cdab0/src/deprecated/clk_div.sv
 @SNITCH_ROOT@/.bender/git/checkouts/common_cells-aa028fdb314cdab0/src/deprecated/find_first_one.sv

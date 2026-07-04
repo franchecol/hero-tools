@@ -1003,3 +1003,80 @@ Interpretation:
 The parser has moved beyond stream xbar/arbiter and into remaining active
 bank-routing and omega-network helpers.
 ```
+
+## Attempt 13: Bank-Routing/Omega Pruning Batch
+
+Status:
+
+```text
+FAIL
+quartus_map exit code: 3
+no .sof produced
+```
+
+Command:
+
+```bash
+cd /home/ftv/builds/hero-tools/fpga/de1-soc/s2_3_snitch_manual_fork
+./scripts/quartus_preflight.sh
+```
+
+Manual source edits:
+
+```text
+source_list/snitch_cluster.flist-plus.in
+```
+
+What changed:
+
+```text
+source list:
+  removed mem_to_banks_detailed.sv and mem_to_banks.sv
+  removed stream_omega_net.sv
+```
+
+Why this is safe for this experiment:
+
+```text
+The generated Snitch wrapper sets:
+  .Topology (snitch_pkg::LogarithmicInterconnect)
+
+That selects the stream_xbar branch in snitch_tcdm_interconnect.sv. The
+stream_omega_net branch is inactive for this one-core DE1 preflight.
+
+mem_to_banks_detailed.sv and mem_to_banks.sv have no active users in the
+current hw/target hierarchy.
+```
+
+Important progress:
+
+```text
+The previous first mem_to_banks_detailed.sv parser errors are gone by pruning
+inactive helpers.
+The stream_omega_net.sv type-parameter parser errors are gone by pruning the
+inactive topology implementation.
+The broad preflight list was reduced from files=292 to files=289.
+```
+
+New first Quartus error:
+
+```text
+common_cells/src/deprecated/clk_div.sv:44
+Error (10170): Verilog HDL syntax error near text: "if"; expecting "endmodule"
+```
+
+Other errors in the same run:
+
+```text
+common_cells/src/deprecated/find_first_one.sv: implicit generate-for
+common_cells/src/deprecated/prioarbiter.sv: implicit generate-for/if
+common_cells/src/deprecated/fifo_v2.sv: parameter type and implicit generate-if
+```
+
+Interpretation:
+
+```text
+Quartus is now reaching deprecated Common Cells helpers. These are likely
+included by the broad original file list rather than required by the reduced
+DE1 Snitch-cluster top.
+```
