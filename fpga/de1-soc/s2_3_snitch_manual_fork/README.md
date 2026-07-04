@@ -196,13 +196,15 @@ separately declared genvar for the read-port assignment loop.
 snitch_lsu.sv now has an S2_3_QUARTUS width-parameterized port wrapper that
 keeps the LSU logic intact while avoiding type parameters at the module
 boundary.
+snitch_l0_tlb.sv now has an S2_3_QUARTUS width-parameterized VM boundary and
+explicit generate/endgenerate blocks while preserving the TLB logic.
 ```
 
 New first blocker:
 
 ```text
-snitch_cluster/hw/snitch/src/snitch_l0_tlb.sv:11
-Error (10170): near text: "type"; expecting an identifier
+snitch_cluster/hw/snitch/src/snitch.sv:13
+Error (10170): near text: "import"; expecting ";"
 ```
 
 The next class is the actual Snitch core RTL.

@@ -368,8 +368,12 @@ module snitch import snitch_pkg::*; import riscv_instr::*; #(
 
   if (VMSupport) begin : gen_itlb
     snitch_l0_tlb #(
+`ifdef S2_3_QUARTUS
+      .AddrWidth (AddrWidth),
+`else
       .pa_t (pa_t),
       .l0_pte_t (l0_pte_t),
+`endif
       .NrEntries ( NumITLBEntries )
     ) i_snitch_l0_tlb_inst (
       .clk_i,
@@ -2744,8 +2748,12 @@ module snitch import snitch_pkg::*; import riscv_instr::*; #(
 
   if (VMSupport) begin : gen_dtlb
     snitch_l0_tlb #(
+`ifdef S2_3_QUARTUS
+      .AddrWidth (AddrWidth),
+`else
       .pa_t (pa_t),
       .l0_pte_t (l0_pte_t),
+`endif
       .NrEntries ( NumDTLBEntries )
     ) i_snitch_l0_tlb_data (
       .clk_i,

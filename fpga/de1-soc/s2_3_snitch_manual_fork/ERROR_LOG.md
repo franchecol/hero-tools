@@ -3416,3 +3416,89 @@ The LSU is the first active Snitch core block ported without black-boxing. The
 next active core-support block is the L0 TLB, which has the same type-parameter
 pattern plus generate syntax that Quartus rejects.
 ```
+
+## Attempt 46: Port Snitch L0 TLB Boundary for Quartus
+
+Status:
+
+```text
+FAIL
+quartus_map exit code: 3
+no .sof produced
+```
+
+Command:
+
+```bash
+cd /home/ftv/builds/hero-tools/fpga/de1-soc/s2_3_snitch_manual_fork
+./scripts/quartus_preflight.sh
+```
+
+Manual edits:
+
+```text
+snitch_cluster/hw/snitch/src/snitch_l0_tlb.sv
+snitch_cluster/hw/snitch/src/snitch.sv
+```
+
+What changed:
+
+```text
+snitch_l0_tlb.sv:
+  added an S2_3_QUARTUS module header using AddrWidth-derived vector ports for
+  pa_o and pte_i instead of parameter type ports
+  recreated pa_t and l0_pte_t internally with SNITCH_VM_TYPEDEF
+  routed the TLB logic through internal pa/pte_refill aliases
+  wrapped top-level generate-for and generate-if constructs in explicit
+  generate/endgenerate blocks
+  kept the original typed-parameter TLB header outside S2_3_QUARTUS
+
+snitch.sv:
+  passes AddrWidth to snitch_l0_tlb under S2_3_QUARTUS
+  keeps the original pa_t/l0_pte_t type overrides outside S2_3_QUARTUS
+```
+
+Why this is acceptable:
+
+```text
+This preserves the L0 TLB lookup/refill behavior. It only changes the
+Quartus-facing type-parameter boundary and generate syntax.
+```
+
+Important limitation:
+
+```text
+The S2_3_QUARTUS TLB wrapper assumes the connected VM packed types match the
+standard SNITCH_VM_TYPEDEF layout for the selected AddrWidth.
+```
+
+Important progress:
+
+```text
+The previous snitch_l0_tlb.sv parameter-type parser error is gone.
+The previous snitch_l0_tlb.sv generate parser errors are gone.
+Quartus now reaches the snitch.sv module import list as the first blocker.
+```
+
+New first Quartus error:
+
+```text
+hw/snitch/src/snitch.sv:13
+Error (10170): near text: "import"; expecting ";"
+```
+
+Other errors in the same run:
+
+```text
+snitch_ptw.sv: parameter type errors
+snitch_dma helper files: parameter type errors
+snitch_icache_l0.sv: generate parser errors
+```
+
+Interpretation:
+
+```text
+The second active Snitch core-support block is ported without black-boxing. The
+next front-door issue is Quartus rejecting import declarations in the snitch
+module header.
+```

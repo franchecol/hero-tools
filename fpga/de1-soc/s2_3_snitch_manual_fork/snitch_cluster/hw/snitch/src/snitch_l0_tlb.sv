@@ -3,9 +3,60 @@
 // SPDX-License-Identifier: SHL-0.51
 
 `include "common_cells/registers.svh"
+`include "snitch_vm/typedef.svh"
 // Author: Florian Zaruba <zarubaf@iis.ee.ethz.ch>
 
 // MMU w/ L0 TLB
+`ifdef S2_3_QUARTUS
+import snitch_pkg::*;
+module snitch_l0_tlb #(
+  parameter int unsigned NrEntries = 1,
+  parameter int unsigned AddrWidth = 48,
+  parameter int unsigned PaWidth   = AddrWidth - PageShift,
+  parameter int unsigned PteWidth  = PaWidth + 6
+) (
+  input  logic clk_i,
+  input  logic rst_i,
+  /// Invalidate all TLB entries.
+  input  logic flush_i,
+  /// Request side.
+  /// Privilege level of the access.
+  input  priv_lvl_t priv_lvl_i,
+  /// Translation request valid.
+  input  logic valid_i,
+  /// Translation request was accepted.
+  output logic ready_o,
+  /// Address to translate.
+  input  va_t  va_i,
+  /// Translation request is a read.
+  input  logic read_i,
+  /// Translation request is a write.
+  input  logic write_i,
+  /// Translation request is for instr a fetch/execute
+  input  logic execute_i,
+  /// Translation caused a page fault.
+  output logic page_fault_o,
+  /// Translated physical Address
+  output logic [PaWidth-1:0] pa_o,
+
+  /// Refill side (to L1 TLB)
+  output logic valid_o,
+  input  logic ready_i,
+  /// Virtual address to be refilled
+  output va_t  va_o,
+  /// Page table entry from refill
+  input  logic [PteWidth-1:0] pte_i,
+  /// Translation is 4 mega.
+  input  logic is_4mega_i
+  /// For page faults we'll just make sure that the `a` bit is cleared so that
+  /// a subsequent hit in the L0 will cause a page fault.
+);
+
+  `SNITCH_VM_TYPEDEF(AddrWidth)
+
+  pa_t pa;
+  l0_pte_t pte_refill;
+`else
 module snitch_l0_tlb import snitch_pkg::*; #(
   parameter int unsigned NrEntries = 1,
   parameter type         pa_t      = logic,
@@ -48,6 +99,13 @@ module snitch_l0_tlb import snitch_pkg::*; #(
   /// a subsequent hit in the L0 will cause a page fault.
 );
 
+  pa_t pa;
+  l0_pte_t pte_refill;
+`endif
+
+  assign pa_o = pa;
+  assign pte_refill = pte_i;
+
   typedef struct packed {
     /// Virtual address to match.
     va_t va;
@@ -77,12 +135,16 @@ module snitch_l0_tlb import snitch_pkg::*; #(
   `FFAR(refill_q, refill_d, '0, clk_i, rst_i)
 
   // Tag Comparison
-  for (genvar i = 0; i < NrEntries; i++) begin : gen_tag_cmp
-    // Either VPN1 *and* VPN0 matches or this is a 4 MiB access in case only VPN1 needs to match.
-    assign hit[i] = tag_valid_q[i]
-      & (va_i.vpn1 == tag_q[i].va.vpn1 & (tag_q[i].is_4mega | (va_i.vpn0 == tag_q[i].va.vpn0)));
-    assign is_4mega_exp[i] = tag_q[i].is_4mega & hit[i];
-  end
+  generate
+    genvar gen_tag_cmp_i;
+    for (gen_tag_cmp_i = 0; gen_tag_cmp_i < NrEntries; gen_tag_cmp_i++) begin : gen_tag_cmp
+      // Either VPN1 *and* VPN0 matches or this is a 4 MiB access in case only VPN1 needs to match.
+      assign hit[gen_tag_cmp_i] = tag_valid_q[gen_tag_cmp_i]
+        & (va_i.vpn1 == tag_q[gen_tag_cmp_i].va.vpn1
+        & (tag_q[gen_tag_cmp_i].is_4mega | (va_i.vpn0 == tag_q[gen_tag_cmp_i].va.vpn0)));
+      assign is_4mega_exp[gen_tag_cmp_i] = tag_q[gen_tag_cmp_i].is_4mega & hit[gen_tag_cmp_i];
+    end
+  endgenerate
   // is the matching entry a 4 mega entry?
   assign is_4mega = |is_4mega_exp;
 
@@ -117,7 +179,7 @@ module snitch_l0_tlb import snitch_pkg::*; #(
   assign page_fault_o = ~access_allowed;
 
   // mask ppn0 in case of a 4mega page and substitute with virtual address
-  assign pa_o = {pte.pa.ppn1, (pte.pa.ppn0 & {10{~is_4mega}}) | (va_i.vpn0 & {10{is_4mega}})};
+  assign pa = {pte.pa.ppn1, (pte.pa.ppn0 & {10{~is_4mega}}) | (va_i.vpn0 & {10{is_4mega}})};
 
   assign miss_d = valid_i & ~(|hit); // valid request but no hit
 
@@ -138,7 +200,7 @@ module snitch_l0_tlb import snitch_pkg::*; #(
 
     // A new, valid response arrived - update the content.
     if (valid_o && ready_i) begin
-      pte_d[evict_q] = pte_i;
+      pte_d[evict_q] = pte_refill;
       tag_d[evict_q].va = va_i;
       tag_d[evict_q].is_4mega = is_4mega_i;
       tag_valid_d[evict_q] = 1'b1;
@@ -148,16 +210,18 @@ module snitch_l0_tlb import snitch_pkg::*; #(
   end
 
   // Eviction strategy: round-robin
-  if (NrEntries > 1) begin : gen_evict_counter
-    `FFAR(evict_q, evict_d, '0, clk_i, rst_i)
-    always_comb begin
-      evict_d = evict_q;
-      if (valid_o && ready_i) evict_d++;
-      if (evict_d == NrEntries - 1) evict_d = 0; // evict pointer wraps
+  generate
+    if (NrEntries > 1) begin : gen_evict_counter
+      `FFAR(evict_q, evict_d, '0, clk_i, rst_i)
+      always_comb begin
+        evict_d = evict_q;
+        if (valid_o && ready_i) evict_d++;
+        if (evict_d == NrEntries - 1) evict_d = 0; // evict pointer wraps
+      end
+    end else begin : gen_no_evict_counter
+      assign evict_q = 0;
+      assign evict_d = 0;
     end
-  end else begin : gen_no_evict_counter
-    assign evict_q = 0;
-    assign evict_d = 0;
-  end
+  endgenerate
 
 endmodule
