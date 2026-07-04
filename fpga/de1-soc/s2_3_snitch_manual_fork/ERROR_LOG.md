@@ -1080,3 +1080,72 @@ Quartus is now reaching deprecated Common Cells helpers. These are likely
 included by the broad original file list rather than required by the reduced
 DE1 Snitch-cluster top.
 ```
+
+## Attempt 14: Deprecated Common Cells Pruning Batch
+
+Status:
+
+```text
+FAIL
+quartus_map exit code: 3
+no .sof produced
+```
+
+Command:
+
+```bash
+cd /home/ftv/builds/hero-tools/fpga/de1-soc/s2_3_snitch_manual_fork
+./scripts/quartus_preflight.sh
+```
+
+Manual source edits:
+
+```text
+source_list/snitch_cluster.flist-plus.in
+```
+
+What changed:
+
+```text
+source list:
+  removed all common_cells/src/deprecated/*.sv entries from the preflight list
+```
+
+Why this is safe for this experiment:
+
+```text
+Searching the active hw/target hierarchy found no real deprecated Common Cells
+module instantiations. The clk_div matches were local signal names in
+snitch_clkdiv2.sv, not instances of deprecated/clk_div.sv.
+```
+
+Important progress:
+
+```text
+The previous deprecated clk_div.sv, find_first_one.sv, prioarbiter.sv, and
+fifo_v2.sv parser errors are gone by pruning inactive legacy helpers.
+The broad preflight list was reduced from files=289 to files=277.
+```
+
+New first Quartus error:
+
+```text
+apb/src/apb_err_slv.sv:26
+Error (10170): near text: "type"; expecting an identifier
+```
+
+Other errors in the same run:
+
+```text
+apb_regs.sv: parameter type and implicit generate-for
+apb_cdc.sv: parameter type
+apb_demux.sv: parameter type and implicit generate-if
+```
+
+Interpretation:
+
+```text
+Common Cells source-list pruning/porting has reached the APB dependency
+boundary. The next decision is whether APB files are active in this reduced
+DE1 Snitch-cluster preflight or only included by the broad original file list.
+```
