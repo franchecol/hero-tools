@@ -1358,3 +1358,68 @@ Interpretation:
 Quartus is now past the AXI demux id counter and into the next active AXI xbar
 helper. The remaining AXI work is real porting, not broad dependency cleanup.
 ```
+
+## Attempt 18: AXI ATOP Filter Port
+
+Status:
+
+```text
+FAIL
+quartus_map exit code: 3
+no .sof produced
+```
+
+Command:
+
+```bash
+cd /home/ftv/builds/hero-tools/fpga/de1-soc/s2_3_snitch_manual_fork
+./scripts/quartus_preflight.sh
+```
+
+Manual source edits:
+
+```text
+snitch_cluster/.bender/git/checkouts/axi-*/src/axi_atop_filter.sv
+```
+
+What changed:
+
+```text
+axi_atop_filter.sv:
+  replaced axi_req_t/axi_resp_t type parameters with explicit AXI width parameters
+  changed public AXI ports to packed vectors
+  recreated the AXI request/response structs internally for field access
+  cast vector boundary ports to/from those internal structs
+  replaced the inactive stream_register type-parameter instance with spill_register
+  skipped the unused AXI interface wrapper in S2_3_QUARTUS mode
+```
+
+Important progress:
+
+```text
+The previous first axi_atop_filter.sv type-parameter parser error is gone.
+Quartus now reaches the next active AXI helper.
+```
+
+New first Quartus error:
+
+```text
+axi/src/axi_burst_splitter_gran.sv:38
+Error (10170): near text: "type"; expecting an identifier
+```
+
+Other errors in the same run:
+
+```text
+axi_burst_splitter_gran.sv: parameter type and implicit generate syntax
+axi_cut.sv: parameter type
+axi_demux_simple.sv: parameter type
+```
+
+Interpretation:
+
+```text
+The AXI parser frontier moved through the ATOP filter. Later elaboration may
+still require call-site width parameters for axi_atop_filter, but the immediate
+parser blocker in that file is gone.
+```
