@@ -3502,3 +3502,75 @@ The second active Snitch core-support block is ported without black-boxing. The
 next front-door issue is Quartus rejecting import declarations in the snitch
 module header.
 ```
+
+## Attempt 47: Move Snitch Module Imports for Quartus
+
+Status:
+
+```text
+FAIL
+quartus_map exit code: 3
+no .sof produced
+```
+
+Command:
+
+```bash
+cd /home/ftv/builds/hero-tools/fpga/de1-soc/s2_3_snitch_manual_fork
+./scripts/quartus_preflight.sh
+```
+
+Manual edits:
+
+```text
+snitch_cluster/hw/snitch/src/snitch.sv
+```
+
+What changed:
+
+```text
+under S2_3_QUARTUS:
+  import snitch_pkg::* and riscv_instr::* at compilation-unit scope
+  use a plain module snitch #(...) header
+
+outside S2_3_QUARTUS:
+  keep the original module snitch import ... #(...) header
+```
+
+Why this is acceptable:
+
+```text
+This is a syntax-only relocation of package imports for the Quartus path. It
+does not change the Snitch core logic.
+```
+
+Important progress:
+
+```text
+The previous snitch.sv module import-list parser error is gone.
+Quartus now reaches the Snitch module's own type parameters.
+```
+
+New first Quartus error:
+
+```text
+hw/snitch/src/snitch.sv:52
+Error (10170): near text: "type"; expecting an identifier
+```
+
+Other errors in the same run:
+
+```text
+snitch.sv: type-parameter, generate, and inside-expression parser errors
+snitch_ptw.sv: parameter type errors
+snitch_dma helper files: parameter type errors
+snitch_icache_l0.sv: generate parser errors
+```
+
+Interpretation:
+
+```text
+The import syntax issue was superficial. The next blocker is the main Snitch
+core module boundary, which exposes multiple type parameters for data,
+accelerator, and virtual-memory structs.
+```

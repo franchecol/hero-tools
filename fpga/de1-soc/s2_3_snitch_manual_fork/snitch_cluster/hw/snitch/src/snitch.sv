@@ -10,7 +10,13 @@
 
 // `SNITCH_ENABLE_PERF Enables mcycle, minstret performance counters (read only)
 
+`ifdef S2_3_QUARTUS
+import snitch_pkg::*;
+import riscv_instr::*;
+module snitch #(
+`else
 module snitch import snitch_pkg::*; import riscv_instr::*; #(
+`endif
   /// Boot address of core.
   parameter logic [31:0] BootAddr  = 32'h0000_1000,
   /// Physical Address width of the core.
