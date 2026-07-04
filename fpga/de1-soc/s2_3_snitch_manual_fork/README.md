@@ -79,7 +79,7 @@ cd /home/ftv/builds/hero-tools/fpga/de1-soc/s2_3_snitch_manual_fork
 
 ## Current Result
 
-Attempt 7 was run locally with Quartus Prime Lite 25.1std.0.
+Attempt 8 was run locally with Quartus Prime Lite 25.1std.0.
 
 Result:
 
@@ -107,15 +107,19 @@ The stream-helper errors in stream_fork.sv, stream_join_dynamic.sv,
 stream_mux.sv, stream_throttle.sv, sub_per_hash.sv, and read.sv are gone.
 The unused STREAM_DV interface helper was removed from the Quartus preflight
 file list, reducing it from 312 to 311 source files.
+The address-decoder errors in addr_decode_dync.sv are gone, and unused CDC
+helper files were removed from the Quartus preflight file list. The source
+count is now 302 files.
 ```
 
 New first blocker:
 
 ```text
-snitch_cluster/.bender/git/checkouts/common_cells-*/src/addr_decode_dync.sv:46
-Error (10170): near text: "type"; expecting an identifier
+snitch_cluster/.bender/git/checkouts/common_cells-*/src/clk_int_div_static.sv:70
+Error (10170): near text: "if"; expecting "endmodule"
 ```
 
 The fix now exists as direct edits in the local Snitch fork. The next class is
-common_cells decoder/CDC utility syntax porting: `addr_decode_dync`, `boxcar`,
-`cdc_2phase`, and `cdc_4phase`.
+more common_cells utility syntax porting: `clk_int_div_static`,
+`multiaddr_decode`, `cb_filter`, `clk_mux_glitch_free`, `ecc_decode`,
+`ecc_encode`, and `lzc`.

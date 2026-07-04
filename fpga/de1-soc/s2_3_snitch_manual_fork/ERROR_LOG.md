@@ -611,3 +611,86 @@ Quartus is now past the stream helper group. The next group is decoder/helper
 math plus CDC primitives. Some of these may be unused in the one-clock DE1-SoC
 experiment, but they are still present in the broad frozen file list.
 ```
+
+## Attempt 8: Address Decoder And CDC Pruning Batch
+
+Status:
+
+```text
+FAIL
+quartus_map exit code: 3
+no .sof produced
+```
+
+Command:
+
+```bash
+cd /home/ftv/builds/hero-tools/fpga/de1-soc/s2_3_snitch_manual_fork
+./scripts/quartus_preflight.sh
+```
+
+Manual source edits:
+
+```text
+source_list/snitch_cluster.flist-plus.in
+snitch_cluster/.bender/git/checkouts/common_cells-*/src/addr_decode_dync.sv
+snitch_cluster/.bender/git/checkouts/common_cells-*/src/addr_decode.sv
+snitch_cluster/.bender/git/checkouts/common_cells-*/src/addr_decode_napot.sv
+snitch_cluster/hw/snitch_cluster/src/snitch_cc.sv
+```
+
+What changed:
+
+```text
+source list:
+  removed unused CDC and boxcar helper files from the Quartus preflight list
+  reason: no CDC modules are referenced by the active hw/target hierarchy
+
+addr_decode_dync.sv:
+  replaced addr_t/rule_t/idx_t type parameters with AddrWidth, RuleIdxWidth, and IdxWidth
+  changed ports to explicit packed vectors
+  cast the vector address map into a local rule struct for field access
+
+addr_decode.sv:
+  replaced addr_t/rule_t/idx_t type parameters with explicit width parameters
+  forwarded those widths to addr_decode_dync
+
+addr_decode_napot.sv:
+  replaced addr_t/rule_t/idx_t type parameters with explicit width parameters
+  converted NAPOT rule fields into the addr_decode_dync start/end field layout locally
+
+snitch_cc.sv:
+  changed the active addr_decode_napot override from type parameters to width parameters
+```
+
+Important progress:
+
+```text
+The previous first addr_decode_dync.sv type-parameter error is gone.
+The broad preflight list was reduced from files=311 to files=302.
+```
+
+New first Quartus error:
+
+```text
+common_cells/src/clk_int_div_static.sv:70
+Error (10170): Verilog HDL syntax error near text: "if"; expecting "endmodule"
+```
+
+Other errors in the same run:
+
+```text
+common_cells/src/multiaddr_decode.sv: parameter type
+common_cells/src/cb_filter.sv: implicit module-level generate-for
+common_cells/src/clk_mux_glitch_free.sv: localparam in parameter list
+common_cells/src/ecc_decode.sv: parameter type
+common_cells/src/ecc_encode.sv: parameter type
+common_cells/src/lzc.sv: implicit module-level generate-if
+```
+
+Interpretation:
+
+```text
+The manual fork is now past address-decoder parsing and unused CDC parsing.
+The next blocker is another Common Cells utility batch.
+```

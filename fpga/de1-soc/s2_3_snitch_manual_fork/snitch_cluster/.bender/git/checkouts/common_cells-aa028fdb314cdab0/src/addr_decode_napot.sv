@@ -19,36 +19,21 @@ module addr_decode_napot #(
   parameter int unsigned NoIndices = 32'd0,
   /// Total number of rules.
   parameter int unsigned NoRules   = 32'd0,
-  /// Address type inside the rules and to decode.
-  parameter type         addr_t    = logic,
-  /// Rule packed struct type.
-  /// The NAPOT address decoder expects three fields in `rule_t`:
-  ///
-  /// typedef struct packed {
-  ///   int unsigned idx;
-  ///   addr_t       base;
-  ///   addr_t       mask;
-  /// } rule_t;
-  ///
-  ///  - `idx`:   index of the rule, has to be < `NoIndices`.
-  ///  - `base`:  base address whose specified bits should match `addr_i`.
-  ///  - `mask`:  set for bits which are to be checked to determine a match.
-  parameter type         rule_t    = logic,
+  /// Address width inside the rules and to decode.
+  parameter int unsigned AddrWidth = 1,
+  /// Rule idx field width. Original common_cells users normally use int unsigned.
+  parameter int unsigned RuleIdxWidth = 32,
   /// Dependent parameter, do **not** overwite!
   ///
   /// Width of the `idx_o` output port.
-  parameter int unsigned IdxWidth  = cf_math_pkg::idx_width(NoIndices),
-  /// Dependent parameter, do **not** overwite!
-  ///
-  /// Type of the `idx_o` output port.
-  parameter type         idx_t     = logic [IdxWidth-1:0]
+  parameter int unsigned IdxWidth  = cf_math_pkg::idx_width(NoIndices)
 ) (
   /// Address to decode.
-  input  addr_t               addr_i,
+  input  logic [AddrWidth-1:0] addr_i,
   /// Address map: rule with the highest array position wins on collision
-  input  rule_t [NoRules-1:0] addr_map_i,
+  input  logic [NoRules-1:0][RuleIdxWidth+2*AddrWidth-1:0] addr_map_i,
   /// Decoded index.
-  output idx_t                idx_o,
+  output logic [IdxWidth-1:0] idx_o,
   /// Decode is valid.
   output logic                dec_valid_o,
   /// Decode is not valid, no matching rule found.
@@ -62,25 +47,47 @@ module addr_decode_napot #(
   /// When `en_default_idx_i` is `1`, this will be the index when no rule matches.
   ///
   /// When not used, tie to `0`.
-  input  idx_t                default_idx_i
+  input  logic [IdxWidth-1:0] default_idx_i
 );
+
+  typedef logic [AddrWidth-1:0] addr_t;
+  typedef logic [IdxWidth-1:0] idx_t;
+  typedef struct packed {
+    logic [RuleIdxWidth-1:0] idx;
+    addr_t base;
+    addr_t mask;
+  } rule_t;
+
+  rule_t [NoRules-1:0] addr_map;
+  assign addr_map = addr_map_i;
 
   // Rename struct field names to those expected by `addr_decode`
   typedef struct packed {
-    int unsigned  idx;
-    addr_t        start_addr;
-    addr_t        end_addr;
+    logic [RuleIdxWidth-1:0] idx;
+    addr_t start_addr;
+    addr_t end_addr;
   } rule_range_t;
 
+  rule_range_t [NoRules-1:0] addr_map_range;
+  genvar gen_i;
+  generate
+    for (gen_i = 0; gen_i < NoRules; gen_i++) begin : gen_rule_range
+      assign addr_map_range[gen_i].idx        = addr_map[gen_i].idx;
+      assign addr_map_range[gen_i].start_addr = addr_map[gen_i].base;
+      assign addr_map_range[gen_i].end_addr   = addr_map[gen_i].mask;
+    end
+  endgenerate
+
   addr_decode_dync #(
-    .NoIndices ( NoIndices    ) ,
-    .NoRules   ( NoRules      ),
-    .addr_t    ( addr_t       ),
-    .rule_t    ( rule_range_t ),
-    .Napot     ( 1            )
+    .NoIndices    ( NoIndices    ) ,
+    .NoRules      ( NoRules      ),
+    .AddrWidth    ( AddrWidth    ),
+    .RuleIdxWidth ( RuleIdxWidth ),
+    .Napot        ( 1            ),
+    .IdxWidth     ( IdxWidth     )
   ) i_addr_decode_dync (
     .addr_i,
-    .addr_map_i,
+    .addr_map_i ( addr_map_range ),
     .idx_o,
     .dec_valid_o,
     .dec_error_o,

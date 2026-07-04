@@ -42,41 +42,23 @@ module addr_decode_dync #(
   parameter int unsigned NoIndices = 32'd0,
   /// Total number of rules.
   parameter int unsigned NoRules   = 32'd0,
-  /// Address type inside the rules and to decode.
-  parameter type         addr_t    = logic,
-  /// Rule packed struct type.
-  /// The address decoder expects three fields in `rule_t`:
-  ///
-  /// typedef struct packed {
-  ///   idx_t  idx;
-  ///   addr_t start_addr;
-  ///   addr_t end_addr;
-  /// } rule_t;
-  ///
-  ///  - `idx`:        The index to be returned for a matching rule. Usually an integer but can
-  ///                  be any type of data.
-  ///  - `start_addr`: start address of the range the rule describes, value is included in range
-  ///  - `end_addr`:   end address of the range the rule describes, value is NOT included in range
-  ///                  if `end_addr == '0` end of address space is assumed
-  ///
-  /// If `Napot` is 1, The field names remain the same, but the rule describes a naturally-aligned
-  /// power of two (NAPOT) region instead of an address range: `start_addr` becomes the base address
-  /// and `end_addr` the mask. See the wrapping module `addr_decode_napot` for details.
-  parameter type         rule_t    = logic,
+  /// Address width inside the rules and to decode.
+  parameter int unsigned AddrWidth = 1,
+  /// Rule idx field width. Original common_cells users normally use int unsigned.
+  parameter int unsigned RuleIdxWidth = 32,
   /// Whether this is a NAPOT (base and mask) or regular range decoder
   parameter bit          Napot     = 0,
   /// The output index type `idx_t` can be specified either with the width `IdxWidth`
   /// or directly with the type `idx_t`. By default, it will use the maximum index
   /// `NoIndices` to calculate the required width.
-  parameter int unsigned IdxWidth  = cf_math_pkg::idx_width(NoIndices),
-  parameter type         idx_t     = logic [IdxWidth-1:0]
+  parameter int unsigned IdxWidth  = cf_math_pkg::idx_width(NoIndices)
 ) (
   /// Address to decode.
-  input  addr_t               addr_i,
+  input  logic [AddrWidth-1:0] addr_i,
   /// Address map: rule with the highest array position wins on collision
-  input  rule_t [NoRules-1:0] addr_map_i,
+  input  logic [NoRules-1:0][RuleIdxWidth+2*AddrWidth-1:0] addr_map_i,
   /// Decoded index.
-  output idx_t                idx_o,
+  output logic [IdxWidth-1:0] idx_o,
   /// Decode is valid.
   output logic                dec_valid_o,
   /// Decode is not valid, no matching rule found.
@@ -90,11 +72,22 @@ module addr_decode_dync #(
   /// When `en_default_idx_i` is `1`, this will be the index when no rule matches.
   ///
   /// When not used, tie to `0`.
-  input  idx_t                default_idx_i,
+  input  logic [IdxWidth-1:0] default_idx_i,
   /// The module is dynamically configured, this deactivates its output and the integrated
   /// assertions.
   input  logic                config_ongoing_i
 );
+
+  typedef logic [AddrWidth-1:0] addr_t;
+  typedef logic [IdxWidth-1:0] idx_t;
+  typedef struct packed {
+    logic [RuleIdxWidth-1:0] idx;
+    addr_t start_addr;
+    addr_t end_addr;
+  } rule_t;
+
+  rule_t [NoRules-1:0] addr_map;
+  assign addr_map = addr_map_i;
 
   logic [NoRules-1:0] matched_rules; // purely for address map debugging
 
@@ -108,15 +101,15 @@ module addr_decode_dync #(
     // match the rules
     for (int unsigned i = 0; i < NoRules; i++) begin
       if (
-        !Napot && (addr_i >= addr_map_i[i].start_addr) &&
-        ((addr_i < addr_map_i[i].end_addr) || (addr_map_i[i].end_addr == '0)) ||
-        Napot && (addr_map_i[i].start_addr & addr_map_i[i].end_addr) ==
-                 (addr_i & addr_map_i[i].end_addr)
+        !Napot && (addr_i >= addr_map[i].start_addr) &&
+        ((addr_i < addr_map[i].end_addr) || (addr_map[i].end_addr == '0)) ||
+        Napot && (addr_map[i].start_addr & addr_map[i].end_addr) ==
+                 (addr_i & addr_map[i].end_addr)
       ) begin
         matched_rules[i] = ~config_ongoing_i;
         dec_valid_o      = ~config_ongoing_i;
         dec_error_o      = 1'b0;
-        idx_o            = config_ongoing_i ? default_idx_i : idx_t'(addr_map_i[i].idx);
+        idx_o            = config_ongoing_i ? default_idx_i : idx_t'(addr_map[i].idx);
       end
     end
   end
@@ -124,7 +117,7 @@ module addr_decode_dync #(
   // Assumptions and assertions
   `ifndef COMMON_CELLS_ASSERTS_OFF
   initial begin : proc_check_parameters
-    `ASSUME_I(addr_width_mismatch, $bits(addr_i) == $bits(addr_map_i[0].start_addr))
+    `ASSUME_I(addr_width_mismatch, $bits(addr_i) == $bits(addr_map[0].start_addr))
     `ASSUME_I(norules_0, NoRules > 0)
   end
 
@@ -142,17 +135,17 @@ module addr_decode_dync #(
   always_comb begin : proc_check_addr_map
     if (!$isunknown(addr_map_i) && ~config_ongoing_i) begin
       for (int unsigned i = 0; i < NoRules; i++) begin
-        `ASSUME_I(check_start, Napot || addr_map_i[i].start_addr < addr_map_i[i].end_addr ||
-          addr_map_i[i].end_addr == '0)
+        `ASSUME_I(check_start, Napot || addr_map[i].start_addr < addr_map[i].end_addr ||
+          addr_map[i].end_addr == '0)
         for (int unsigned j = i + 1; j < NoRules; j++) begin
           // overlap check
           `ASSUME_I(check_overlap, Napot ||
-                                  !((addr_map_i[j].start_addr < addr_map_i[i].end_addr) &&
-                                    (addr_map_i[j].end_addr > addr_map_i[i].start_addr)) ||
-                                  !((addr_map_i[i].end_addr == '0) &&
-                                    (addr_map_i[j].end_addr > addr_map_i[i].start_addr)) ||
-                                  !((addr_map_i[j].start_addr < addr_map_i[i].end_addr) &&
-                                    (addr_map_i[j].end_addr == '0)))
+                                  !((addr_map[j].start_addr < addr_map[i].end_addr) &&
+                                    (addr_map[j].end_addr > addr_map[i].start_addr)) ||
+                                  !((addr_map[i].end_addr == '0) &&
+                                    (addr_map[j].end_addr > addr_map[i].start_addr)) ||
+                                  !((addr_map[j].start_addr < addr_map[i].end_addr) &&
+                                    (addr_map[j].end_addr == '0)))
         end
       end
     end

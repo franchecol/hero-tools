@@ -29,7 +29,6 @@
 @SNITCH_ROOT@/.bender/git/checkouts/common_cells-aa028fdb314cdab0/src/binary_to_gray.sv
 @SNITCH_ROOT@/.bender/git/checkouts/common_cells-aa028fdb314cdab0/src/cb_filter_pkg.sv
 @SNITCH_ROOT@/.bender/git/checkouts/common_cells-aa028fdb314cdab0/src/cc_onehot.sv
-@SNITCH_ROOT@/.bender/git/checkouts/common_cells-aa028fdb314cdab0/src/cdc_reset_ctrlr_pkg.sv
 @SNITCH_ROOT@/.bender/git/checkouts/common_cells-aa028fdb314cdab0/src/cf_math_pkg.sv
 @SNITCH_ROOT@/.bender/git/checkouts/common_cells-aa028fdb314cdab0/src/clk_int_div.sv
 @SNITCH_ROOT@/.bender/git/checkouts/common_cells-aa028fdb314cdab0/src/credit_counter.sv
@@ -70,16 +69,12 @@
 @SNITCH_ROOT@/.bender/git/checkouts/common_cells-aa028fdb314cdab0/src/unread.sv
 @SNITCH_ROOT@/.bender/git/checkouts/common_cells-aa028fdb314cdab0/src/read.sv
 @SNITCH_ROOT@/.bender/git/checkouts/common_cells-aa028fdb314cdab0/src/addr_decode_dync.sv
-@SNITCH_ROOT@/.bender/git/checkouts/common_cells-aa028fdb314cdab0/src/boxcar.sv
-@SNITCH_ROOT@/.bender/git/checkouts/common_cells-aa028fdb314cdab0/src/cdc_2phase.sv
-@SNITCH_ROOT@/.bender/git/checkouts/common_cells-aa028fdb314cdab0/src/cdc_4phase.sv
 @SNITCH_ROOT@/.bender/git/checkouts/common_cells-aa028fdb314cdab0/src/clk_int_div_static.sv
 @SNITCH_ROOT@/.bender/git/checkouts/common_cells-aa028fdb314cdab0/src/trip_counter.sv
 @SNITCH_ROOT@/.bender/git/checkouts/common_cells-aa028fdb314cdab0/src/addr_decode.sv
 @SNITCH_ROOT@/.bender/git/checkouts/common_cells-aa028fdb314cdab0/src/addr_decode_napot.sv
 @SNITCH_ROOT@/.bender/git/checkouts/common_cells-aa028fdb314cdab0/src/multiaddr_decode.sv
 @SNITCH_ROOT@/.bender/git/checkouts/common_cells-aa028fdb314cdab0/src/cb_filter.sv
-@SNITCH_ROOT@/.bender/git/checkouts/common_cells-aa028fdb314cdab0/src/cdc_fifo_2phase.sv
 @SNITCH_ROOT@/.bender/git/checkouts/common_cells-aa028fdb314cdab0/src/clk_mux_glitch_free.sv
 @SNITCH_ROOT@/.bender/git/checkouts/common_cells-aa028fdb314cdab0/src/counter.sv
 @SNITCH_ROOT@/.bender/git/checkouts/common_cells-aa028fdb314cdab0/src/ecc_decode.sv
@@ -93,8 +88,6 @@
 @SNITCH_ROOT@/.bender/git/checkouts/common_cells-aa028fdb314cdab0/src/stream_fifo.sv
 @SNITCH_ROOT@/.bender/git/checkouts/common_cells-aa028fdb314cdab0/src/stream_fork_dynamic.sv
 @SNITCH_ROOT@/.bender/git/checkouts/common_cells-aa028fdb314cdab0/src/stream_join.sv
-@SNITCH_ROOT@/.bender/git/checkouts/common_cells-aa028fdb314cdab0/src/cdc_reset_ctrlr.sv
-@SNITCH_ROOT@/.bender/git/checkouts/common_cells-aa028fdb314cdab0/src/cdc_fifo_gray.sv
 @SNITCH_ROOT@/.bender/git/checkouts/common_cells-aa028fdb314cdab0/src/fall_through_register.sv
 @SNITCH_ROOT@/.bender/git/checkouts/common_cells-aa028fdb314cdab0/src/id_queue.sv
 @SNITCH_ROOT@/.bender/git/checkouts/common_cells-aa028fdb314cdab0/src/stream_to_mem.sv
@@ -102,8 +95,6 @@
 @SNITCH_ROOT@/.bender/git/checkouts/common_cells-aa028fdb314cdab0/src/stream_fifo_optimal_wrap.sv
 @SNITCH_ROOT@/.bender/git/checkouts/common_cells-aa028fdb314cdab0/src/stream_register.sv
 @SNITCH_ROOT@/.bender/git/checkouts/common_cells-aa028fdb314cdab0/src/stream_xbar.sv
-@SNITCH_ROOT@/.bender/git/checkouts/common_cells-aa028fdb314cdab0/src/cdc_fifo_gray_clearable.sv
-@SNITCH_ROOT@/.bender/git/checkouts/common_cells-aa028fdb314cdab0/src/cdc_2phase_clearable.sv
 @SNITCH_ROOT@/.bender/git/checkouts/common_cells-aa028fdb314cdab0/src/mem_to_banks_detailed.sv
 @SNITCH_ROOT@/.bender/git/checkouts/common_cells-aa028fdb314cdab0/src/stream_arbiter.sv
 @SNITCH_ROOT@/.bender/git/checkouts/common_cells-aa028fdb314cdab0/src/stream_omega_net.sv

@@ -600,8 +600,8 @@ module snitch_cc #(
   addr_decode_napot #(
     .NoIndices (2),
     .NoRules (1),
-    .addr_t (logic [AddrWidth-1:0]),
-    .rule_t (reqrsp_rule_t)
+    .AddrWidth (AddrWidth),
+    .RuleIdxWidth (32)
   ) i_addr_decode_napot (
     .addr_i (merged_dreq.q.addr),
     .addr_map_i (addr_map),
