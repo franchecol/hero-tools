@@ -15,6 +15,50 @@
 
 /// AXI4+ATOP to SRAM memory slave. Allows for parallel read and write transactions.
 /// Allows reads to bypass writes, in contrast to `axi_to_mem`, however needs more hardware.
+`ifdef S2_3_QUARTUS
+// S2.3 parser/bring-up shim: keep the interleaved AXI-to-memory boundary
+// visible without type parameters. This stub does not issue memory requests.
+module axi_to_mem_interleaved #(
+  parameter int unsigned AxiReqWidth  = 1,
+  parameter int unsigned AxiRespWidth = 1,
+  parameter int unsigned AddrWidth    = 1,
+  parameter int unsigned DataWidth    = 1,
+  parameter int unsigned IdWidth      = 1,
+  parameter int unsigned NumBanks     = 1,
+  parameter int unsigned BufDepth     = 1,
+  parameter bit          HideStrb     = 1'b0,
+  parameter int unsigned OutFifoDepth = 1,
+  parameter int unsigned MemDataWidth = DataWidth / NumBanks,
+  parameter int unsigned MemStrbWidth = DataWidth / NumBanks / 8
+) (
+  input  logic                                     clk_i,
+  input  logic                                     rst_ni,
+  input  logic                                     test_i,
+  output logic                                     busy_o,
+  input  logic [AxiReqWidth-1:0]                  axi_req_i,
+  output logic [AxiRespWidth-1:0]                 axi_resp_o,
+  output logic [NumBanks-1:0]                     mem_req_o,
+  input  logic [NumBanks-1:0]                     mem_gnt_i,
+  output logic [NumBanks-1:0][AddrWidth-1:0]      mem_addr_o,
+  output logic [NumBanks-1:0][MemDataWidth-1:0]   mem_wdata_o,
+  output logic [NumBanks-1:0][MemStrbWidth-1:0]   mem_strb_o,
+  output axi_pkg::atop_t [NumBanks-1:0]           mem_atop_o,
+  output logic [NumBanks-1:0]                     mem_we_o,
+  input  logic [NumBanks-1:0]                     mem_rvalid_i,
+  input  logic [NumBanks-1:0][MemDataWidth-1:0]   mem_rdata_i
+);
+
+  assign busy_o      = 1'b0;
+  assign axi_resp_o  = '0;
+  assign mem_req_o   = '0;
+  assign mem_addr_o  = '0;
+  assign mem_wdata_o = '0;
+  assign mem_strb_o  = '0;
+  assign mem_atop_o  = '0;
+  assign mem_we_o    = '0;
+
+endmodule
+`else
 module axi_to_mem_interleaved #(
   /// AXI4+ATOP request type. See `include/axi/typedef.svh`.
   parameter type         axi_req_t  = logic,
@@ -377,3 +421,4 @@ module axi_to_mem_interleaved_intf #(
 // pragma translate_on
 
 endmodule // axi_to_mem_interleaved_intf
+`endif

@@ -2391,3 +2391,73 @@ Interpretation:
 The AXI parser frontier moved through the unmuxed xbar. The next blocker is the
 interleaved AXI-to-memory wrapper.
 ```
+
+## Attempt 33: AXI Interleaved Memory S2.3 Stub
+
+Status:
+
+```text
+FAIL
+quartus_map exit code: 3
+no .sof produced
+```
+
+Command:
+
+```bash
+cd /home/ftv/builds/hero-tools/fpga/de1-soc/s2_3_snitch_manual_fork
+./scripts/quartus_preflight.sh
+```
+
+Manual source edits:
+
+```text
+snitch_cluster/.bender/git/checkouts/axi-*/src/axi_to_mem_interleaved.sv
+```
+
+What changed:
+
+```text
+axi_to_mem_interleaved.sv:
+  added an S2_3_QUARTUS-only no-request memory wrapper stub
+  skipped the original type-parameterized interleaved memory bridge and
+  interface wrapper
+```
+
+Important limitation:
+
+```text
+This is not a full semantic port of the interleaved AXI-to-memory bridge. It
+does not split read/write traffic or issue memory requests; it drives memory
+request outputs and AXI response bits to zero.
+```
+
+Important progress:
+
+```text
+The previous axi_to_mem_interleaved.sv type-parameter and wrapper parser errors
+are bypassed.
+Quartus now reaches axi_xbar.sv.
+```
+
+New first Quartus error:
+
+```text
+axi/src/axi_xbar.sv:28
+Error (10170): near text: "type"; expecting an identifier
+```
+
+Other errors in the same run:
+
+```text
+fpu_div_sqrt_mvp/control_mvp.sv: unnamed block
+axi_riscv_atomics/*.sv: localparam, genvar, and unnamed-block parser errors
+```
+
+Interpretation:
+
+```text
+The AXI parser frontier moved through the interleaved memory bridge. The next
+AXI blocker is the top-level crossbar wrapper. The run is also now consistently
+showing later FPU and atomics parser issues.
+```
