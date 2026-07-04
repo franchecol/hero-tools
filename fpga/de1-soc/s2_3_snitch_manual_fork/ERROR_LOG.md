@@ -4041,3 +4041,90 @@ Interpretation:
 The L0 instruction-cache module is past Quartus. The next class is the rest of
 the instruction-cache refill/lookup support stack.
 ```
+
+## Attempt 54: Black-box Snitch ICache Preflight Files
+
+Status:
+
+```text
+FAIL
+quartus_map exit code: 3
+no .sof produced
+```
+
+Command:
+
+```bash
+cd /home/ftv/builds/hero-tools/fpga/de1-soc/s2_3_snitch_manual_fork
+./scripts/quartus_preflight.sh
+```
+
+Manual edits:
+
+```text
+source_list/snitch_cluster.flist-plus.in
+```
+
+What changed:
+
+```text
+removed these active instruction-cache implementation files from the Quartus
+preflight source list:
+  hw/snitch_icache/src/snitch_icache_refill.sv
+  hw/snitch_icache/src/snitch_icache_lfsr.sv
+  hw/snitch_icache/src/snitch_icache_lookup.sv
+  hw/snitch_icache/src/snitch_icache_handler.sv
+  hw/snitch_icache/src/snitch_icache.sv
+
+kept these instruction-cache definition/L0 files:
+  hw/snitch_icache/src/snitch_icache_pkg.sv
+  hw/snitch_icache/src/snitch_icache_l0.sv
+```
+
+Why this is acceptable for this preflight:
+
+```text
+This is only acceptable for the S2.3 parser-frontier experiment. These are
+active instruction-cache files, not inactive helper files. A real Snitch port
+must either port this logic, replace it with an equivalent Quartus-compatible
+implementation, or change the frontend memory architecture intentionally.
+```
+
+Important limitation:
+
+```text
+This does not port the Snitch instruction cache. It black-boxes active
+instruction-cache refill/lookup/handler logic so the experiment can measure the
+next unsupported Quartus parser frontier.
+```
+
+Important progress:
+
+```text
+The previous snitch_icache_refill.sv parameter-type first blocker is gone.
+The snitch_icache_lfsr.sv and snitch_icache_lookup.sv parser errors are gone.
+The source count dropped from 145 to 140 files.
+Quartus now reaches the integer processing unit ALU.
+```
+
+New first Quartus error:
+
+```text
+hw/snitch_ipu/src/snitch_ipu_alu.sv:32
+Error (10170): near text: "for"; expecting "endmodule"
+```
+
+Other errors in the same run:
+
+```text
+snitch_ipu_alu.sv: top-level generate-for and generate-if parser errors
+snitch_ipu_alu.sv: repeated genvar/identifier declarations in later stages
+```
+
+Interpretation:
+
+```text
+The parser frontier moved beyond the active instruction-cache stack by
+black-boxing it. The next active extension block is the integer processing unit
+ALU, which still uses SystemVerilog generate forms Quartus rejects here.
+```

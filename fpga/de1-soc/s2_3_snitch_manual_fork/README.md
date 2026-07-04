@@ -79,7 +79,7 @@ cd /home/ftv/builds/hero-tools/fpga/de1-soc/s2_3_snitch_manual_fork
 
 ## Current Result
 
-Attempt 41 was run locally with Quartus Prime Lite 25.1std.0.
+Attempt 54 was run locally with Quartus Prime Lite 25.1std.0.
 
 Result:
 
@@ -213,13 +213,17 @@ source list while keeping axi_dma_pkg.sv for shared type definitions. The
 source count is now 145 files.
 snitch_icache_l0.sv top-level compare, array, multihit, and predecode generate
 blocks now use explicit generate/endgenerate syntax.
+The active instruction-cache refill, lookup, handler, LFSR, and top-level
+implementation files were removed from the S2.3 preflight source list as
+black-box/boundary candidates. This is not a semantic port of the instruction
+cache. The source count is now 140 files.
 ```
 
 New first blocker:
 
 ```text
-snitch_cluster/hw/snitch_icache/src/snitch_icache_refill.sv:10
-Error (10170): near text: "type"; expecting an identifier
+snitch_cluster/hw/snitch_ipu/src/snitch_ipu_alu.sv:32
+Error (10170): near text: "for"; expecting "endmodule"
 ```
 
-The next class is the actual Snitch core RTL.
+The next active extension block is the integer processing unit ALU.

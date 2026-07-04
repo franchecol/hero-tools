@@ -126,11 +126,6 @@
 @SNITCH_ROOT@/hw/snitch_dma/src/axi_dma_pkg.sv
 @SNITCH_ROOT@/hw/snitch_icache/src/snitch_icache_pkg.sv
 @SNITCH_ROOT@/hw/snitch_icache/src/snitch_icache_l0.sv
-@SNITCH_ROOT@/hw/snitch_icache/src/snitch_icache_refill.sv
-@SNITCH_ROOT@/hw/snitch_icache/src/snitch_icache_lfsr.sv
-@SNITCH_ROOT@/hw/snitch_icache/src/snitch_icache_lookup.sv
-@SNITCH_ROOT@/hw/snitch_icache/src/snitch_icache_handler.sv
-@SNITCH_ROOT@/hw/snitch_icache/src/snitch_icache.sv
 @SNITCH_ROOT@/hw/snitch_ipu/src/snitch_ipu_pkg.sv
 @SNITCH_ROOT@/hw/snitch_ipu/src/snitch_ipu_alu.sv
 @SNITCH_ROOT@/hw/snitch_ipu/src/snitch_int_ss.sv
