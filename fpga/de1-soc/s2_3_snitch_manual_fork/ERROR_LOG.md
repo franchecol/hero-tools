@@ -1765,3 +1765,74 @@ The AXI parser frontier moved through axi_mux.sv. This keeps exposing the next
 unsupported AXI helper, but the mux behavior is currently only suitable for
 parser exploration.
 ```
+
+## Attempt 24: AXI Detailed Memory S2.3 Stub
+
+Status:
+
+```text
+FAIL
+quartus_map exit code: 3
+no .sof produced
+```
+
+Command:
+
+```bash
+cd /home/ftv/builds/hero-tools/fpga/de1-soc/s2_3_snitch_manual_fork
+./scripts/quartus_preflight.sh
+```
+
+Manual source edits:
+
+```text
+snitch_cluster/.bender/git/checkouts/axi-*/src/axi_to_detailed_mem.sv
+```
+
+What changed:
+
+```text
+axi_to_detailed_mem.sv:
+  added an S2_3_QUARTUS-only vector-boundary memory bridge stub
+  skipped the original detailed memory bridge, interface wrapper, and bank
+  splitter helper in this mode
+```
+
+Important limitation:
+
+```text
+This is not a full semantic port of the AXI-to-memory bridge. The stub drives
+no memory requests, returns zero AXI response bits, and only exists to map the
+remaining Quartus parser blockers.
+```
+
+Important progress:
+
+```text
+The previous axi_to_detailed_mem.sv type-parameter, helper-module, and wrapper
+parser errors are bypassed.
+Quartus now reaches axi_burst_splitter.sv.
+```
+
+New first Quartus error:
+
+```text
+axi/src/axi_burst_splitter.sv:39
+Error (10170): near text: "type"; expecting an identifier
+```
+
+Other errors in the same run:
+
+```text
+axi_demux.sv: parameter type and interface wrapper
+axi_err_slv.sv: parameter type and generate syntax
+axi_multicut.sv: parameter type and generate syntax
+```
+
+Interpretation:
+
+```text
+The AXI parser frontier moved through the detailed memory bridge. The next
+blocker is the top-level burst splitter wrapper, separate from the granular
+burst splitter shim already added earlier.
+```

@@ -16,6 +16,66 @@
 /// AXI4+ATOP slave module which translates AXI bursts into a memory stream.
 /// If both read and write channels of the AXI4+ATOP are active, both will have an
 /// utilization of 50%.
+`ifdef S2_3_QUARTUS
+// S2.3 parser/bring-up shim: keep the memory bridge boundary visible to
+// Quartus without type parameters. This stub does not issue memory requests.
+module axi_to_detailed_mem #(
+  parameter int unsigned AxiReqWidth     = 1,
+  parameter int unsigned AxiRespWidth    = 1,
+  parameter int unsigned AddrWidth       = 1,
+  parameter int unsigned DataWidth       = 1,
+  parameter int unsigned IdWidth         = 1,
+  parameter int unsigned UserWidth       = 1,
+  parameter int unsigned NumBanks        = 1,
+  parameter int unsigned BufDepth        = 1,
+  parameter bit          HideStrb        = 1'b0,
+  parameter int unsigned OutFifoDepth    = 1,
+  parameter int unsigned MemDataWidth    = DataWidth / NumBanks,
+  parameter int unsigned MemStrbWidth    = DataWidth / NumBanks / 8
+) (
+  input  logic                                      clk_i,
+  input  logic                                      rst_ni,
+  output logic                                      busy_o,
+  input  logic [AxiReqWidth-1:0]                   axi_req_i,
+  output logic [AxiRespWidth-1:0]                  axi_resp_o,
+  output logic [NumBanks-1:0]                      mem_req_o,
+  input  logic [NumBanks-1:0]                      mem_gnt_i,
+  output logic [NumBanks-1:0][AddrWidth-1:0]       mem_addr_o,
+  output logic [NumBanks-1:0][MemDataWidth-1:0]    mem_wdata_o,
+  output logic [NumBanks-1:0][MemStrbWidth-1:0]    mem_strb_o,
+  output axi_pkg::atop_t [NumBanks-1:0]            mem_atop_o,
+  output logic [NumBanks-1:0]                      mem_lock_o,
+  output logic [NumBanks-1:0]                      mem_we_o,
+  output logic [NumBanks-1:0][IdWidth-1:0]         mem_id_o,
+  output logic [NumBanks-1:0][UserWidth-1:0]       mem_user_o,
+  output axi_pkg::cache_t [NumBanks-1:0]           mem_cache_o,
+  output axi_pkg::prot_t [NumBanks-1:0]            mem_prot_o,
+  output axi_pkg::qos_t [NumBanks-1:0]             mem_qos_o,
+  output axi_pkg::region_t [NumBanks-1:0]          mem_region_o,
+  input  logic [NumBanks-1:0]                      mem_rvalid_i,
+  input  logic [NumBanks-1:0][MemDataWidth-1:0]    mem_rdata_i,
+  input  logic [NumBanks-1:0]                      mem_err_i,
+  input  logic [NumBanks-1:0]                      mem_exokay_i
+);
+
+  assign busy_o       = 1'b0;
+  assign axi_resp_o   = '0;
+  assign mem_req_o    = '0;
+  assign mem_addr_o   = '0;
+  assign mem_wdata_o  = '0;
+  assign mem_strb_o   = '0;
+  assign mem_atop_o   = '0;
+  assign mem_lock_o   = '0;
+  assign mem_we_o     = '0;
+  assign mem_id_o     = '0;
+  assign mem_user_o   = '0;
+  assign mem_cache_o  = '0;
+  assign mem_prot_o   = '0;
+  assign mem_qos_o    = '0;
+  assign mem_region_o = '0;
+
+endmodule
+`else
 module axi_to_detailed_mem #(
   /// AXI4+ATOP request type. See `include/axi/typedef.svh`.
   parameter type         axi_req_t  = logic,
@@ -984,3 +1044,4 @@ module mem_stream_to_banks_detailed #(
   `endif
   `endif
 endmodule
+`endif
