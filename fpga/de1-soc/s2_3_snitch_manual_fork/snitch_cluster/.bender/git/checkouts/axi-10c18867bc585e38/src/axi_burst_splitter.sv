@@ -24,6 +24,32 @@
 /// - This module does not support atomic operations (ATOPs) and responds to ATOPs with a slave
 ///   error.  Place an [`axi_atop_filter`](module.axi_atop_filter) before this module if upstream
 ///   modules can generate ATOPs.
+`ifdef S2_3_QUARTUS
+// S2.3 parser/bring-up shim: do not split bursts, only pass the AXI vectors.
+module axi_burst_splitter #(
+  parameter int unsigned MaxReadTxns  = 32'd0,
+  parameter int unsigned MaxWriteTxns = 32'd0,
+  parameter bit          FullBW       = 0,
+  parameter int unsigned AddrWidth    = 32'd0,
+  parameter int unsigned DataWidth    = 32'd0,
+  parameter int unsigned IdWidth      = 32'd0,
+  parameter int unsigned UserWidth    = 32'd0,
+  parameter int unsigned AxiReqWidth  = 32'd1,
+  parameter int unsigned AxiRespWidth = 32'd1
+) (
+  input  logic                         clk_i,
+  input  logic                         rst_ni,
+  input  logic [AxiReqWidth-1:0]       slv_req_i,
+  output logic [AxiRespWidth-1:0]      slv_resp_o,
+  output logic [AxiReqWidth-1:0]       mst_req_o,
+  input  logic [AxiRespWidth-1:0]      mst_resp_i
+);
+
+  assign mst_req_o = slv_req_i;
+  assign slv_resp_o = mst_resp_i;
+
+endmodule
+`else
 module axi_burst_splitter #(
   // Maximum number of AXI read bursts outstanding at the same time
   parameter int unsigned MaxReadTxns  = 32'd0,
@@ -91,3 +117,4 @@ module axi_burst_splitter #(
   );
 
 endmodule
+`endif

@@ -1836,3 +1836,72 @@ The AXI parser frontier moved through the detailed memory bridge. The next
 blocker is the top-level burst splitter wrapper, separate from the granular
 burst splitter shim already added earlier.
 ```
+
+## Attempt 25: AXI Burst Splitter Wrapper S2.3 Shim
+
+Status:
+
+```text
+FAIL
+quartus_map exit code: 3
+no .sof produced
+```
+
+Command:
+
+```bash
+cd /home/ftv/builds/hero-tools/fpga/de1-soc/s2_3_snitch_manual_fork
+./scripts/quartus_preflight.sh
+```
+
+Manual source edits:
+
+```text
+snitch_cluster/.bender/git/checkouts/axi-*/src/axi_burst_splitter.sv
+```
+
+What changed:
+
+```text
+axi_burst_splitter.sv:
+  added an S2_3_QUARTUS-only pass-through wrapper
+  skipped the original type-parameterized wrapper in this mode
+```
+
+Important limitation:
+
+```text
+This is not a full semantic port of the burst splitter. It does not split
+bursts, reject wrapping bursts, or reject ATOPs; it only forwards request and
+response vectors.
+```
+
+Important progress:
+
+```text
+The previous axi_burst_splitter.sv type-parameter parser error is bypassed.
+Quartus now reaches axi_demux.sv.
+```
+
+New first Quartus error:
+
+```text
+axi/src/axi_demux.sv:45
+Error (10170): near text: "type"; expecting an identifier
+```
+
+Other errors in the same run:
+
+```text
+axi_demux.sv: parameter type and interface wrapper
+axi_err_slv.sv: parameter type and generate syntax
+axi_multicut.sv: parameter type and generate syntax
+```
+
+Interpretation:
+
+```text
+The AXI parser frontier moved through the top-level burst splitter wrapper.
+The next blocker is the top-level AXI demux wrapper, separate from the
+axi_demux_simple shim already added earlier.
+```
