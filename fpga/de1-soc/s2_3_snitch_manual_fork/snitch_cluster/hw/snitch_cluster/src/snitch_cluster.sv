@@ -702,11 +702,12 @@ module snitch_cluster
         .DataWidth (NarrowDataWidth),
         .ByteWidth (8),
         .NumPorts (1),
-        .Latency (1)
+        .Latency (1),
+        .impl_in_t (sram_cfg_t)
       ) i_data_mem (
         .clk_i,
         .rst_ni,
-        .impl_i (1'b0),
+        .impl_i (sram_cfgs_i.tcdm),
         .impl_o (  ),
         .req_i (mem_cs),
         .we_i (mem_wen),

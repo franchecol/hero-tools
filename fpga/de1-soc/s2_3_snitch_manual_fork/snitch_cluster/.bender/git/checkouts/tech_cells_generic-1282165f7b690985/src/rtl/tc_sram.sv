@@ -65,34 +65,37 @@ module tc_sram #(
   parameter              FPGAImplKey  = "auto",   // Reference to specific implementation for fpga
   // DEPENDENT PARAMETERS, DO NOT OVERWRITE!
   parameter int unsigned AddrWidth = (NumWords > 32'd1) ? $clog2(NumWords) : 32'd1,
-  parameter int unsigned BeWidth   = (DataWidth + ByteWidth - 32'd1) / ByteWidth  // ceil_div
+  parameter int unsigned BeWidth   = (DataWidth + ByteWidth - 32'd1) / ByteWidth, // ceil_div
+  parameter type         addr_t    = logic [AddrWidth-1:0],
+  parameter type         data_t    = logic [DataWidth-1:0],
+  parameter type         be_t      = logic [BeWidth-1:0]
 ) (
   input  logic                 clk_i,      // Clock
   input  logic                 rst_ni,     // Asynchronous reset active low
   // input ports
   input  logic  [NumPorts-1:0] req_i,      // request
   input  logic  [NumPorts-1:0] we_i,       // write enable
-  input  logic [NumPorts-1:0][AddrWidth-1:0] addr_i,     // request address
-  input  logic [NumPorts-1:0][DataWidth-1:0] wdata_i,    // write data
-  input  logic [NumPorts-1:0][BeWidth-1:0] be_i,       // write byte enable
+  input  addr_t [NumPorts-1:0] addr_i,     // request address
+  input  data_t [NumPorts-1:0] wdata_i,    // write data
+  input  be_t   [NumPorts-1:0] be_i,       // write byte enable
   // output ports
-  output logic [NumPorts-1:0][DataWidth-1:0] rdata_o     // read data
+  output data_t [NumPorts-1:0] rdata_o     // read data
 );
 
   // memory array
-  logic [DataWidth-1:0] sram [NumWords-1:0];
+  data_t sram [NumWords-1:0];
   // hold the read address when no read access is made
-  logic [NumPorts-1:0][AddrWidth-1:0] r_addr_q;
+  addr_t [NumPorts-1:0] r_addr_q;
 
   // SRAM simulation initialization
-  function automatic logic [DataWidth-1:0] random_init_word();
+  function automatic data_t random_init_word();
     random_init_word = '0;
     for (int unsigned b = 0; b < DataWidth; b += 32) begin
-      random_init_word = (random_init_word << 32) | $urandom();
+      random_init_word = (random_init_word << 32) | data_t'($urandom());
     end
   endfunction
 
-  logic [DataWidth-1:0] init_val [NumWords-1:0];
+  data_t init_val[NumWords-1:0];
   initial begin : proc_sram_init
     for (int unsigned i = 0; i < NumWords; i++) begin
       unique case (SimInit)
@@ -110,7 +113,7 @@ module tc_sram #(
   // array index 0.
 
   // read data output assignment
-  logic [NumPorts-1:0][Latency-1:0][DataWidth-1:0] rdata_q, rdata_d;
+  data_t [NumPorts-1:0][Latency-1:0] rdata_q,  rdata_d;
   if (Latency == 32'd0) begin : gen_no_read_lat
     for (genvar i = 0; i < NumPorts; i++) begin : gen_port
       assign rdata_o[i] = (req_i[i] && !we_i[i]) ? sram[addr_i[i]] : sram[r_addr_q[i]];
