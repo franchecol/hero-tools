@@ -15,6 +15,36 @@
 // - Fabian Schuiki <fschuiki@iis.ee.ethz.ch>
 
 /// An AXI4+ATOP to AXI4-Lite converter with atomic transaction and burst support.
+`ifdef S2_3_QUARTUS
+// S2.3 parser/bring-up shim: expose vector ports and suppress conversion.
+module axi_to_axi_lite #(
+  parameter int unsigned AxiAddrWidth    = 32'd0,
+  parameter int unsigned AxiDataWidth    = 32'd0,
+  parameter int unsigned AxiIdWidth      = 32'd0,
+  parameter int unsigned AxiUserWidth    = 32'd0,
+  parameter int unsigned AxiMaxWriteTxns = 32'd0,
+  parameter int unsigned AxiMaxReadTxns  = 32'd0,
+  parameter bit          FullBW          = 0,
+  parameter bit          FallThrough     = 1'b1,
+  parameter int unsigned FullReqWidth    = 32'd1,
+  parameter int unsigned FullRespWidth   = 32'd1,
+  parameter int unsigned LiteReqWidth    = 32'd1,
+  parameter int unsigned LiteRespWidth   = 32'd1
+) (
+  input  logic                         clk_i,
+  input  logic                         rst_ni,
+  input  logic                         test_i,
+  input  logic [FullReqWidth-1:0]      slv_req_i,
+  output logic [FullRespWidth-1:0]     slv_resp_o,
+  output logic [LiteReqWidth-1:0]      mst_req_o,
+  input  logic [LiteRespWidth-1:0]     mst_resp_i
+);
+
+  assign slv_resp_o = '0;
+  assign mst_req_o = '0;
+
+endmodule
+`else
 module axi_to_axi_lite #(
   parameter int unsigned AxiAddrWidth    = 32'd0,
   parameter int unsigned AxiDataWidth    = 32'd0,
@@ -324,3 +354,4 @@ module axi_to_axi_lite_intf #(
     .mst_resp_i ( lite_resp  )
   );
 endmodule
+`endif

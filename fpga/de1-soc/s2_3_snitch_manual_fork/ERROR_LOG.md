@@ -2111,3 +2111,71 @@ Interpretation:
 The AXI parser frontier moved through multicut. The next blocker is the AXI to
 AXI-Lite converter.
 ```
+
+## Attempt 29: AXI to AXI-Lite S2.3 Stub
+
+Status:
+
+```text
+FAIL
+quartus_map exit code: 3
+no .sof produced
+```
+
+Command:
+
+```bash
+cd /home/ftv/builds/hero-tools/fpga/de1-soc/s2_3_snitch_manual_fork
+./scripts/quartus_preflight.sh
+```
+
+Manual source edits:
+
+```text
+snitch_cluster/.bender/git/checkouts/axi-*/src/axi_to_axi_lite.sv
+```
+
+What changed:
+
+```text
+axi_to_axi_lite.sv:
+  added an S2_3_QUARTUS-only zero-output bridge stub
+  skipped the original full converter, ID-reflect helper, and interface wrapper
+```
+
+Important limitation:
+
+```text
+This is not a full semantic port of the AXI to AXI-Lite converter. It does not
+translate transactions; it drives both response and outgoing request vectors to
+zero.
+```
+
+Important progress:
+
+```text
+The previous axi_to_axi_lite.sv type-parameter parser errors are bypassed.
+Quartus now reaches axi_to_mem.sv.
+```
+
+New first Quartus error:
+
+```text
+axi/src/axi_to_mem.sv:21
+Error (10170): near text: "type"; expecting an identifier
+```
+
+Other errors in the same run:
+
+```text
+axi_zero_mem.sv: parameter type and localparam type
+axi_xbar_unmuxed.sv: parameter type
+axi_to_mem_interleaved.sv: parameter type and interface wrapper
+```
+
+Interpretation:
+
+```text
+The AXI parser frontier moved through the AXI to AXI-Lite converter. The next
+blocker is the simpler AXI-to-memory wrapper.
+```
