@@ -378,17 +378,19 @@ module snitch import snitch_pkg::*; import riscv_instr::*; #(
   `FFAR(ssip_q, ssip_d, '0, clk_i, rst_i)
   `FFAR(scip_q, scip_d, '0, clk_i, rst_i)
 
-  if (DebugSupport) begin : gen_debug
-    `FFAR(dcsr_q, dcsr_d, '0, clk_i, rst_i)
-    `FFNR(dpc_q, dpc_d, clk_i)
-    `FFNR(dscratch_q, dscratch_d, clk_i)
-    `FFAR(debug_q, debug_d, '0, clk_i, rst_i) // Debug mode
-  end else begin : gen_no_debug
-    assign dcsr_q = '0;
-    assign dpc_q  = '0;
-    assign dscratch_q = '0;
-    assign debug_q = '0;
-  end
+  generate
+    if (DebugSupport) begin : gen_debug
+      `FFAR(dcsr_q, dcsr_d, '0, clk_i, rst_i)
+      `FFNR(dpc_q, dpc_d, clk_i)
+      `FFNR(dscratch_q, dscratch_d, clk_i)
+      `FFAR(debug_q, debug_d, '0, clk_i, rst_i) // Debug mode
+    end else begin : gen_no_debug
+      assign dcsr_q = '0;
+      assign dpc_q  = '0;
+      assign dscratch_q = '0;
+      assign debug_q = '0;
+    end
+  endgenerate
 
   `FFAR(csr_stall_q, csr_stall_d, '0, clk_i, rst_i)
 
@@ -449,44 +451,46 @@ module snitch import snitch_pkg::*; import riscv_instr::*; #(
   // ---------
   assign itlb_va = va_t'(pc_q[31:PageShift]);
 
-  if (VMSupport) begin : gen_itlb
-    snitch_l0_tlb #(
+  generate
+    if (VMSupport) begin : gen_itlb
+      snitch_l0_tlb #(
 `ifdef S2_3_QUARTUS
-      .AddrWidth (AddrWidth),
+        .AddrWidth (AddrWidth),
 `else
-      .pa_t (pa_t),
-      .l0_pte_t (l0_pte_t),
+        .pa_t (pa_t),
+        .l0_pte_t (l0_pte_t),
 `endif
-      .NrEntries ( NumITLBEntries )
-    ) i_snitch_l0_tlb_inst (
-      .clk_i,
-      .rst_i,
-      .flush_i ( tlb_flush ),
-      .priv_lvl_i ( priv_lvl_q ),
-      .valid_i ( itlb_valid ),
-      .ready_o ( itlb_ready ),
-      .va_i ( itlb_va ),
-      .write_i ( 1'b0 ),
-      .read_i  ( 1'b0 ),
-      .execute_i ( 1'b1 ),
-      .page_fault_o ( itlb_page_fault ),
-      .pa_o ( itlb_pa ),
-      // Refill port
-      .valid_o ( ptw_valid_o[0] ),
-      .ready_i ( ptw_ready_i[0] ),
-      .va_o ( ptw_va_o[0] ),
-      .pte_i ( ptw_pte[0] ),
-      .is_4mega_i ( ptw_is_4mega_i[0] )
-    );
-  end else begin : gen_no_itlb
-    // Tie off core-side interface (itlb_pa unused as trans_active == '0)
-    assign itlb_pa          = '0;
-    assign itlb_ready       = 1'b0;
-    assign itlb_page_fault  = 1'b0;
-    // Tie off TLB refill request
-    assign ptw_valid_o[0] = 1'b0;
-    assign ptw_va_o[0]    = '0;
-  end
+        .NrEntries ( NumITLBEntries )
+      ) i_snitch_l0_tlb_inst (
+        .clk_i,
+        .rst_i,
+        .flush_i ( tlb_flush ),
+        .priv_lvl_i ( priv_lvl_q ),
+        .valid_i ( itlb_valid ),
+        .ready_o ( itlb_ready ),
+        .va_i ( itlb_va ),
+        .write_i ( 1'b0 ),
+        .read_i  ( 1'b0 ),
+        .execute_i ( 1'b1 ),
+        .page_fault_o ( itlb_page_fault ),
+        .pa_o ( itlb_pa ),
+        // Refill port
+        .valid_o ( ptw_valid_o[0] ),
+        .ready_i ( ptw_ready_i[0] ),
+        .va_o ( ptw_va_o[0] ),
+        .pte_i ( ptw_pte[0] ),
+        .is_4mega_i ( ptw_is_4mega_i[0] )
+      );
+    end else begin : gen_no_itlb
+      // Tie off core-side interface (itlb_pa unused as trans_active == '0)
+      assign itlb_pa          = '0;
+      assign itlb_ready       = 1'b0;
+      assign itlb_page_fault  = 1'b0;
+      // Tie off TLB refill request
+      assign ptw_valid_o[0] = 1'b0;
+      assign ptw_va_o[0]    = '0;
+    end
+  endgenerate
 
   assign itlb_valid = trans_active & inst_valid_o;
   assign itlb_trans_valid = trans_active & itlb_valid & itlb_ready;
@@ -2752,10 +2756,13 @@ module snitch import snitch_pkg::*; import riscv_instr::*; #(
   logic [31:0] shift_right_result, shift_left_result;
   logic [32:0] shift_opa_ext, shift_right_result_ext;
   logic shift_left, shift_arithmetic; // shift control
-  for (genvar i = 0; i < 32; i++) begin : gen_reverse_opa
-    assign shift_opa_reversed[i] = opa[31-i];
-    assign shift_left_result[i] = shift_right_result[31-i];
-  end
+  generate
+    genvar gen_reverse_opa_i;
+    for (gen_reverse_opa_i = 0; gen_reverse_opa_i < 32; gen_reverse_opa_i++) begin : gen_reverse_opa
+      assign shift_opa_reversed[gen_reverse_opa_i] = opa[31-gen_reverse_opa_i];
+      assign shift_left_result[gen_reverse_opa_i] = shift_right_result[31-gen_reverse_opa_i];
+    end
+  endgenerate
   assign shift_opa = shift_left ? shift_opa_reversed : opa;
   assign shift_opa_ext = {shift_opa[31] & shift_arithmetic, shift_opa};
   assign shift_right_result_ext = $unsigned($signed(shift_opa_ext) >>> opb[4:0]);
@@ -2829,44 +2836,46 @@ module snitch import snitch_pkg::*; import riscv_instr::*; #(
   // --------------------
   assign dtlb_va = va_t'(alu_result[31:PageShift]);
 
-  if (VMSupport) begin : gen_dtlb
-    snitch_l0_tlb #(
+  generate
+    if (VMSupport) begin : gen_dtlb
+      snitch_l0_tlb #(
 `ifdef S2_3_QUARTUS
-      .AddrWidth (AddrWidth),
+        .AddrWidth (AddrWidth),
 `else
-      .pa_t (pa_t),
-      .l0_pte_t (l0_pte_t),
+        .pa_t (pa_t),
+        .l0_pte_t (l0_pte_t),
 `endif
-      .NrEntries ( NumDTLBEntries )
-    ) i_snitch_l0_tlb_data (
-      .clk_i,
-      .rst_i,
-      .flush_i ( tlb_flush ),
-      .priv_lvl_i ( priv_lvl_q ),
-      .valid_i ( dtlb_valid ),
-      .ready_o ( dtlb_ready ),
-      .va_i ( dtlb_va ),
-      .write_i ( is_store ),
-      .read_i ( is_load ),
-      .execute_i ( 1'b0 ),
-      .page_fault_o ( dtlb_page_fault ),
-      .pa_o ( dtlb_pa ),
-      // Refill port
-      .valid_o ( ptw_valid_o [1] ),
-      .ready_i ( ptw_ready_i [1] ),
-      .va_o ( ptw_va_o [1] ),
-      .pte_i ( ptw_pte [1] ),
-      .is_4mega_i ( ptw_is_4mega_i [1] )
-    );
-  end else begin : gen_no_dtlb
-    // Tie off core-side interface (dtlb_pa unused as trans_active == '0)
-    assign dtlb_pa          = pa_t'(dtlb_va);
-    assign dtlb_ready       = 1'b0;
-    assign dtlb_page_fault  = 1'b0;
-    // Tie off TLB refill request
-    assign ptw_valid_o[1] = 1'b0;
-    assign ptw_va_o[1]    = '0;
-  end
+        .NrEntries ( NumDTLBEntries )
+      ) i_snitch_l0_tlb_data (
+        .clk_i,
+        .rst_i,
+        .flush_i ( tlb_flush ),
+        .priv_lvl_i ( priv_lvl_q ),
+        .valid_i ( dtlb_valid ),
+        .ready_o ( dtlb_ready ),
+        .va_i ( dtlb_va ),
+        .write_i ( is_store ),
+        .read_i ( is_load ),
+        .execute_i ( 1'b0 ),
+        .page_fault_o ( dtlb_page_fault ),
+        .pa_o ( dtlb_pa ),
+        // Refill port
+        .valid_o ( ptw_valid_o [1] ),
+        .ready_i ( ptw_ready_i [1] ),
+        .va_o ( ptw_va_o [1] ),
+        .pte_i ( ptw_pte [1] ),
+        .is_4mega_i ( ptw_is_4mega_i [1] )
+      );
+    end else begin : gen_no_dtlb
+      // Tie off core-side interface (dtlb_pa unused as trans_active == '0)
+      assign dtlb_pa          = pa_t'(dtlb_va);
+      assign dtlb_ready       = 1'b0;
+      assign dtlb_page_fault  = 1'b0;
+      // Tie off TLB refill request
+      assign ptw_valid_o[1] = 1'b0;
+      assign ptw_va_o[1]    = '0;
+    end
+  endgenerate
 
   assign ptw_ppn[0] = $unsigned(satp_q.ppn);
   assign ptw_ppn[1] = $unsigned(satp_q.ppn);

@@ -3663,3 +3663,75 @@ The main Snitch module boundary is now past Quartus. Remaining Snitch errors
 are ordinary body syntax incompatibilities such as explicit generate blocks and
 rewriting `inside` expressions.
 ```
+
+## Attempt 49: Port Snitch Top-Level Generate Syntax
+
+Status:
+
+```text
+FAIL
+quartus_map exit code: 3
+no .sof produced
+```
+
+Command:
+
+```bash
+cd /home/ftv/builds/hero-tools/fpga/de1-soc/s2_3_snitch_manual_fork
+./scripts/quartus_preflight.sh
+```
+
+Manual edits:
+
+```text
+snitch_cluster/hw/snitch/src/snitch.sv
+```
+
+What changed:
+
+```text
+wrapped these top-level generate constructs in explicit generate/endgenerate:
+  DebugSupport debug CSR block
+  VMSupport ITLB block
+  ALU operand reverse genvar loop
+  VMSupport DTLB block
+
+rewrote the ALU reverse loop to declare the genvar separately
+```
+
+Why this is acceptable:
+
+```text
+This is a syntax-only rewrite. The selected generated hardware is unchanged.
+```
+
+Important progress:
+
+```text
+The previous snitch.sv generate-if parser errors are gone.
+The previous snitch.sv top-level genvar-loop parser error is gone.
+Quartus now reaches unsupported inside expressions in the Snitch decoder.
+```
+
+New first Quartus error:
+
+```text
+hw/snitch/src/snitch.sv:930
+Error (10170): near text: "inside"; expecting ")"
+```
+
+Other errors in the same run:
+
+```text
+snitch.sv: multiple inside-expression parser errors
+snitch_ptw.sv: parameter type errors
+snitch_dma helper files: parameter type errors
+snitch_icache_l0.sv: generate parser errors
+```
+
+Interpretation:
+
+```text
+The Snitch core body now parses past top-level generate syntax. The next class
+is membership tests written with SystemVerilog `inside`.
+```

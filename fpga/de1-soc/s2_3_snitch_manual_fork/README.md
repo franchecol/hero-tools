@@ -202,13 +202,15 @@ snitch.sv now moves package imports out of the module header under
 S2_3_QUARTUS, avoiding Quartus' module-import-list parser limitation.
 snitch.sv now has an S2_3_QUARTUS width-parameterized boundary for data,
 accelerator, and VM ports while preserving internal packed-struct logic.
+snitch.sv top-level debug, ITLB, ALU reverse-loop, and DTLB generate blocks now
+use explicit generate/endgenerate syntax.
 ```
 
 New first blocker:
 
 ```text
-snitch_cluster/hw/snitch/src/snitch.sv:381
-Error (10170): near text: "if"; expecting "endmodule"
+snitch_cluster/hw/snitch/src/snitch.sv:930
+Error (10170): near text: "inside"; expecting ")"
 ```
 
 The next class is the actual Snitch core RTL.
