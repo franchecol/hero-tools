@@ -200,12 +200,14 @@ module snitch_cc #(
   snitch #(
     .AddrWidth (AddrWidth),
     .DataWidth (DataWidth),
+`ifndef S2_3_QUARTUS
     .acc_req_t (acc_req_t),
     .acc_resp_t (acc_resp_t),
     .dreq_t (dreq_t),
     .drsp_t (drsp_t),
     .pa_t (pa_t),
     .l0_pte_t (l0_pte_t),
+`endif
     .BootAddr (BootAddr),
     .SnitchPMACfg (SnitchPMACfg),
     .NumIntOutstandingLoads (NumIntOutstandingLoads),

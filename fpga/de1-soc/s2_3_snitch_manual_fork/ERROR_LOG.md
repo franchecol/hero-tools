@@ -3574,3 +3574,92 @@ The import syntax issue was superficial. The next blocker is the main Snitch
 core module boundary, which exposes multiple type parameters for data,
 accelerator, and virtual-memory structs.
 ```
+
+## Attempt 48: Port Main Snitch Module Boundary for Quartus
+
+Status:
+
+```text
+FAIL
+quartus_map exit code: 3
+no .sof produced
+```
+
+Command:
+
+```bash
+cd /home/ftv/builds/hero-tools/fpga/de1-soc/s2_3_snitch_manual_fork
+./scripts/quartus_preflight.sh
+```
+
+Manual edits:
+
+```text
+snitch_cluster/hw/snitch/src/snitch.sv
+snitch_cluster/hw/snitch_cluster/src/snitch_cc.sv
+```
+
+What changed:
+
+```text
+snitch.sv:
+  added S2_3_QUARTUS width parameters for data req/rsp, accelerator req/rsp,
+  physical-address, and page-table-entry ports
+  recreated reqrsp, VM, and accelerator packed structs internally
+  routed the core body through internal aliases:
+    acc_qreq / acc_prsp
+    data_req / data_rsp
+    ptw_ppn / ptw_pte
+  kept the original typed-parameter boundary outside S2_3_QUARTUS
+
+snitch_cc.sv:
+  stops passing Snitch type parameters under S2_3_QUARTUS
+  keeps the original type overrides outside S2_3_QUARTUS
+```
+
+Why this is acceptable:
+
+```text
+The Snitch core logic still operates on the same packed fields internally. The
+change only replaces type-parameterized external ports with explicitly sized
+packed-vector ports in the Quartus path.
+```
+
+Important limitation:
+
+```text
+The S2_3_QUARTUS Snitch boundary assumes the surrounding packed structs match
+the standard local layouts for reqrsp, VM, and accelerator channels.
+```
+
+Important progress:
+
+```text
+The previous snitch.sv type-parameter parser errors are gone.
+Quartus now parses into the Snitch core body and reaches generate-if syntax.
+```
+
+New first Quartus error:
+
+```text
+hw/snitch/src/snitch.sv:381
+Error (10170): near text: "if"; expecting "endmodule"
+```
+
+Other errors in the same run:
+
+```text
+snitch.sv: generate-if parser errors
+snitch.sv: inside-expression parser errors
+snitch_ptw.sv: parameter type errors
+snitch_dma helper files: parameter type errors
+snitch_icache_l0.sv: generate parser errors
+```
+
+Interpretation:
+
+```text
+The main Snitch module boundary is now past Quartus. Remaining Snitch errors
+are ordinary body syntax incompatibilities such as explicit generate blocks and
+rewriting `inside` expressions.
+```
