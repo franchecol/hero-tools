@@ -6,8 +6,46 @@
 
 `include "common_cells/registers.svh"
 `include "common_cells/assertions.svh"
+`include "reqrsp_interface/typedef.svh"
+`include "snitch_vm/typedef.svh"
 
 /// Page table walker (PTW) for RISC-V (Custom)Sv32 address translation.
+`ifdef S2_3_QUARTUS
+import snitch_pkg::*;
+module snitch_ptw #(
+  parameter int unsigned AddrWidth = 64,
+  parameter int unsigned DataWidth = 64,
+  /// Derived parameter. *Do not change*
+  parameter int unsigned PPNSize = AddrWidth - PageShift,
+  parameter int unsigned PteWidth = PPNSize + 6,
+  parameter int unsigned DreqWidth = AddrWidth + DataWidth + (DataWidth / 8) + 10,
+  parameter int unsigned DrspWidth = DataWidth + 3
+) (
+  input  logic                clk_i,
+  input  logic                rst_ni,
+  /// Possibly extended physical page number (base)
+  input  logic [PPNSize-1:0]  ppn_i,
+  input  logic                valid_i,
+  output logic                ready_o,
+  input  va_t                 va_i,
+  output logic [PteWidth-1:0] pte_o,
+  /// Is this a 4 mega page i.e,. super-page
+  output logic                is_4mega_o,
+  /// Memory interface
+  output logic [DreqWidth-1:0] data_req_o,
+  input  logic [DrspWidth-1:0] data_rsp_i
+);
+
+  typedef logic [AddrWidth-1:0] addr_t;
+  typedef logic [DataWidth-1:0] data_t;
+  typedef logic [DataWidth/8-1:0] strb_t;
+
+  `REQRSP_TYPEDEF_ALL(reqrsp, addr_t, data_t, strb_t)
+  `SNITCH_VM_TYPEDEF(AddrWidth)
+
+  typedef reqrsp_req_t dreq_t;
+  typedef reqrsp_rsp_t drsp_t;
+`else
 module snitch_ptw import snitch_pkg::*; #(
   parameter int unsigned AddrWidth = 64,
   parameter int unsigned DataWidth = 64,
@@ -33,6 +71,15 @@ module snitch_ptw import snitch_pkg::*; #(
   output dreq_t               data_req_o,
   input  drsp_t               data_rsp_i
 );
+`endif
+
+  l0_pte_t pte_result;
+  dreq_t data_req;
+  drsp_t data_rsp;
+
+  assign pte_o = pte_result;
+  assign data_req_o = data_req;
+  assign data_rsp = data_rsp_i;
 
   /// Page Table Entry Size in Bytes
   /// If we need to address more than 34 bit, the PTE needs to be 8 bytes wide,
@@ -56,13 +103,13 @@ module snitch_ptw import snitch_pkg::*; #(
   pte_sv32_t pte;
   l0_pte_t pte_d, pte_q;
   logic is_4mega_d, is_4mega_q;
-  assign pte = pte_sv32_t'(data_rsp_i.p.data[$size(pte_sv32_t)-1:0]);
-  `FFLNR(pte_q, pte_d, (data_rsp_i.p_valid & data_req_o.p_ready), clk_i)
+  assign pte = pte_sv32_t'(data_rsp.p.data[$size(pte_sv32_t)-1:0]);
+  `FFLNR(pte_q, pte_d, (data_rsp.p_valid & data_req.p_ready), clk_i)
   `FFNR(is_4mega_q, is_4mega_d, clk_i)
 
   `FFNR(lvl_q, lvl_d, clk_i)
 
-  assign pte_o = pte_q;
+  assign pte_result = pte_q;
   assign is_4mega_o = is_4mega_q;
 
   //-------------------
@@ -90,19 +137,19 @@ module snitch_ptw import snitch_pkg::*; #(
   always_comb begin
     automatic logic [PageShift-1:0] page_table_index;
     // As of now this is a read only interface.
-    data_req_o.q.amo = reqrsp_pkg::AMONone;
-    data_req_o.q.data = '0;
-    data_req_o.q.write = 0;
-    data_req_o.q.strb = '0;
+    data_req.q.amo = reqrsp_pkg::AMONone;
+    data_req.q.data = '0;
+    data_req.q.write = 0;
+    data_req.q.strb = '0;
 
     lvl_d = lvl_q;
     state_d = state_q;
 
     page_table_index = $unsigned({va_i.vpn1, {{PTEAddrOffset}{1'b0}}});
-    data_req_o.q.addr = $unsigned({ppn_i, page_table_index});
-    data_req_o.q.size = $clog2(DataWidth/8);
-    data_req_o.q_valid = 1'b0;
-    data_req_o.p_ready = 1'b1;
+    data_req.q.addr = $unsigned({ppn_i, page_table_index});
+    data_req.q.size = $clog2(DataWidth/8);
+    data_req.q_valid = 1'b0;
+    data_req.p_ready = 1'b1;
 
     ready_o = 1'b0;
     // unpack the PTE to the more space efficient L0 PTE.
@@ -121,9 +168,9 @@ module snitch_ptw import snitch_pkg::*; #(
       //  Let's accept a new incoming lookup here.
       Idle:  begin
         lvl_d = 0;
-        data_req_o.q_valid = valid_i;
+        data_req.q_valid = valid_i;
         // First look-up can be done here.
-        if (valid_i && data_rsp_i.q_ready) begin
+        if (valid_i && data_rsp.q_ready) begin
           state_d = WaitPTE;
         end
       end
@@ -131,11 +178,11 @@ module snitch_ptw import snitch_pkg::*; #(
       LookupPTE: begin
         // Check that we are not infinitely recursing.
         if (lvl_q < 2) begin
-          data_req_o.q_valid = 1'b1;
+          data_req.q_valid = 1'b1;
           // Compose virtual address;
           page_table_index = $unsigned({va_i.vpn0, {{PTEAddrOffset}{1'b0}}});
-          data_req_o.q.addr = $unsigned({pte_q.pa, page_table_index});
-          if (data_rsp_i.q_ready) state_d = WaitPTE;
+          data_req.q.addr = $unsigned({pte_q.pa, page_table_index});
+          if (data_rsp.q_ready) state_d = WaitPTE;
         end else begin
           pte_d.flags.a = '0; // clear PTE.a making it invalid for downstream
           state_d = ReturnPTE;
@@ -144,7 +191,7 @@ module snitch_ptw import snitch_pkg::*; #(
       // Wait for the PTE to return from memory
       WaitPTE: begin
         is_4mega_d = 1'b0;
-        if (data_rsp_i.p_valid) begin
+        if (data_rsp.p_valid) begin
           // increase lvl
           lvl_d++;
           // Something went wrong. Clear the access bit.
@@ -163,7 +210,7 @@ module snitch_ptw import snitch_pkg::*; #(
           // This is a pointer to the next level.
           end else state_d = LookupPTE;
           // in case we got an access error
-          if (data_rsp_i.p.error) begin
+          if (data_rsp.p.error) begin
             pte_d.flags.a = '0;
             state_d = ReturnPTE;
           end
@@ -191,14 +238,14 @@ module snitch_ptw import snitch_pkg::*; #(
   `ASSERT(VAReqStable, valid_i && !ready_o |=> valid_i)
   `ASSERT(VAReqDataStable, valid_i && !ready_o |=> ($stable(va_i) && $stable(ppn_i)))
   // data request
-  `ASSERT(RefillReqStable, data_req_o.q_valid && !data_rsp_i.q_ready |=> data_req_o.q_valid)
+  `ASSERT(RefillReqStable, data_req.q_valid && !data_rsp.q_ready |=> data_req.q_valid)
   `ASSERT(RefillReqDataStable,
-      data_req_o.q_valid && !data_rsp_i.q_ready |=> $stable(data_req_o.q.addr))
+      data_req.q_valid && !data_rsp.q_ready |=> $stable(data_req.q.addr))
   // data response
-  `ASSERT(RefillRspStable, data_rsp_i.p_valid && !data_req_o.p_ready |=> data_rsp_i.p_valid)
+  `ASSERT(RefillRspStable, data_rsp.p_valid && !data_req.p_ready |=> data_rsp.p_valid)
   `ASSERT(RefillRspDataStable,
-      data_rsp_i.p_valid && !data_req_o.p_ready |=>
-      $stable(data_rsp_i.p.data) && $stable(data_rsp_i.p.error))
+      data_rsp.p_valid && !data_req.p_ready |=>
+      $stable(data_rsp.p.data) && $stable(data_rsp.p.error))
   // make sure that the VPN and the addressing needed for the size of the PTE
   // fits within the page index, otherwise we can't index the entire page but
   // only a fraction of it.

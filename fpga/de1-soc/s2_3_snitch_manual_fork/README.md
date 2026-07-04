@@ -206,12 +206,14 @@ snitch.sv top-level debug, ITLB, ALU reverse-loop, and DTLB generate blocks now
 use explicit generate/endgenerate syntax.
 snitch.sv no longer uses unsupported `inside` membership tests, and the one
 S2_3-empty assertion macro call no longer leaves a stray semicolon.
+snitch_ptw.sv now has an S2_3_QUARTUS width-parameterized VM/reqrsp boundary
+while preserving the page-table-walker logic.
 ```
 
 New first blocker:
 
 ```text
-snitch_cluster/hw/snitch_vm/src/snitch_ptw.sv:14
+snitch_cluster/hw/snitch_dma/src/axi_dma_error_handler.sv:15
 Error (10170): near text: "type"; expecting an identifier
 ```
 

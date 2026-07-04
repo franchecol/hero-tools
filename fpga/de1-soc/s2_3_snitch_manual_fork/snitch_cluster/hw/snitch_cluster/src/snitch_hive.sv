@@ -180,12 +180,15 @@ module snitch_hive #(
 
     snitch_ptw #(
       .AddrWidth (AddrWidth),
-      .DataWidth (NarrowDataWidth),
+      .DataWidth (NarrowDataWidth)
+`ifndef S2_3_QUARTUS
+      ,
       .pa_t (pa_t),
       .l0_pte_t (l0_pte_t),
       .pte_sv32_t (pte_sv32_t),
       .dreq_t (dreq_t),
       .drsp_t (drsp_t)
+`endif
     ) i_snitch_ptw (
       .clk_i         ( clk_d2_i        ),
       .rst_ni        ( rst_ni          ),

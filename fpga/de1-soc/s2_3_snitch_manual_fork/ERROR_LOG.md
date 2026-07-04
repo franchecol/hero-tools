@@ -3808,3 +3808,85 @@ Interpretation:
 The main Snitch core source now parses through Quartus' front end. The next
 active VM support block is the page-table walker.
 ```
+
+## Attempt 51: Port Snitch PTW Boundary for Quartus
+
+Status:
+
+```text
+FAIL
+quartus_map exit code: 3
+no .sof produced
+```
+
+Command:
+
+```bash
+cd /home/ftv/builds/hero-tools/fpga/de1-soc/s2_3_snitch_manual_fork
+./scripts/quartus_preflight.sh
+```
+
+Manual edits:
+
+```text
+snitch_cluster/hw/snitch_vm/src/snitch_ptw.sv
+snitch_cluster/hw/snitch_cluster/src/snitch_hive.sv
+```
+
+What changed:
+
+```text
+snitch_ptw.sv:
+  added an S2_3_QUARTUS module header using explicit vector widths for pte_o
+  and the reqrsp memory channel
+  recreated reqrsp and VM packed structs internally
+  routed PTW logic through pte_result, data_req, and data_rsp aliases
+  kept the original typed-parameter PTW header outside S2_3_QUARTUS
+
+snitch_hive.sv:
+  stops passing PTW type parameters under S2_3_QUARTUS
+  keeps the original type overrides outside S2_3_QUARTUS
+```
+
+Why this is acceptable:
+
+```text
+The PTW state machine and memory-access logic are preserved. Only the Quartus
+module boundary is rewritten away from parameter type syntax.
+```
+
+Important limitation:
+
+```text
+The S2_3_QUARTUS PTW wrapper assumes the VM and reqrsp packed-vector layouts
+match SNITCH_VM_TYPEDEF and REQRSP_TYPEDEF_ALL for the selected widths.
+```
+
+Important progress:
+
+```text
+The previous snitch_ptw.sv parameter-type parser error is gone.
+Quartus now reaches the Snitch DMA helper files as the first blocker.
+```
+
+New first Quartus error:
+
+```text
+hw/snitch_dma/src/axi_dma_error_handler.sv:15
+Error (10170): near text: "type"; expecting an identifier
+```
+
+Other errors in the same run:
+
+```text
+snitch_dma helper files: parameter type and generate parser errors
+snitch_icache_l0.sv: generate parser errors
+```
+
+Interpretation:
+
+```text
+The active VM page-table walker is now past Quartus. The next reported class is
+DMA helper RTL, which should be checked against the selected xdma:false config
+before doing any direct port.
+```
