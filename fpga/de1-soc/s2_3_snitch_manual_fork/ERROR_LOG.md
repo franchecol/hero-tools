@@ -2179,3 +2179,75 @@ Interpretation:
 The AXI parser frontier moved through the AXI to AXI-Lite converter. The next
 blocker is the simpler AXI-to-memory wrapper.
 ```
+
+## Attempt 30: AXI to Memory S2.3 Stub
+
+Status:
+
+```text
+FAIL
+quartus_map exit code: 3
+no .sof produced
+```
+
+Command:
+
+```bash
+cd /home/ftv/builds/hero-tools/fpga/de1-soc/s2_3_snitch_manual_fork
+./scripts/quartus_preflight.sh
+```
+
+Manual source edits:
+
+```text
+snitch_cluster/.bender/git/checkouts/axi-*/src/axi_to_mem.sv
+```
+
+What changed:
+
+```text
+axi_to_mem.sv:
+  added an S2_3_QUARTUS-only no-request memory wrapper stub
+  skipped the original type-parameterized wrapper and interface wrapper
+```
+
+Important limitation:
+
+```text
+This is not a full semantic port of the AXI-to-memory wrapper. It does not
+translate AXI transactions into memory requests; it drives memory request
+outputs and AXI response bits to zero.
+```
+
+Important progress:
+
+```text
+The previous axi_to_mem.sv type-parameter and localparam-type parser errors are
+bypassed.
+Quartus now reaches axi_zero_mem.sv.
+```
+
+New first Quartus error:
+
+```text
+axi/src/axi_zero_mem.sv:26
+Error (10170): near text: "type"; expecting an identifier
+```
+
+Other errors in the same run:
+
+```text
+axi_xbar_unmuxed.sv: parameter type
+axi_to_mem_interleaved.sv: parameter type and interface wrapper
+axi_xbar.sv: parameter type
+fpu_div_sqrt_mvp/control_mvp.sv: unnamed block
+axi_riscv_atomics/axi_res_tbl.sv: genvar parser error
+```
+
+Interpretation:
+
+```text
+The AXI parser frontier moved through the simple AXI-to-memory wrapper. The
+run is now far enough to expose later non-AXI-library blockers as well, but the
+first immediate blocker remains another AXI memory helper.
+```
