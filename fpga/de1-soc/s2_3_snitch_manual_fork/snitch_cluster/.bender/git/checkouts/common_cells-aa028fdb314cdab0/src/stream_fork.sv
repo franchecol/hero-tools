@@ -79,25 +79,28 @@ module stream_fork #(
         end
     end
 
+    genvar gen_i;
+
     // Output control FSM
-    for (genvar i = 0; i < N_OUP; i++) begin: gen_oup_state
+    generate
+    for (gen_i = 0; gen_i < N_OUP; gen_i++) begin: gen_oup_state
         state_t oup_state_d, oup_state_q;
 
         always_comb begin
-            oup_ready[i]    = 1'b1;
-            valid_o[i]      = 1'b0;
+            oup_ready[gen_i] = 1'b1;
+            valid_o[gen_i]   = 1'b0;
             oup_state_d     = oup_state_q;
 
             unique case (oup_state_q)
                 READY: begin
                     if (valid_i) begin
-                        valid_o[i] = 1'b1;
-                        if (ready_i[i]) begin   // Output handshake
+                        valid_o[gen_i] = 1'b1;
+                        if (ready_i[gen_i]) begin   // Output handshake
                             if (!ready_o) begin     // No input handshake yet
                                 oup_state_d = WAIT;
                             end
                         end else begin          // No output handshake
-                            oup_ready[i] = 1'b0;
+                            oup_ready[gen_i] = 1'b0;
                         end
                     end
                 end
@@ -120,6 +123,7 @@ module stream_fork #(
             end
         end
     end
+    endgenerate
 
     assign all_ones = '1;   // Synthesis fix for Vivado, which does not correctly compute the width
                             // of the '1 literal when assigned to a port of parametrized width.

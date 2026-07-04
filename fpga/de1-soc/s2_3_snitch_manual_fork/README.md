@@ -79,7 +79,7 @@ cd /home/ftv/builds/hero-tools/fpga/de1-soc/s2_3_snitch_manual_fork
 
 ## Current Result
 
-Attempt 6 was run locally with Quartus Prime Lite 25.1std.0.
+Attempt 7 was run locally with Quartus Prime Lite 25.1std.0.
 
 Result:
 
@@ -103,16 +103,19 @@ onehot_to_bin.sv, passthrough_stream_fifo.sv, popcount.sv, ring_buffer.sv, and
 rr_arb_tree.sv are gone.
 The shift-register/spill-register errors in shift_reg.sv, shift_reg_gated.sv,
 and spill_register_flushable.sv are gone.
+The stream-helper errors in stream_fork.sv, stream_join_dynamic.sv,
+stream_mux.sv, stream_throttle.sv, sub_per_hash.sv, and read.sv are gone.
+The unused STREAM_DV interface helper was removed from the Quartus preflight
+file list, reducing it from 312 to 311 source files.
 ```
 
 New first blocker:
 
 ```text
-snitch_cluster/.bender/git/checkouts/common_cells-*/src/stream_fork.sv:83
-Error (10170): near text: "for"; expecting "endmodule"
+snitch_cluster/.bender/git/checkouts/common_cells-*/src/addr_decode_dync.sv:46
+Error (10170): near text: "type"; expecting an identifier
 ```
 
 The fix now exists as direct edits in the local Snitch fork. The next class is
-common_cells stream-helper syntax porting: `stream_fork`, `stream_intf`,
-`stream_join_dynamic`, `stream_mux`, `stream_throttle`, plus nearby utility
-modules `sub_per_hash` and `read`.
+common_cells decoder/CDC utility syntax porting: `addr_decode_dync`, `boxcar`,
+`cdc_2phase`, and `cdc_4phase`.

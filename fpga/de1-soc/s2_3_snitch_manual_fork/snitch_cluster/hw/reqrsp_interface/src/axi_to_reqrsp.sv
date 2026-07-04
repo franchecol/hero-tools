@@ -190,8 +190,8 @@ module axi_to_reqrsp #(
 
   // Arbitrate between reads and writes.
   stream_mux #(
-    .DATA_T ( meta_t ),
-    .N_INP  ( 32'd2  )
+    .DATA_WIDTH ( $bits(meta_t) ),
+    .N_INP      ( 32'd2         )
   ) i_ax_mux (
     .inp_data_i   ({wr_meta,  rd_meta }),
     .inp_valid_i  ({wr_valid, rd_valid}),

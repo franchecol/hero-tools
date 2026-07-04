@@ -514,3 +514,100 @@ Quartus is now past the shift/spill-register utilities and has advanced into
 the stream-helper portion of Common Cells. This is another distinct source
 group, not the same failing files.
 ```
+
+## Attempt 7: Stream Helper Common Cells Batch
+
+Status:
+
+```text
+FAIL
+quartus_map exit code: 3
+no .sof produced
+```
+
+Command:
+
+```bash
+cd /home/ftv/builds/hero-tools/fpga/de1-soc/s2_3_snitch_manual_fork
+./scripts/quartus_preflight.sh
+```
+
+Manual source edits:
+
+```text
+source_list/snitch_cluster.flist-plus.in
+snitch_cluster/.bender/git/checkouts/common_cells-*/src/stream_fork.sv
+snitch_cluster/.bender/git/checkouts/common_cells-*/src/stream_join_dynamic.sv
+snitch_cluster/.bender/git/checkouts/common_cells-*/src/stream_mux.sv
+snitch_cluster/.bender/git/checkouts/common_cells-*/src/stream_throttle.sv
+snitch_cluster/.bender/git/checkouts/common_cells-*/src/sub_per_hash.sv
+snitch_cluster/.bender/git/checkouts/common_cells-*/src/read.sv
+snitch_cluster/hw/reqrsp_interface/src/axi_to_reqrsp.sv
+```
+
+What changed:
+
+```text
+source list:
+  removed stream_intf.sv from the Quartus preflight list
+  reason: STREAM_DV is only referenced from testbench code, not the synthesis top
+
+stream_fork.sv:
+  wrapped module-level generate-for logic with explicit generate/endgenerate
+  replaced inline for-loop genvar with a separately declared genvar
+
+stream_join_dynamic.sv:
+  wrapped module-level generate-for logic with explicit generate/endgenerate
+  replaced inline for-loop genvar with a separately declared genvar
+
+stream_mux.sv:
+  replaced DATA_T type parameter with DATA_WIDTH vector ports
+
+stream_throttle.sv:
+  removed the credit_t type parameter and used explicit CntWidth vectors
+
+sub_per_hash.sv:
+  wrapped nested module-level generate-for logic with explicit generate/endgenerate
+  replaced inline for-loop genvars with separately declared genvars
+
+read.sv:
+  removed the T type parameter and used explicit Width vector ports
+
+axi_to_reqrsp.sv:
+  changed the active stream_mux override from .DATA_T(meta_t) to .DATA_WIDTH($bits(meta_t))
+```
+
+Important progress:
+
+```text
+The previous first errors in stream_fork.sv, stream_intf.sv,
+stream_join_dynamic.sv, stream_mux.sv, stream_throttle.sv, sub_per_hash.sv,
+and read.sv are gone.
+The preflight source count is now files=311 because the unused stream_intf.sv
+interface helper is no longer passed to Quartus.
+```
+
+New first Quartus error:
+
+```text
+common_cells/src/addr_decode_dync.sv:46
+Error (10170): Verilog HDL syntax error near text: "type";
+expecting an identifier ("type" is a reserved keyword)
+```
+
+Other errors in the same run:
+
+```text
+common_cells/src/addr_decode_dync.sv: function type parameter syntax
+common_cells/src/boxcar.sv: localparam in parameter list
+common_cells/src/cdc_2phase.sv: parameter type
+common_cells/src/cdc_4phase.sv: parameter type and implicit generate-if
+```
+
+Interpretation:
+
+```text
+Quartus is now past the stream helper group. The next group is decoder/helper
+math plus CDC primitives. Some of these may be unused in the one-clock DE1-SoC
+experiment, but they are still present in the broad frozen file list.
+```

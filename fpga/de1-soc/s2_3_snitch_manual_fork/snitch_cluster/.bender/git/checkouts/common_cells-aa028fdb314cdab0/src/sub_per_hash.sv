@@ -63,24 +63,29 @@ module sub_per_hash #(
   // stage signals
   logic [NoRounds-1:0][InpWidth-1:0] permuted, xored;
 
+  genvar gen_r;
+  genvar gen_i;
+
   // for each round
-  for (genvar r = 0; r < NoRounds; r++) begin : gen_round
+  generate
+  for (gen_r = 0; gen_r < NoRounds; gen_r++) begin : gen_round
     // for each bit
-    for (genvar i = 0; i < InpWidth ; i++) begin : gen_sub_per
+    for (gen_i = 0; gen_i < InpWidth ; gen_i++) begin : gen_sub_per
 
       // assign the permutation
-      if (r == 0) begin : gen_input
-        assign permuted[r][i] = data_i[Permutations[r][i]];
+      if (gen_r == 0) begin : gen_input
+        assign permuted[gen_r][gen_i] = data_i[Permutations[gen_r][gen_i]];
       end else begin : gen_permutation
-        assign permuted[r][i] = permuted[r-1][Permutations[r][i]];
+        assign permuted[gen_r][gen_i] = permuted[gen_r-1][Permutations[gen_r][gen_i]];
       end
 
       // assign the xor substitution
-      assign xored[r][i] = permuted[r][XorStages[r][i][0]] ^
-                           permuted[r][XorStages[r][i][1]] ^
-                           permuted[r][XorStages[r][i][2]];
+      assign xored[gen_r][gen_i] = permuted[gen_r][XorStages[gen_r][gen_i][0]] ^
+                                   permuted[gen_r][XorStages[gen_r][gen_i][1]] ^
+                                   permuted[gen_r][XorStages[gen_r][gen_i][2]];
     end
   end
+  endgenerate
 
   // output assignment, take the bottom bits of the last round
   assign hash_o = xored[NoRounds-1][HashWidth-1:0];

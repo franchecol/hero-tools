@@ -14,9 +14,7 @@ module stream_throttle #(
     /// The maximum amount of allowable outstanding requests
     parameter int unsigned MaxNumPending = 1,
     /// The width of the credit counter (*DO NOT OVERWRITE*)
-    parameter int unsigned CntWidth = cf_math_pkg::idx_width(MaxNumPending),
-    /// The type of the credit counter (*DO NOT OVERWRITE*)
-    parameter type credit_t = logic [CntWidth-1:0]
+    parameter int unsigned CntWidth = cf_math_pkg::idx_width(MaxNumPending)
 ) (
     /// Clock
     input  logic clk_i,
@@ -38,12 +36,12 @@ module stream_throttle #(
     input  logic    rsp_ready_i,
 
     /// Amount of credit (number of outstanding transfers)
-    input  credit_t credit_i
+    input  logic [CntWidth-1:0] credit_i
 );
 
     // we use a credit counter to keep track of how many transfers are pending at any point in
     // time. Valid is passed-through if there is credit.
-    credit_t credit_d, credit_q;
+    logic [CntWidth-1:0] credit_d, credit_q;
 
     // we have credit available
     logic credit_available;

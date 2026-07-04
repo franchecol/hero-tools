@@ -35,9 +35,12 @@ module stream_join_dynamic #(
 
   // Corner case when `sel_i` is all 0s should not generate valid
   assign oup_valid_o = &(inp_valid_i | ~sel_i) && |sel_i;
-  for (genvar i = 0; i < N_INP; i++) begin : gen_inp_ready
-    assign inp_ready_o[i] = oup_valid_o & oup_ready_i & sel_i[i];
-  end
+  genvar gen_i;
+  generate
+    for (gen_i = 0; gen_i < N_INP; gen_i++) begin : gen_inp_ready
+      assign inp_ready_o[gen_i] = oup_valid_o & oup_ready_i & sel_i[gen_i];
+    end
+  endgenerate
 
 `ifndef COMMON_CELLS_ASSERTS_OFF
   `ASSERT_INIT(n_inp_0, N_INP >= 1)
