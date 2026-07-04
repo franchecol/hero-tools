@@ -2251,3 +2251,74 @@ The AXI parser frontier moved through the simple AXI-to-memory wrapper. The
 run is now far enough to expose later non-AXI-library blockers as well, but the
 first immediate blocker remains another AXI memory helper.
 ```
+
+## Attempt 31: AXI Zero Memory S2.3 Stub
+
+Status:
+
+```text
+FAIL
+quartus_map exit code: 3
+no .sof produced
+```
+
+Command:
+
+```bash
+cd /home/ftv/builds/hero-tools/fpga/de1-soc/s2_3_snitch_manual_fork
+./scripts/quartus_preflight.sh
+```
+
+Manual source edits:
+
+```text
+snitch_cluster/.bender/git/checkouts/axi-*/src/axi_zero_mem.sv
+```
+
+What changed:
+
+```text
+axi_zero_mem.sv:
+  added an S2_3_QUARTUS-only zero-response memory stub
+  skipped the original type-parameterized zero-memory bridge
+```
+
+Important limitation:
+
+```text
+This is not a full semantic port of zero memory. It does not accept reads or
+writes through valid AXI handshakes; it only drives busy low and response bits
+to zero for parser exploration.
+```
+
+Important progress:
+
+```text
+The previous axi_zero_mem.sv type-parameter and localparam-type parser errors
+are bypassed.
+Quartus now reaches axi_xbar_unmuxed.sv.
+```
+
+New first Quartus error:
+
+```text
+axi/src/axi_xbar_unmuxed.sv:28
+Error (10170): near text: "type"; expecting an identifier
+```
+
+Other errors in the same run:
+
+```text
+axi_to_mem_interleaved.sv: parameter type and interface wrapper
+axi_xbar.sv: parameter type
+fpu_div_sqrt_mvp/control_mvp.sv: unnamed block
+axi_riscv_atomics/axi_res_tbl.sv: genvar parser error
+axi_riscv_atomics/axi_riscv_amos.sv: localparam/genvar parser errors
+```
+
+Interpretation:
+
+```text
+The AXI parser frontier moved through zero memory. The next blocker is the
+unmuxed AXI crossbar.
+```

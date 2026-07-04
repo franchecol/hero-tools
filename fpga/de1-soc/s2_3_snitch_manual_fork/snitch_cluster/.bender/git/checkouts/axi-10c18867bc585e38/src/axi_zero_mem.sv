@@ -21,6 +21,29 @@
 /// - `write`: grants the request, write data goes into nothingness (can be used as data sink)
 /// If both read and write channels of the AXI4+ATOP are active, both will have an
 /// utilization of 50%.
+`ifdef S2_3_QUARTUS
+// S2.3 parser/bring-up shim: zero AXI response without modelling memory.
+module axi_zero_mem #(
+  parameter int unsigned AxiReqWidth  = 1,
+  parameter int unsigned AxiRespWidth = 1,
+  parameter int unsigned AddrWidth    = 0,
+  parameter int unsigned DataWidth    = 0,
+  parameter int unsigned IdWidth      = 0,
+  parameter int unsigned NumBanks     = 0,
+  parameter int unsigned BufDepth     = 1
+) (
+  input  logic                         clk_i,
+  input  logic                         rst_ni,
+  output logic                         busy_o,
+  input  logic [AxiReqWidth-1:0]       axi_req_i,
+  output logic [AxiRespWidth-1:0]      axi_resp_o
+);
+
+  assign busy_o = 1'b0;
+  assign axi_resp_o = '0;
+
+endmodule
+`else
 module axi_zero_mem #(
   /// AXI4+ATOP request type. See `include/axi/typedef.svh`.
   parameter type         axi_req_t  = logic,
@@ -102,3 +125,4 @@ module axi_zero_mem #(
   `FF(zero_mem_valid_req_q, zero_mem_valid_req_d, '0, clk_i, rst_ni)
 
 endmodule
+`endif
