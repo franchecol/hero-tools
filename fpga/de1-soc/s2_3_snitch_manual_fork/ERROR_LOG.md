@@ -1491,3 +1491,72 @@ The AXI parser frontier moved to a simpler active helper, axi_cut.sv. The
 burst-splitting behavior remains a documented S2.3 simplification rather than
 a complete Quartus port.
 ```
+
+## Attempt 20: AXI Cut S2.3 Shim
+
+Status:
+
+```text
+FAIL
+quartus_map exit code: 3
+no .sof produced
+```
+
+Command:
+
+```bash
+cd /home/ftv/builds/hero-tools/fpga/de1-soc/s2_3_snitch_manual_fork
+./scripts/quartus_preflight.sh
+```
+
+Manual source edits:
+
+```text
+snitch_cluster/.bender/git/checkouts/axi-*/src/axi_cut.sv
+```
+
+What changed:
+
+```text
+axi_cut.sv:
+  added an S2_3_QUARTUS-only pass-through implementation
+  skipped the original AXI cut and interface wrappers in this mode
+```
+
+Important limitation:
+
+```text
+This is not a full semantic port of the cut/register-slice logic. It does not
+insert register cuts. It only forwards request and response vectors directly,
+which matches the current S2.3 one-core bring-up need but is not a reusable
+replacement for the original AXI cut.
+```
+
+Important progress:
+
+```text
+The previous axi_cut.sv type-parameter and interface-wrapper parser errors are
+bypassed.
+Quartus now reaches axi_demux_simple.sv.
+```
+
+New first Quartus error:
+
+```text
+axi/src/axi_demux_simple.sv:46
+Error (10170): near text: "type"; expecting an identifier
+```
+
+Other errors in the same run:
+
+```text
+axi_demux_simple.sv: parameter type and implicit generate syntax
+axi_id_prepend.sv: parameter type
+```
+
+Interpretation:
+
+```text
+The parser frontier moved past axi_cut.sv. The next blocker is the active AXI
+demux, which still uses type parameters at its module boundary.
+```

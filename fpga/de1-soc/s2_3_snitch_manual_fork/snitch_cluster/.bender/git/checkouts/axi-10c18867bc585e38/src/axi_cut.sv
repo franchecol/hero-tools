@@ -14,6 +14,31 @@
 // - Fabian Schuiki <fschuiki@iis.ee.ethz.ch>
 // - Andreas Kurth <akurth@iis.ee.ethz.ch>
 
+`ifdef S2_3_QUARTUS
+// S2.3 currently uses AXI cuts as bypasses in the one-core generated wrapper.
+module axi_cut #(
+  parameter bit          Bypass       = 1'b0,
+  parameter bit          BypassAw     = Bypass,
+  parameter bit          BypassW      = Bypass,
+  parameter bit          BypassB      = Bypass,
+  parameter bit          BypassAr     = Bypass,
+  parameter bit          BypassR      = Bypass,
+  parameter int unsigned AxiReqWidth  = 1,
+  parameter int unsigned AxiRespWidth = 1
+) (
+  input  logic                         clk_i,
+  input  logic                         rst_ni,
+  input  logic [AxiReqWidth-1:0]       slv_req_i,
+  output logic [AxiRespWidth-1:0]      slv_resp_o,
+  output logic [AxiReqWidth-1:0]       mst_req_o,
+  input  logic [AxiRespWidth-1:0]      mst_resp_i
+);
+
+  assign mst_req_o = slv_req_i;
+  assign slv_resp_o = mst_resp_i;
+
+endmodule
+`else
 /// An AXI4 cut.
 ///
 /// Breaks all combinatorial paths between its input and output.
@@ -288,3 +313,4 @@ module axi_lite_cut_intf #(
   `endif
   // pragma translate_on
 endmodule
+`endif
