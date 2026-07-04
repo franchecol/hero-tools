@@ -3008,3 +3008,85 @@ Interpretation:
 The parser frontier moved past inactive future/DMA helper files. The next class
 is the request/response interface stack, which is active in the cluster path.
 ```
+
+## Attempt 41: Port reqrsp Package Helper and Prune Unused Cut
+
+Status:
+
+```text
+FAIL
+quartus_map exit code: 3
+no .sof produced
+```
+
+Command:
+
+```bash
+cd /home/ftv/builds/hero-tools/fpga/de1-soc/s2_3_snitch_manual_fork
+./scripts/quartus_preflight.sh
+```
+
+Manual edits:
+
+```text
+snitch_cluster/hw/reqrsp_interface/src/reqrsp_pkg.sv
+source_list/snitch_cluster.flist-plus.in
+```
+
+What changed:
+
+```text
+reqrsp_pkg.sv:
+  replaced `amo inside {...}` with explicit equality comparisons joined by ||
+
+source_list/snitch_cluster.flist-plus.in:
+  removed hw/reqrsp_interface/src/reqrsp_cut.sv
+```
+
+Why this is acceptable for this preflight:
+
+```text
+The reqrsp_pkg.sv change preserves the same atomic-operation predicate while
+avoiding a Quartus parser construct. reqrsp_cut.sv is not instantiated by the
+selected one-core preflight path; keeping it only forced an inactive
+parameter-type parser error.
+```
+
+Important limitation:
+
+```text
+This does not port the request/response bridge stack. It only fixes the active
+package helper and removes one inactive helper file.
+```
+
+Important progress:
+
+```text
+The previous reqrsp_pkg.sv `inside` parser error is gone.
+The previous reqrsp_cut.sv parser errors are gone.
+The source count dropped from 161 to 160 files.
+Quartus now reaches active request/response bridge and mux/demux modules.
+```
+
+New first Quartus error:
+
+```text
+hw/reqrsp_interface/src/axi_to_reqrsp.sv:29
+Error (10170): near text: "type"; expecting an identifier
+```
+
+Other errors in the same run:
+
+```text
+axi_to_reqrsp.sv: parameter type, packed type alias, and assignment-pattern errors
+reqrsp_demux.sv: parameter type and generate parser errors
+```
+
+Interpretation:
+
+```text
+The parser frontier moved from a small package expression into active
+request/response interface modules. The next decision is whether to port these
+module boundaries directly or cut a higher request/response boundary in the
+educational Quartus preflight.
+```

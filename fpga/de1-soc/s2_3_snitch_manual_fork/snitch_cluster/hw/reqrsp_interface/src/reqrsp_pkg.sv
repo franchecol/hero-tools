@@ -25,7 +25,9 @@ package reqrsp_pkg;
 
   /// The given operation falls into the atomic fetch-and-op memory operations.
   function automatic logic is_amo(amo_op_e amo);
-    if (amo inside {AMOSwap, AMOAdd, AMOAnd, AMOOr, AMOXor, AMOMax, AMOMaxu, AMOMin, AMOMinu}) begin
+    if ((amo == AMOSwap) || (amo == AMOAdd) || (amo == AMOAnd) ||
+        (amo == AMOOr) || (amo == AMOXor) || (amo == AMOMax) ||
+        (amo == AMOMaxu) || (amo == AMOMin) || (amo == AMOMinu)) begin
       return 1;
     end else begin
       return 0;

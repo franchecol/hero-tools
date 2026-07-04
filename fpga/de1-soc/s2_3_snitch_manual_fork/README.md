@@ -79,7 +79,7 @@ cd /home/ftv/builds/hero-tools/fpga/de1-soc/s2_3_snitch_manual_fork
 
 ## Current Result
 
-Attempt 40 was run locally with Quartus Prime Lite 25.1std.0.
+Attempt 41 was run locally with Quartus Prime Lite 25.1std.0.
 
 Result:
 
@@ -182,14 +182,17 @@ riscv-dbg dependency block was removed from the preflight list. The source count
 is now 172 files.
 The inactive hw/future DMA/interconnect helper block was removed from the
 preflight list. The source count is now 161 files.
+The reqrsp_pkg.sv atomic-operation helper no longer uses the unsupported
+SystemVerilog `inside` expression, and the unused reqrsp_cut.sv helper was
+removed from the preflight list. The source count is now 160 files.
 ```
 
 New first blocker:
 
 ```text
-snitch_cluster/hw/reqrsp_interface/src/reqrsp_pkg.sv:28
-Error (10170): near text: "inside"; expecting ")"
+snitch_cluster/hw/reqrsp_interface/src/axi_to_reqrsp.sv:29
+Error (10170): near text: "type"; expecting an identifier
 ```
 
-The fix now exists as direct edits in the local Snitch fork. The next class is
-request/response interface compatibility.
+The next class is active request/response interface modules that use
+`parameter type` and packed type aliases at module boundaries.

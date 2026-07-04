@@ -116,7 +116,6 @@
 @SNITCH_ROOT@/hw/reqrsp_interface/src/reqrsp_pkg.sv
 @SNITCH_ROOT@/hw/reqrsp_interface/src/reqrsp_intf.sv
 @SNITCH_ROOT@/hw/reqrsp_interface/src/axi_to_reqrsp.sv
-@SNITCH_ROOT@/hw/reqrsp_interface/src/reqrsp_cut.sv
 @SNITCH_ROOT@/hw/reqrsp_interface/src/reqrsp_demux.sv
 @SNITCH_ROOT@/hw/reqrsp_interface/src/reqrsp_iso.sv
 @SNITCH_ROOT@/hw/reqrsp_interface/src/reqrsp_mux.sv
