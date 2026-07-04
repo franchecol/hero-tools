@@ -1696,3 +1696,72 @@ Interpretation:
 The AXI parser frontier moved through axi_id_prepend.sv. The next blocker is
 the active AXI mux helper.
 ```
+
+## Attempt 23: AXI Mux S2.3 Shim
+
+Status:
+
+```text
+FAIL
+quartus_map exit code: 3
+no .sof produced
+```
+
+Command:
+
+```bash
+cd /home/ftv/builds/hero-tools/fpga/de1-soc/s2_3_snitch_manual_fork
+./scripts/quartus_preflight.sh
+```
+
+Manual source edits:
+
+```text
+snitch_cluster/.bender/git/checkouts/axi-*/src/axi_mux.sv
+```
+
+What changed:
+
+```text
+axi_mux.sv:
+  added an S2_3_QUARTUS-only vector-boundary mux shim
+  skipped the original type-parameterized AXI mux and interface wrapper
+```
+
+Important limitation:
+
+```text
+This is not a full semantic port of the original AXI mux. The shim forwards
+slave port 0 to the master and returns the master response to slave port 0. It
+does not arbitrate multiple slave ports or preserve ID-extension routing.
+```
+
+Important progress:
+
+```text
+The previous axi_mux.sv type-parameter, implicit-generate, and wrapper parser
+errors are bypassed.
+Quartus now reaches axi_to_detailed_mem.sv.
+```
+
+New first Quartus error:
+
+```text
+axi/src/axi_to_detailed_mem.sv:21
+Error (10170): near text: "type"; expecting an identifier
+```
+
+Other errors in the same run:
+
+```text
+axi_to_detailed_mem.sv: parameter type, localparam parser fallout, struct
+literals, and implicit generate syntax
+```
+
+Interpretation:
+
+```text
+The AXI parser frontier moved through axi_mux.sv. This keeps exposing the next
+unsupported AXI helper, but the mux behavior is currently only suitable for
+parser exploration.
+```

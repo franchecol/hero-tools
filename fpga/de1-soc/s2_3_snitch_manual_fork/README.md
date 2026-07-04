@@ -79,7 +79,7 @@ cd /home/ftv/builds/hero-tools/fpga/de1-soc/s2_3_snitch_manual_fork
 
 ## Current Result
 
-Attempt 22 was run locally with Quartus Prime Lite 25.1std.0.
+Attempt 23 was run locally with Quartus Prime Lite 25.1std.0.
 
 Result:
 
@@ -141,12 +141,14 @@ The active axi_demux_simple.sv parser errors are bypassed with an S2_3_QUARTUS
 vector-boundary demux shim.
 The active axi_id_prepend.sv parser errors are bypassed with an S2_3_QUARTUS
 channel-vector pass-through shim.
+The active axi_mux.sv parser errors are bypassed with an S2_3_QUARTUS
+single-slave forwarding shim.
 ```
 
 New first blocker:
 
 ```text
-snitch_cluster/.bender/git/checkouts/axi-*/src/axi_mux.sv:31
+snitch_cluster/.bender/git/checkouts/axi-*/src/axi_to_detailed_mem.sv:21
 Error (10170): near text: "type"; expecting an identifier
 ```
 

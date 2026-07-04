@@ -25,6 +25,41 @@
 `include "common_cells/assertions.svh"
 `include "common_cells/registers.svh"
 
+`ifdef S2_3_QUARTUS
+// S2.3 parser/bring-up shim: keep a vector-boundary AXI mux signature without
+// module type parameters. This only forwards slave port 0.
+module axi_mux #(
+  parameter int unsigned SlvAxiIDWidth = 32'd0,
+  parameter int unsigned SlvReqWidth   = 32'd1,
+  parameter int unsigned SlvRespWidth  = 32'd1,
+  parameter int unsigned MstReqWidth   = 32'd1,
+  parameter int unsigned MstRespWidth  = 32'd1,
+  parameter int unsigned NoSlvPorts    = 32'd1,
+  parameter int unsigned MaxWTrans     = 32'd8,
+  parameter bit          FallThrough   = 1'b0,
+  parameter bit          SpillAw       = 1'b1,
+  parameter bit          SpillW        = 1'b0,
+  parameter bit          SpillB        = 1'b0,
+  parameter bit          SpillAr       = 1'b1,
+  parameter bit          SpillR        = 1'b0
+) (
+  input  logic                                      clk_i,
+  input  logic                                      rst_ni,
+  input  logic                                      test_i,
+  input  logic [NoSlvPorts-1:0][SlvReqWidth-1:0]   slv_reqs_i,
+  output logic [NoSlvPorts-1:0][SlvRespWidth-1:0]  slv_resps_o,
+  output logic [MstReqWidth-1:0]                   mst_req_o,
+  input  logic [MstRespWidth-1:0]                  mst_resp_i
+);
+
+  always_comb begin
+    mst_req_o = slv_reqs_i[0];
+    slv_resps_o = '0;
+    slv_resps_o[0] = mst_resp_i;
+  end
+
+endmodule
+`else
 module axi_mux #(
   // AXI parameter and channel types
   parameter int unsigned SlvAxiIDWidth = 32'd0, // AXI ID width, slave ports
@@ -596,3 +631,4 @@ module axi_mux_intf #(
     .mst_resp_i  ( mst_resp  )
   );
 endmodule
+`endif
