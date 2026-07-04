@@ -1219,3 +1219,77 @@ The parser has moved from APB into the broad AXI dependency set. The next step
 is to separate AXI files that are genuinely required by the generated one-core
 cluster from AXI files that only belong to unused full-system infrastructure.
 ```
+
+## Attempt 16: Unused AXI Helper Pruning Batch
+
+Status:
+
+```text
+FAIL
+quartus_map exit code: 3
+no .sof produced
+```
+
+Command:
+
+```bash
+cd /home/ftv/builds/hero-tools/fpga/de1-soc/s2_3_snitch_manual_fork
+./scripts/quartus_preflight.sh
+```
+
+Manual source edits:
+
+```text
+source_list/snitch_cluster.flist-plus.in
+```
+
+What changed:
+
+```text
+source list:
+  kept the active AXI package, cut, xbar, demux, mux, burst-splitter, memory,
+  and error-slave path
+
+  removed unused AXI interface/demo/CDC/AXI-Lite/converter/helper files that
+  were not reachable from snitch_cluster_wrapper in this one-core graph
+```
+
+Why this is safe for this experiment:
+
+```text
+The active cluster still keeps the AXI modules needed by snitch_cluster.sv:
+axi_cut, axi_xbar, axi_xbar_unmuxed, axi_demux, axi_demux_simple,
+axi_demux_id_counters, axi_mux, axi_atop_filter, axi_burst_splitter,
+axi_burst_splitter_gran, axi_err_slv, axi_multicut, axi_to_detailed_mem,
+axi_to_mem, axi_to_mem_interleaved, axi_to_axi_lite, and axi_zero_mem.
+```
+
+Important progress:
+
+```text
+The broad preflight list was reduced from files=271 to files=230.
+The first blocker intentionally did not move, because axi_demux_id_counters.sv
+is part of the active AXI xbar path and now needs real syntax porting.
+```
+
+Current first Quartus error:
+
+```text
+axi/src/axi_demux_id_counters.sv:23
+Error (10170): near text: "type"; expecting an identifier
+```
+
+Other errors in the same run:
+
+```text
+axi_atop_filter.sv: parameter type
+axi_burst_splitter_gran.sv: parameter type and implicit generate syntax
+```
+
+Interpretation:
+
+```text
+The AXI dependency boundary is now clearer: most inactive AXI noise is removed,
+and remaining early errors are in modules used by the one-core cluster's AXI
+crossbar/memory path.
+```

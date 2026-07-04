@@ -79,7 +79,7 @@ cd /home/ftv/builds/hero-tools/fpga/de1-soc/s2_3_snitch_manual_fork
 
 ## Current Result
 
-Attempt 15 was run locally with Quartus Prime Lite 25.1std.0.
+Attempt 16 was run locally with Quartus Prime Lite 25.1std.0.
 
 Result:
 
@@ -129,6 +129,8 @@ The deprecated Common Cells helper block was removed from the preflight list.
 The source count is now 277 files.
 The unused APB dependency block was removed from the preflight list.
 The source count is now 271 files.
+A conservative unused AXI helper slice was removed from the preflight list.
+The source count is now 230 files.
 ```
 
 New first blocker:
