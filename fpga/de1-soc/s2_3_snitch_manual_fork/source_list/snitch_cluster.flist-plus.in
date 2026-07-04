@@ -115,16 +115,9 @@
 @SNITCH_ROOT@/.bender/git/checkouts/register_interface-5a95d2f18694a6d3/vendor/lowrisc_opentitan/src/prim_subreg.sv
 @SNITCH_ROOT@/hw/reqrsp_interface/src/reqrsp_pkg.sv
 @SNITCH_ROOT@/hw/reqrsp_interface/src/reqrsp_intf.sv
-@SNITCH_ROOT@/hw/reqrsp_interface/src/axi_to_reqrsp.sv
-@SNITCH_ROOT@/hw/reqrsp_interface/src/reqrsp_demux.sv
-@SNITCH_ROOT@/hw/reqrsp_interface/src/reqrsp_iso.sv
-@SNITCH_ROOT@/hw/reqrsp_interface/src/reqrsp_mux.sv
-@SNITCH_ROOT@/hw/reqrsp_interface/src/reqrsp_to_axi.sv
 @SNITCH_ROOT@/hw/mem_interface/src/mem_wide_narrow_mux.sv
 @SNITCH_ROOT@/hw/mem_interface/src/mem_interface.sv
 @SNITCH_ROOT@/hw/tcdm_interface/src/tcdm_interface.sv
-@SNITCH_ROOT@/hw/tcdm_interface/src/axi_to_tcdm.sv
-@SNITCH_ROOT@/hw/tcdm_interface/src/reqrsp_to_tcdm.sv
 @SNITCH_ROOT@/hw/tcdm_interface/src/tcdm_mux.sv
 @SNITCH_ROOT@/hw/snitch/src/snitch_pma_pkg.sv
 @SNITCH_ROOT@/hw/snitch/src/riscv_instr.sv

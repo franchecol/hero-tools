@@ -3090,3 +3090,89 @@ request/response interface modules. The next decision is whether to port these
 module boundaries directly or cut a higher request/response boundary in the
 educational Quartus preflight.
 ```
+
+## Attempt 42: Black-Box reqrsp Bridge Implementations
+
+Status:
+
+```text
+FAIL
+quartus_map exit code: 3
+no .sof produced
+```
+
+Command:
+
+```bash
+cd /home/ftv/builds/hero-tools/fpga/de1-soc/s2_3_snitch_manual_fork
+./scripts/quartus_preflight.sh
+```
+
+Manual source-list edits:
+
+```text
+source_list/snitch_cluster.flist-plus.in
+```
+
+What changed:
+
+```text
+removed these request/response implementation files from the S2.3 Quartus
+preflight list:
+  hw/reqrsp_interface/src/axi_to_reqrsp.sv
+  hw/reqrsp_interface/src/reqrsp_demux.sv
+  hw/reqrsp_interface/src/reqrsp_iso.sv
+  hw/reqrsp_interface/src/reqrsp_mux.sv
+  hw/reqrsp_interface/src/reqrsp_to_axi.sv
+  hw/tcdm_interface/src/axi_to_tcdm.sv
+  hw/tcdm_interface/src/reqrsp_to_tcdm.sv
+```
+
+Why this is acceptable for this preflight:
+
+```text
+These files are active protocol bridges, not unused helpers. They are removed
+only for the parser-frontier experiment so Quartus can continue into the next
+unsupported dependency class. In a real implementation they would need to be
+ported, replaced, or explicitly cut at a higher boundary.
+```
+
+Important limitation:
+
+```text
+This is a black-box/boundary cut, not a semantic reqrsp bridge port. The
+preflight may later fail because these modules are unresolved or because their
+surrounding behavior is missing.
+```
+
+Important progress:
+
+```text
+The previous axi_to_reqrsp.sv first blocker is gone.
+The previous reqrsp_demux.sv parser errors are gone.
+The source count dropped from 160 to 153 files.
+Quartus now reaches the memory/TCDM interface boundary.
+```
+
+New first Quartus error:
+
+```text
+hw/mem_interface/src/mem_wide_narrow_mux.sv:33
+Error (10170): near text: "type"; expecting an identifier
+```
+
+Other errors in the same run:
+
+```text
+mem_wide_narrow_mux.sv: parameter type and generate parser errors
+mem_interface.sv: parameter type errors in MEM_BUS interfaces
+tcdm_interface.sv: parameter type errors in TCDM_BUS interfaces
+```
+
+Interpretation:
+
+```text
+Quartus moved beyond the reqrsp bridge implementation files. The next class is
+memory/TCDM wrappers and muxes that use parameterized interfaces and
+type-parameterized module boundaries.
+```

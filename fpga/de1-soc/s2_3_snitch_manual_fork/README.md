@@ -185,14 +185,17 @@ preflight list. The source count is now 161 files.
 The reqrsp_pkg.sv atomic-operation helper no longer uses the unsupported
 SystemVerilog `inside` expression, and the unused reqrsp_cut.sv helper was
 removed from the preflight list. The source count is now 160 files.
+The request/response bridge implementation files and the AXI-to-TCDM wrapper
+were removed from the S2.3 preflight source list as black-box/boundary
+candidates. The source count is now 153 files.
 ```
 
 New first blocker:
 
 ```text
-snitch_cluster/hw/reqrsp_interface/src/axi_to_reqrsp.sv:29
+snitch_cluster/hw/mem_interface/src/mem_wide_narrow_mux.sv:33
 Error (10170): near text: "type"; expecting an identifier
 ```
 
-The next class is active request/response interface modules that use
-`parameter type` and packed type aliases at module boundaries.
+The next class is the memory/TCDM interface and mux boundary, which also uses
+`parameter type` and interface wrappers.
