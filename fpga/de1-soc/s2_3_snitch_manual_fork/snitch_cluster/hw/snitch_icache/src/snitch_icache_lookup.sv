@@ -150,12 +150,11 @@ module snitch_icache_lookup #(
           .DataWidth (CFG.TAG_WIDTH+2),
           .ByteWidth (8),
           .NumPorts (1),
-          .Latency (1),
-          .impl_in_t (sram_cfg_tag_t)
+          .Latency (1)
         ) i_tag (
           .clk_i (clk_i),
           .rst_ni (rst_ni),
-          .impl_i (sram_cfg_tag_i),
+          .impl_i (1'b0),
           .impl_o (  ),
           .req_i (ram_enable[i]),
           .we_i (ram_write),
@@ -170,12 +169,11 @@ module snitch_icache_lookup #(
           .DataWidth (CFG.LINE_WIDTH),
           .ByteWidth (8),
           .NumPorts (1),
-          .Latency (1),
-          .impl_in_t (sram_cfg_data_t)
+          .Latency (1)
         ) i_data (
           .clk_i (clk_i),
           .rst_ni (rst_ni),
-          .impl_i (sram_cfg_data_i),
+          .impl_i (1'b0),
           .impl_o (  ),
           .req_i (ram_enable[i]),
           .we_i (ram_write),

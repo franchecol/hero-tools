@@ -33,29 +33,24 @@ module tc_sram_impl #(
   parameter              SimInit      = "none",   // Simulation initialization
   parameter bit          PrintSimCfg  = 1'b0,     // Print configuration
   parameter              ImplKey      = "none",   // Reference to specific implementation
-  parameter type         impl_in_t    = logic,    // Type for implementation inputs
-  parameter type         impl_out_t   = logic,    // Type for implementation outputs
-  parameter impl_out_t   ImplOutSim   = 'X,       // Implementation output in simulation
+  parameter              ImplOutSim   = 1'b0,     // Implementation output in synthesis patch
   // DEPENDENT PARAMETERS, DO NOT OVERWRITE!
   parameter int unsigned AddrWidth = (NumWords > 32'd1) ? $clog2(NumWords) : 32'd1,
-  parameter int unsigned BeWidth   = (DataWidth + ByteWidth - 32'd1) / ByteWidth, // ceil_div
-  parameter type         addr_t    = logic [AddrWidth-1:0],
-  parameter type         data_t    = logic [DataWidth-1:0],
-  parameter type         be_t      = logic [BeWidth-1:0]
+  parameter int unsigned BeWidth   = (DataWidth + ByteWidth - 32'd1) / ByteWidth  // ceil_div
 ) (
   input  logic                 clk_i,      // Clock
   input  logic                 rst_ni,     // Asynchronous reset active low
   // implementation-related IO
-  input  impl_in_t             impl_i,
-  output impl_out_t            impl_o,
+  input  logic                 impl_i,
+  output logic                 impl_o,
   // input ports
   input  logic  [NumPorts-1:0] req_i,      // request
   input  logic  [NumPorts-1:0] we_i,       // write enable
-  input  addr_t [NumPorts-1:0] addr_i,     // request address
-  input  data_t [NumPorts-1:0] wdata_i,    // write data
-  input  be_t   [NumPorts-1:0] be_i,       // write byte enable
+  input  logic [NumPorts-1:0][AddrWidth-1:0] addr_i,     // request address
+  input  logic [NumPorts-1:0][DataWidth-1:0] wdata_i,    // write data
+  input  logic [NumPorts-1:0][BeWidth-1:0] be_i,       // write byte enable
   // output ports
-  output data_t [NumPorts-1:0] rdata_o     // read data
+  output logic [NumPorts-1:0][DataWidth-1:0] rdata_o     // read data
 );
 
   // We drive a static value for `impl_o` in behavioral simulation.
