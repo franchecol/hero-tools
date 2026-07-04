@@ -2042,3 +2042,72 @@ Interpretation:
 The AXI parser frontier moved through the error slave. The next blocker is the
 multi-cut/register-slice helper.
 ```
+
+## Attempt 28: AXI Multicut S2.3 Shim
+
+Status:
+
+```text
+FAIL
+quartus_map exit code: 3
+no .sof produced
+```
+
+Command:
+
+```bash
+cd /home/ftv/builds/hero-tools/fpga/de1-soc/s2_3_snitch_manual_fork
+./scripts/quartus_preflight.sh
+```
+
+Manual source edits:
+
+```text
+snitch_cluster/.bender/git/checkouts/axi-*/src/axi_multicut.sv
+```
+
+What changed:
+
+```text
+axi_multicut.sv:
+  added an S2_3_QUARTUS-only vector pass-through shim
+  skipped the original AXI cut chain and AXI/AXI-Lite interface wrappers
+```
+
+Important limitation:
+
+```text
+This is not a full semantic port of the multicut/register-slice chain. It does
+not insert any timing cuts; request and response vectors are connected directly.
+```
+
+Important progress:
+
+```text
+The previous axi_multicut.sv type-parameter and wrapper parser errors are
+bypassed.
+Quartus now reaches axi_to_axi_lite.sv.
+```
+
+New first Quartus error:
+
+```text
+axi/src/axi_to_axi_lite.sv:27
+Error (10170): near text: "type"; expecting an identifier
+```
+
+Other errors in the same run:
+
+```text
+axi_to_mem.sv: parameter type and localparam type
+axi_zero_mem.sv: parameter type and localparam type
+axi_xbar_unmuxed.sv: parameter type
+axi_to_mem_interleaved.sv: parameter type
+```
+
+Interpretation:
+
+```text
+The AXI parser frontier moved through multicut. The next blocker is the AXI to
+AXI-Lite converter.
+```

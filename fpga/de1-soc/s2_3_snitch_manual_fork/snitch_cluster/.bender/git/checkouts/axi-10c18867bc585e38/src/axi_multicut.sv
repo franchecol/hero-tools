@@ -18,6 +18,26 @@
 // Multiple AXI4 cuts.
 //
 // These can be used to relax timing pressure on very long AXI busses.
+`ifdef S2_3_QUARTUS
+// S2.3 parser/bring-up shim: bypass all cuts and expose vector ports.
+module axi_multicut #(
+  parameter int unsigned NoCuts       = 32'd1,
+  parameter int unsigned AxiReqWidth  = 32'd1,
+  parameter int unsigned AxiRespWidth = 32'd1
+) (
+  input  logic                         clk_i,
+  input  logic                         rst_ni,
+  input  logic [AxiReqWidth-1:0]       slv_req_i,
+  output logic [AxiRespWidth-1:0]      slv_resp_o,
+  output logic [AxiReqWidth-1:0]       mst_req_o,
+  input  logic [AxiRespWidth-1:0]      mst_resp_i
+);
+
+  assign mst_req_o = slv_req_i;
+  assign slv_resp_o = mst_resp_i;
+
+endmodule
+`else
 module axi_multicut #(
   parameter int unsigned NoCuts = 32'd1, // Number of cuts.
   // AXI channel structs
@@ -167,6 +187,7 @@ module axi_multicut_intf #(
   `endif
   // pragma translate_on
 endmodule
+`endif
 
 module axi_lite_multicut_intf #(
   // The address width.
