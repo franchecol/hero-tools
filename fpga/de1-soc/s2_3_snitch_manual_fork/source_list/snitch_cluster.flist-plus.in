@@ -69,16 +69,10 @@
 @SNITCH_ROOT@/.bender/git/checkouts/common_cells-aa028fdb314cdab0/src/unread.sv
 @SNITCH_ROOT@/.bender/git/checkouts/common_cells-aa028fdb314cdab0/src/read.sv
 @SNITCH_ROOT@/.bender/git/checkouts/common_cells-aa028fdb314cdab0/src/addr_decode_dync.sv
-@SNITCH_ROOT@/.bender/git/checkouts/common_cells-aa028fdb314cdab0/src/clk_int_div_static.sv
 @SNITCH_ROOT@/.bender/git/checkouts/common_cells-aa028fdb314cdab0/src/trip_counter.sv
 @SNITCH_ROOT@/.bender/git/checkouts/common_cells-aa028fdb314cdab0/src/addr_decode.sv
 @SNITCH_ROOT@/.bender/git/checkouts/common_cells-aa028fdb314cdab0/src/addr_decode_napot.sv
-@SNITCH_ROOT@/.bender/git/checkouts/common_cells-aa028fdb314cdab0/src/multiaddr_decode.sv
-@SNITCH_ROOT@/.bender/git/checkouts/common_cells-aa028fdb314cdab0/src/cb_filter.sv
-@SNITCH_ROOT@/.bender/git/checkouts/common_cells-aa028fdb314cdab0/src/clk_mux_glitch_free.sv
 @SNITCH_ROOT@/.bender/git/checkouts/common_cells-aa028fdb314cdab0/src/counter.sv
-@SNITCH_ROOT@/.bender/git/checkouts/common_cells-aa028fdb314cdab0/src/ecc_decode.sv
-@SNITCH_ROOT@/.bender/git/checkouts/common_cells-aa028fdb314cdab0/src/ecc_encode.sv
 @SNITCH_ROOT@/.bender/git/checkouts/common_cells-aa028fdb314cdab0/src/edge_detect.sv
 @SNITCH_ROOT@/.bender/git/checkouts/common_cells-aa028fdb314cdab0/src/lzc.sv
 @SNITCH_ROOT@/.bender/git/checkouts/common_cells-aa028fdb314cdab0/src/max_counter.sv

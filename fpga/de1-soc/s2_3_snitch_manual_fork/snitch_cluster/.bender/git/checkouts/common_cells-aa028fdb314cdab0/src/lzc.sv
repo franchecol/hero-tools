@@ -36,6 +36,12 @@ module lzc #(
     `ASSERT_INIT(width_0, WIDTH > 0)
   `endif
 
+  genvar gen_j;
+  genvar gen_level;
+  genvar gen_k;
+  genvar gen_l;
+
+  generate
   if (WIDTH <= 1) begin : gen_degenerate_lzc
 
     assign cnt_o[0] = !in_i[0];
@@ -63,38 +69,40 @@ module lzc #(
       assign in_tmp = in_i;
     end
 
-    for (genvar j = 0; unsigned'(j) < WIDTH; j++) begin : g_index_lut
-      assign index_lut[j] = (NumLevels)'(unsigned'(j));
+    for (gen_j = 0; unsigned'(gen_j) < WIDTH; gen_j++) begin : g_index_lut
+      assign index_lut[gen_j] = (NumLevels)'(unsigned'(gen_j));
     end
 
-    for (genvar level = 0; unsigned'(level) < NumLevels; level++) begin : g_levels
-      if (unsigned'(level) == NumLevels - 1) begin : g_last_level
-        for (genvar k = 0; k < 2 ** level; k++) begin : g_level
+    for (gen_level = 0; unsigned'(gen_level) < NumLevels; gen_level++) begin : g_levels
+      if (unsigned'(gen_level) == NumLevels - 1) begin : g_last_level
+        for (gen_k = 0; gen_k < 2 ** gen_level; gen_k++) begin : g_level
           // if two successive indices are still in the vector...
-          if (unsigned'(k) * 2 < WIDTH - 1) begin : g_reduce
-            assign sel_nodes[2 ** level - 1 + k] = in_tmp[k * 2] | in_tmp[k * 2 + 1];
-            assign index_nodes[2 ** level - 1 + k] = (in_tmp[k * 2] == 1'b1)
-              ? index_lut[k * 2] :
-                index_lut[k * 2 + 1];
+          if (unsigned'(gen_k) * 2 < WIDTH - 1) begin : g_reduce
+            assign sel_nodes[2 ** gen_level - 1 + gen_k] = in_tmp[gen_k * 2] | in_tmp[gen_k * 2 + 1];
+            assign index_nodes[2 ** gen_level - 1 + gen_k] = (in_tmp[gen_k * 2] == 1'b1)
+              ? index_lut[gen_k * 2] :
+                index_lut[gen_k * 2 + 1];
           end
           // if only the first index is still in the vector...
-          if (unsigned'(k) * 2 == WIDTH - 1) begin : g_base
-            assign sel_nodes[2 ** level - 1 + k] = in_tmp[k * 2];
-            assign index_nodes[2 ** level - 1 + k] = index_lut[k * 2];
+          if (unsigned'(gen_k) * 2 == WIDTH - 1) begin : g_base
+            assign sel_nodes[2 ** gen_level - 1 + gen_k] = in_tmp[gen_k * 2];
+            assign index_nodes[2 ** gen_level - 1 + gen_k] = index_lut[gen_k * 2];
           end
           // if index is out of range
-          if (unsigned'(k) * 2 > WIDTH - 1) begin : g_out_of_range
-            assign sel_nodes[2 ** level - 1 + k] = 1'b0;
-            assign index_nodes[2 ** level - 1 + k] = '0;
+          if (unsigned'(gen_k) * 2 > WIDTH - 1) begin : g_out_of_range
+            assign sel_nodes[2 ** gen_level - 1 + gen_k] = 1'b0;
+            assign index_nodes[2 ** gen_level - 1 + gen_k] = '0;
           end
         end
       end else begin : g_not_last_level
-        for (genvar l = 0; l < 2 ** level; l++) begin : g_level
-          assign sel_nodes[2 ** level - 1 + l] =
-              sel_nodes[2 ** (level + 1) - 1 + l * 2] | sel_nodes[2 ** (level + 1) - 1 + l * 2 + 1];
-          assign index_nodes[2 ** level - 1 + l] = (sel_nodes[2 ** (level + 1) - 1 + l * 2] == 1'b1)
-            ? index_nodes[2 ** (level + 1) - 1 + l * 2] :
-              index_nodes[2 ** (level + 1) - 1 + l * 2 + 1];
+        for (gen_l = 0; gen_l < 2 ** gen_level; gen_l++) begin : g_level
+          assign sel_nodes[2 ** gen_level - 1 + gen_l] =
+              sel_nodes[2 ** (gen_level + 1) - 1 + gen_l * 2] |
+              sel_nodes[2 ** (gen_level + 1) - 1 + gen_l * 2 + 1];
+          assign index_nodes[2 ** gen_level - 1 + gen_l] =
+              (sel_nodes[2 ** (gen_level + 1) - 1 + gen_l * 2] == 1'b1)
+            ? index_nodes[2 ** (gen_level + 1) - 1 + gen_l * 2] :
+              index_nodes[2 ** (gen_level + 1) - 1 + gen_l * 2 + 1];
         end
       end
     end
@@ -103,5 +111,6 @@ module lzc #(
     assign empty_o = NumLevels > unsigned'(0) ? ~sel_nodes[0] : ~(|in_i);
 
   end : gen_lzc
+  endgenerate
 
 endmodule : lzc

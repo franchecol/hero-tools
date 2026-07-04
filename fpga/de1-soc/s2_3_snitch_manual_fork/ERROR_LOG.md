@@ -694,3 +694,72 @@ Interpretation:
 The manual fork is now past address-decoder parsing and unused CDC parsing.
 The next blocker is another Common Cells utility batch.
 ```
+
+## Attempt 9: LZC And Utility Pruning Batch
+
+Status:
+
+```text
+FAIL
+quartus_map exit code: 3
+no .sof produced
+```
+
+Command:
+
+```bash
+cd /home/ftv/builds/hero-tools/fpga/de1-soc/s2_3_snitch_manual_fork
+./scripts/quartus_preflight.sh
+```
+
+Manual source edits:
+
+```text
+source_list/snitch_cluster.flist-plus.in
+snitch_cluster/.bender/git/checkouts/common_cells-*/src/lzc.sv
+```
+
+What changed:
+
+```text
+source list:
+  removed unused clk_int_div_static, multiaddr_decode, cb_filter,
+  clk_mux_glitch_free, ecc_decode, and ecc_encode helpers from the preflight list
+
+lzc.sv:
+  wrapped module-level generate-if and generate-for logic with explicit generate/endgenerate
+  replaced inline for-loop genvars with separately declared genvars
+```
+
+Important progress:
+
+```text
+The previous first clk_int_div_static.sv error is gone by pruning an unused helper.
+The active lzc.sv generate-syntax errors are gone.
+The broad preflight list was reduced from files=302 to files=296.
+```
+
+New first Quartus error:
+
+```text
+common_cells/src/spill_register.sv:18
+Error (10170): Verilog HDL syntax error near text: "type";
+expecting an identifier ("type" is a reserved keyword)
+```
+
+Other errors in the same run:
+
+```text
+common_cells/src/stream_delay.sv: parameter type and implicit generate-if
+common_cells/src/stream_fifo.sv: parameter type
+common_cells/src/stream_fork_dynamic.sv: implicit module-level generate-for
+common_cells/src/fall_through_register.sv: parameter type
+```
+
+Interpretation:
+
+```text
+The parser has moved from decoder/utility modules to Common Cells stream/spill
+wrapper modules. These wrap lower-level modules that were already partially
+ported in earlier attempts.
+```
