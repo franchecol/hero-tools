@@ -919,3 +919,87 @@ The parser has moved into stream arbitration and crossbar helper modules.
 These are on the active TCDM interconnect path, so this likely requires real
 porting rather than broad pruning.
 ```
+
+## Attempt 12: Stream Arbiter/Xbar Common Cells Batch
+
+Status:
+
+```text
+FAIL
+quartus_map exit code: 3
+no .sof produced
+```
+
+Command:
+
+```bash
+cd /home/ftv/builds/hero-tools/fpga/de1-soc/s2_3_snitch_manual_fork
+./scripts/quartus_preflight.sh
+```
+
+Manual source edits:
+
+```text
+source_list/snitch_cluster.flist-plus.in
+snitch_cluster/.bender/git/checkouts/common_cells-*/src/stream_arbiter_flushable.sv
+snitch_cluster/.bender/git/checkouts/common_cells-*/src/stream_arbiter.sv
+snitch_cluster/.bender/git/checkouts/common_cells-*/src/stream_xbar.sv
+snitch_cluster/hw/snitch_cluster/src/snitch_tcdm_interconnect.sv
+```
+
+What changed:
+
+```text
+source list:
+  removed unused stream_fifo_optimal_wrap.sv and stream_register.sv from the preflight list
+
+stream_arbiter_flushable.sv:
+  replaced DATA_T type parameter with DATA_WIDTH vector ports
+  changed rr_arb_tree overrides to .DataWidth(...)
+  wrapped the ARBITER generate-if tree with explicit generate/endgenerate
+  wrapped the invalid-parameter $fatal in an initial block
+
+stream_arbiter.sv:
+  replaced DATA_T type parameter with DATA_WIDTH vector ports
+  changed the flushable arbiter override to .DATA_WIDTH(...)
+
+stream_xbar.sv:
+  removed payload/index/select type parameters from the port list
+  used explicit DataWidth, SelWidth, IdxWidth, and SpillDataWidth vector ports
+  changed rr_arb_tree and spill_register overrides to width parameters
+  wrapped module-level generate loops with explicit generate/endgenerate
+  skipped assertion generate loops in S2_3_QUARTUS mode
+
+snitch_tcdm_interconnect.sv:
+  changed the active stream_xbar override from .payload_t(...) to .DataWidth($bits(...))
+```
+
+Important progress:
+
+```text
+The previous first stream_arbiter_flushable.sv parser errors are gone.
+The stream_arbiter.sv and stream_xbar.sv type-parameter parser errors are gone.
+The broad preflight list was reduced from files=294 to files=292.
+```
+
+New first Quartus error:
+
+```text
+common_cells/src/mem_to_banks_detailed.sv:35
+Error (10170): Verilog HDL syntax error near text: "type";
+expecting an identifier ("type" is a reserved keyword)
+```
+
+Other errors in the same run:
+
+```text
+common_cells/src/mem_to_banks_detailed.sv: parameter type and implicit generate syntax
+common_cells/src/stream_omega_net.sv: parameter type
+```
+
+Interpretation:
+
+```text
+The parser has moved beyond stream xbar/arbiter and into remaining active
+bank-routing and omega-network helpers.
+```

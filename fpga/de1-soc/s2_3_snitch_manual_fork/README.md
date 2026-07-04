@@ -79,7 +79,7 @@ cd /home/ftv/builds/hero-tools/fpga/de1-soc/s2_3_snitch_manual_fork
 
 ## Current Result
 
-Attempt 11 was run locally with Quartus Prime Lite 25.1std.0.
+Attempt 12 was run locally with Quartus Prime Lite 25.1std.0.
 
 Result:
 
@@ -119,15 +119,19 @@ stream_delay.sv helper was removed from the preflight list, so the source count
 is now 295 files.
 The active stream_to_mem.sv type/generate errors are gone, and unused id_queue.sv
 was removed from the preflight list. The source count is now 294 files.
+The stream arbitration/xbar parser errors in stream_arbiter_flushable.sv,
+stream_arbiter.sv, and stream_xbar.sv are gone. The unused
+stream_fifo_optimal_wrap.sv and stream_register.sv helpers were removed from
+the preflight list, so the source count is now 292 files.
 ```
 
 New first blocker:
 
 ```text
-snitch_cluster/.bender/git/checkouts/common_cells-*/src/stream_arbiter_flushable.sv:17
+snitch_cluster/.bender/git/checkouts/common_cells-*/src/mem_to_banks_detailed.sv:35
 Error (10170): near text: "type"; expecting an identifier
 ```
 
 The fix now exists as direct edits in the local Snitch fork. The next class is
-common_cells stream arbitration/xbar syntax porting: `stream_arbiter_flushable`,
-`stream_fifo_optimal_wrap`, `stream_register`, and `stream_xbar`.
+common_cells bank-routing/omega-network syntax porting: `mem_to_banks_detailed`
+and `stream_omega_net`.

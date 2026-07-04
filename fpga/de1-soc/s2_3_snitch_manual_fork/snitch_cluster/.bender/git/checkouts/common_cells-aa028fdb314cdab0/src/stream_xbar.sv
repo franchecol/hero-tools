@@ -22,8 +22,6 @@ module stream_xbar #(
   parameter int unsigned NumOut      = 32'd0,
   /// Data width of the stream. Can be overwritten by defining the type parameter `payload_t`.
   parameter int unsigned DataWidth   = 32'd1,
-  /// Payload type of the data ports, only usage of parameter `DataWidth`.
-  parameter type         payload_t   = logic [DataWidth-1:0],
   /// Adds a spill register stage at each output.
   parameter bit          OutSpillReg = 1'b0,
   /// Use external priority for the individual `rr_arb_trees`.
@@ -38,23 +36,17 @@ module stream_xbar #(
   /// If `AxiVldReady` is 1, which bits of the payload to check for stability on valid inputs.
   /// In some cases, we may want to allow parts of the payload to change depending on the value of
   /// other parts (e.g. write data in read requests), requiring more nuanced external assertions.
-  parameter payload_t    AxiVldMask  = '1,
+  parameter logic [DataWidth-1:0] AxiVldMask  = '1,
   /// Derived parameter, do **not** overwrite!
   ///
   /// Width of the output selection signal.
   parameter int unsigned SelWidth = (NumOut > 32'd1) ? unsigned'($clog2(NumOut)) : 32'd1,
   /// Derived parameter, do **not** overwrite!
   ///
-  /// Signal type definition for selecting the output at the inputs.
-  parameter type sel_oup_t = logic[SelWidth-1:0],
-  /// Derived parameter, do **not** overwrite!
-  ///
   /// Width of the input index signal.
   parameter int unsigned IdxWidth = (NumInp > 32'd1) ? unsigned'($clog2(NumInp)) : 32'd1,
   /// Derived parameter, do **not** overwrite!
-  ///
-  /// Signal type definition indicating from which input the output came.
-  parameter type idx_inp_t = logic[IdxWidth-1:0]
+  parameter int unsigned SpillDataWidth = DataWidth + IdxWidth
 ) (
   /// Clock, positive edge triggered.
   input  logic                  clk_i,
@@ -67,26 +59,29 @@ module stream_xbar #(
   input  logic                  flush_i,
   /// Provide an external state for the `rr_arb_tree` models.
   /// Will only do something if ExtPrio is `1` otherwise tie to `0`.
-  input  idx_inp_t [NumOut-1:0] rr_i,
+  input  logic [NumOut-1:0][IdxWidth-1:0] rr_i,
   /// Input data ports.
   /// Has to be stable as long as `valid_i` is asserted when parameter `AxiVldRdy` is set.
-  input  payload_t [NumInp-1:0] data_i,
+  input  logic [NumInp-1:0][DataWidth-1:0] data_i,
   /// Selection of the output port where the data should be routed.
   /// Has to be stable as long as `valid_i` is asserted and parameter `AxiVldRdy` is set.
-  input  sel_oup_t [NumInp-1:0] sel_i,
+  input  logic [NumInp-1:0][SelWidth-1:0] sel_i,
   /// Input is valid.
   input  logic     [NumInp-1:0] valid_i,
   /// Input is ready to accept data.
   output logic     [NumInp-1:0] ready_o,
   /// Output data ports. Valid if `valid_o = 1`
-  output payload_t [NumOut-1:0] data_o,
+  output logic [NumOut-1:0][DataWidth-1:0] data_o,
   /// Index of the input port where data came from.
-  output idx_inp_t [NumOut-1:0] idx_o,
+  output logic [NumOut-1:0][IdxWidth-1:0] idx_o,
   /// Output is valid.
   output logic     [NumOut-1:0] valid_o,
   /// Output can be accepted.
   input  logic     [NumOut-1:0] ready_i
 );
+  typedef logic [DataWidth-1:0] payload_t;
+  typedef logic [SelWidth-1:0] sel_oup_t;
+  typedef logic [IdxWidth-1:0] idx_inp_t;
   typedef struct packed {
     payload_t data;
     idx_inp_t idx;
@@ -99,36 +94,42 @@ module stream_xbar #(
   logic     [NumOut-1:0][NumInp-1:0] out_valid;
   logic     [NumOut-1:0][NumInp-1:0] out_ready;
 
+  genvar gen_i;
+  genvar gen_j;
+
   // Generate the input selection
-  for (genvar i = 0; unsigned'(i) < NumInp; i++) begin : gen_inps
+  generate
+  for (gen_i = 0; unsigned'(gen_i) < NumInp; gen_i++) begin : gen_inps
     stream_demux #(
       .N_OUP ( NumOut )
     ) i_stream_demux (
-      .inp_valid_i ( valid_i[i]   ),
-      .inp_ready_o ( ready_o[i]   ),
-      .oup_sel_i   ( sel_i[i]     ),
-      .oup_valid_o ( inp_valid[i] ),
-      .oup_ready_i ( inp_ready[i] )
+      .inp_valid_i ( valid_i[gen_i]   ),
+      .inp_ready_o ( ready_o[gen_i]   ),
+      .oup_sel_i   ( sel_i[gen_i]     ),
+      .oup_valid_o ( inp_valid[gen_i] ),
+      .oup_ready_i ( inp_ready[gen_i] )
     );
 
     // Do the switching cross of the signals.
-    for (genvar j = 0; unsigned'(j) < NumOut; j++) begin : gen_cross
+    for (gen_j = 0; unsigned'(gen_j) < NumOut; gen_j++) begin : gen_cross
       // Propagate the data from this input to all outputs.
-      assign out_data[j][i]  = data_i[i];
+      assign out_data[gen_j][gen_i]  = data_i[gen_i];
       // switch handshaking
-      assign out_valid[j][i] = inp_valid[i][j];
-      assign inp_ready[i][j] = out_ready[j][i];
+      assign out_valid[gen_j][gen_i] = inp_valid[gen_i][gen_j];
+      assign inp_ready[gen_i][gen_j] = out_ready[gen_j][gen_i];
     end
   end
+  endgenerate
 
   // Generate the output arbitration.
-  for (genvar j = 0; unsigned'(j) < NumOut; j++) begin : gen_outs
+  generate
+  for (gen_j = 0; unsigned'(gen_j) < NumOut; gen_j++) begin : gen_outs
     spill_data_t arb;
     logic        arb_valid, arb_ready;
 
     rr_arb_tree #(
       .NumIn     ( NumInp    ),
-      .DataType  ( payload_t ),
+      .DataWidth ( DataWidth ),
       .ExtPrio   ( ExtPrio   ),
       .AxiVldRdy ( AxiVldRdy ),
       .LockIn    ( LockIn    )
@@ -136,10 +137,10 @@ module stream_xbar #(
       .clk_i,
       .rst_ni,
       .flush_i,
-      .rr_i    ( rr_i[j]      ),
-      .req_i   ( out_valid[j] ),
-      .gnt_o   ( out_ready[j] ),
-      .data_i  ( out_data[j]  ),
+      .rr_i    ( rr_i[gen_j]      ),
+      .req_i   ( out_valid[gen_j] ),
+      .gnt_o   ( out_ready[gen_j] ),
+      .data_i  ( out_data[gen_j]  ),
       .req_o   ( arb_valid    ),
       .gnt_i   ( arb_ready    ),
       .data_o  ( arb.data     ),
@@ -149,28 +150,30 @@ module stream_xbar #(
     spill_data_t spill;
 
     spill_register #(
-      .T      ( spill_data_t ),
-      .Bypass ( !OutSpillReg )
+      .DATA_WIDTH ( SpillDataWidth ),
+      .Bypass     ( !OutSpillReg )
     ) i_spill_register (
       .clk_i,
       .rst_ni,
       .valid_i ( arb_valid  ),
       .ready_o ( arb_ready  ),
       .data_i  ( arb        ),
-      .valid_o ( valid_o[j] ),
-      .ready_i ( ready_i[j] ),
+      .valid_o ( valid_o[gen_j] ),
+      .ready_i ( ready_i[gen_j] ),
       .data_o  ( spill      )
     );
     // Assign the outputs (deaggregate the data).
     always_comb begin
-      data_o[j] = spill.data;
-      idx_o[j]  = spill.idx;
+      data_o[gen_j] = spill.data;
+      idx_o[gen_j]  = spill.idx;
     end
   end
+  endgenerate
 
   // Assertions
   // Make sure that the handshake and payload is stable
   `ifndef COMMON_CELLS_ASSERTS_OFF
+  `ifndef S2_3_QUARTUS
   for (genvar i = 0; unsigned'(i) < NumInp; i++) begin : gen_sel_assertions
     `ASSERT(non_existing_output, valid_i[i] |-> sel_i[i] < NumOut)
   end
@@ -190,5 +193,6 @@ module stream_xbar #(
 
   `ASSERT_INIT(numinp_0, NumInp > 32'd0)
   `ASSERT_INIT(numout_0, NumOut > 32'd0)
+  `endif
   `endif
 endmodule

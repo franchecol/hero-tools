@@ -84,8 +84,6 @@
 @SNITCH_ROOT@/.bender/git/checkouts/common_cells-aa028fdb314cdab0/src/fall_through_register.sv
 @SNITCH_ROOT@/.bender/git/checkouts/common_cells-aa028fdb314cdab0/src/stream_to_mem.sv
 @SNITCH_ROOT@/.bender/git/checkouts/common_cells-aa028fdb314cdab0/src/stream_arbiter_flushable.sv
-@SNITCH_ROOT@/.bender/git/checkouts/common_cells-aa028fdb314cdab0/src/stream_fifo_optimal_wrap.sv
-@SNITCH_ROOT@/.bender/git/checkouts/common_cells-aa028fdb314cdab0/src/stream_register.sv
 @SNITCH_ROOT@/.bender/git/checkouts/common_cells-aa028fdb314cdab0/src/stream_xbar.sv
 @SNITCH_ROOT@/.bender/git/checkouts/common_cells-aa028fdb314cdab0/src/mem_to_banks_detailed.sv
 @SNITCH_ROOT@/.bender/git/checkouts/common_cells-aa028fdb314cdab0/src/stream_arbiter.sv

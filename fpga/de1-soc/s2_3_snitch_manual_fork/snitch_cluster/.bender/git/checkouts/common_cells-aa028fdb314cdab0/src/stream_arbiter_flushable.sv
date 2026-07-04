@@ -14,7 +14,7 @@
 // arbitration scheme is fair round-robin tree, see `rr_arb_tree` for details.
 
 module stream_arbiter_flushable #(
-    parameter type      DATA_T = logic,   // Vivado requires a default value for type parameters.
+    parameter int unsigned DATA_WIDTH = 1,
     parameter integer   N_INP = -1,       // Synopsys DC requires a default value for parameters.
     parameter           ARBITER = "rr"    // "rr" or "prio"
 ) (
@@ -22,19 +22,20 @@ module stream_arbiter_flushable #(
     input  logic              rst_ni,
     input  logic              flush_i,
 
-    input  DATA_T [N_INP-1:0] inp_data_i,
+    input  logic  [N_INP-1:0][DATA_WIDTH-1:0] inp_data_i,
     input  logic  [N_INP-1:0] inp_valid_i,
     output logic  [N_INP-1:0] inp_ready_o,
 
-    output DATA_T             oup_data_o,
+    output logic  [DATA_WIDTH-1:0] oup_data_o,
     output logic              oup_valid_o,
     input  logic              oup_ready_i
 );
 
+  generate
   if (ARBITER == "rr") begin : gen_rr_arb
     rr_arb_tree #(
       .NumIn      (N_INP),
-      .DataType   (DATA_T),
+      .DataWidth  (DATA_WIDTH),
       .ExtPrio    (1'b0),
       .AxiVldRdy  (1'b1),
       .LockIn     (1'b1)
@@ -55,7 +56,7 @@ module stream_arbiter_flushable #(
   end else if (ARBITER == "prio") begin : gen_prio_arb
     rr_arb_tree #(
       .NumIn      (N_INP),
-      .DataType   (DATA_T),
+      .DataWidth  (DATA_WIDTH),
       .ExtPrio    (1'b1),
       .AxiVldRdy  (1'b1),
       .LockIn     (1'b0)
@@ -75,8 +76,11 @@ module stream_arbiter_flushable #(
 
   end else begin : gen_arb_error
     `ifndef SYNTHESIS
-    $fatal(1, "Invalid value for parameter 'ARBITER'!");
+    initial begin
+      $fatal(1, "Invalid value for parameter 'ARBITER'!");
+    end
     `endif
   end
+  endgenerate
 
 endmodule

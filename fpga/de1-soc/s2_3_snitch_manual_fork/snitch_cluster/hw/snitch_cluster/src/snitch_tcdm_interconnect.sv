@@ -113,7 +113,7 @@ module snitch_tcdm_interconnect #(
     stream_xbar #(
       .NumInp      ( NumInp    ),
       .NumOut      ( NumOut    ),
-      .payload_t   ( mem_req_chan_t ),
+      .DataWidth   ( $bits(mem_req_chan_t) ),
       .OutSpillReg ( 1'b0      ),
       .ExtPrio     ( 1'b0      ),
       .AxiVldRdy   ( 1'b1      ),
