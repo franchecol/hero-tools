@@ -113,17 +113,6 @@
 @SNITCH_ROOT@/.bender/git/checkouts/register_interface-5a95d2f18694a6d3/vendor/lowrisc_opentitan/src/prim_subreg_arb.sv
 @SNITCH_ROOT@/.bender/git/checkouts/register_interface-5a95d2f18694a6d3/vendor/lowrisc_opentitan/src/prim_subreg_ext.sv
 @SNITCH_ROOT@/.bender/git/checkouts/register_interface-5a95d2f18694a6d3/vendor/lowrisc_opentitan/src/prim_subreg.sv
-@SNITCH_ROOT@/hw/future/src/mem_to_axi_lite.sv
-@SNITCH_ROOT@/hw/future/src/idma_reg64_frontend_reg_pkg.sv
-@SNITCH_ROOT@/hw/future/src/idma_tf_id_gen.sv
-@SNITCH_ROOT@/hw/future/src/dma/axi_dma_data_path.sv
-@SNITCH_ROOT@/hw/future/src/axi_interleaved_xbar.sv
-@SNITCH_ROOT@/hw/future/src/axi_zero_mem.sv
-@SNITCH_ROOT@/hw/future/src/idma_reg64_frontend_reg_top.sv
-@SNITCH_ROOT@/hw/future/src/idma_reg64_frontend.sv
-@SNITCH_ROOT@/hw/future/src/dma/axi_dma_data_mover.sv
-@SNITCH_ROOT@/hw/future/src/dma/axi_dma_burst_reshaper.sv
-@SNITCH_ROOT@/hw/future/src/dma/axi_dma_backend.sv
 @SNITCH_ROOT@/hw/reqrsp_interface/src/reqrsp_pkg.sv
 @SNITCH_ROOT@/hw/reqrsp_interface/src/reqrsp_intf.sv
 @SNITCH_ROOT@/hw/reqrsp_interface/src/axi_to_reqrsp.sv

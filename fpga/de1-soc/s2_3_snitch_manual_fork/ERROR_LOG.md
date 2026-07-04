@@ -2925,3 +2925,86 @@ The parser frontier moved beyond the active cluster peripheral register bridge
 and the unused debug dependency. The next dependency class is hw/future, which
 should be checked against the xdma:false one-core config before patching.
 ```
+
+## Attempt 40: Prune Inactive hw/future Dependency Block
+
+Status:
+
+```text
+FAIL
+quartus_map exit code: 3
+no .sof produced
+```
+
+Command:
+
+```bash
+cd /home/ftv/builds/hero-tools/fpga/de1-soc/s2_3_snitch_manual_fork
+./scripts/quartus_preflight.sh
+```
+
+Manual source-list edits:
+
+```text
+source_list/snitch_cluster.flist-plus.in
+```
+
+What changed:
+
+```text
+removed the hw/future source block:
+  mem_to_axi_lite.sv
+  idma_reg64_frontend_reg_pkg.sv
+  idma_tf_id_gen.sv
+  dma/axi_dma_data_path.sv
+  axi_interleaved_xbar.sv
+  axi_zero_mem.sv
+  idma_reg64_frontend_reg_top.sv
+  idma_reg64_frontend.sv
+  dma/axi_dma_data_mover.sv
+  dma/axi_dma_burst_reshaper.sv
+  dma/axi_dma_backend.sv
+```
+
+Why this is acceptable for this preflight:
+
+```text
+The selected wrapper sets Xdma to 1'b0, and the hw/future block is not referenced
+outside its own helper files in the one-core cluster path. Keeping it in the
+Quartus preflight only forced inactive DMA/interconnect parser errors.
+```
+
+Important limitation:
+
+```text
+This does not port the future iDMA/DMA helper stack. It removes inactive sources
+from the educational S2.3 parser preflight.
+```
+
+Important progress:
+
+```text
+The previous hw/future parser errors are gone.
+The source count dropped from 172 to 161 files.
+Quartus now reaches the request/response interface dependency.
+```
+
+New first Quartus error:
+
+```text
+hw/reqrsp_interface/src/reqrsp_pkg.sv:28
+Error (10170): near text: "inside"; expecting ")"
+```
+
+Other errors in the same run:
+
+```text
+axi_to_reqrsp.sv and reqrsp_cut.sv: parameter type parser errors
+```
+
+Interpretation:
+
+```text
+The parser frontier moved past inactive future/DMA helper files. The next class
+is the request/response interface stack, which is active in the cluster path.
+```
