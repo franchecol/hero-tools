@@ -43,6 +43,12 @@ snitch_cluster/hw/snitch_cluster/src/snitch_cluster.sv
 snitch_cluster/hw/snitch_icache/src/snitch_icache_lookup.sv
 ```
 
+Line-level comparison against the original Occamy/Bender checkout:
+
+```text
+patches/attempt1_sram_type_parameter_port.patch
+```
+
 What changed:
 
 ```text

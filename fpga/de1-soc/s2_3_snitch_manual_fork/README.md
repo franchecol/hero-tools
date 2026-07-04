@@ -51,6 +51,13 @@ S2.2 generated patched copies with a script.
 S2.3 edits the local Snitch fork directly.
 ```
 
+For a line-level view of what changed compared with the original Occamy/Bender
+checkout, open:
+
+```text
+patches/attempt1_sram_type_parameter_port.patch
+```
+
 The preflight does not run Bender inside this fork. Instead it uses a frozen
 file-list template:
 
