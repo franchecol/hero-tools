@@ -52,8 +52,11 @@ module snitch_regfile #(
       end
     end
 
-  for (genvar i = 0; i < NR_READ_PORTS; i++) begin : gen_read_port
-    assign rdata_o[i] = mem[raddr_i[i]];
-  end
+  generate
+    genvar gen_read_port_i;
+    for (gen_read_port_i = 0; gen_read_port_i < NR_READ_PORTS; gen_read_port_i++) begin : gen_read_port
+      assign rdata_o[gen_read_port_i] = mem[raddr_i[gen_read_port_i]];
+    end
+  endgenerate
 
 endmodule

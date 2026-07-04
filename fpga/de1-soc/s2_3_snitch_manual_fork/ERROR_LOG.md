@@ -3259,3 +3259,72 @@ The parser frontier is now at the real Snitch core and tightly coupled core
 support blocks. Further progress either requires direct core compatibility
 patches or an explicit decision to stop preserving core semantics.
 ```
+
+## Attempt 44: Port Snitch Register File Generate Loop
+
+Status:
+
+```text
+FAIL
+quartus_map exit code: 3
+no .sof produced
+```
+
+Command:
+
+```bash
+cd /home/ftv/builds/hero-tools/fpga/de1-soc/s2_3_snitch_manual_fork
+./scripts/quartus_preflight.sh
+```
+
+Manual edits:
+
+```text
+snitch_cluster/hw/snitch/src/snitch_regfile_ff.sv
+```
+
+What changed:
+
+```text
+wrapped the read-port assignment generate loop in explicit generate/endgenerate
+declared the genvar separately before the for-loop
+```
+
+Why this is acceptable:
+
+```text
+The change preserves the register-file behavior. It only rewrites the generate
+loop into a Quartus-accepted style.
+```
+
+Important progress:
+
+```text
+The previous snitch_regfile_ff.sv generate-loop parser error is gone.
+Quartus now reaches snitch_lsu.sv as the first core blocker.
+```
+
+New first Quartus error:
+
+```text
+hw/snitch/src/snitch_lsu.sv:15
+Error (10170): near text: "type"; expecting an identifier
+```
+
+Other errors in the same run:
+
+```text
+snitch_lsu.sv: parameter type errors
+snitch_l0_tlb.sv: parameter type and generate parser errors
+snitch.sv: module import-list parser error
+snitch_ptw.sv: parameter type errors
+axi_dma_error_handler.sv and axi_dma_perf_counters.sv: parameter type errors
+```
+
+Interpretation:
+
+```text
+The first syntax-only Snitch core issue is fixed. The next issue is harder:
+Snitch LSU uses type parameters for tags and request/response channel structs.
+That cannot be fixed with only a generate-style rewrite.
+```

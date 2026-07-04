@@ -191,13 +191,15 @@ candidates. The source count is now 153 files.
 The memory/TCDM interface and mux implementation files were also removed from
 the S2.3 preflight source list as black-box/boundary candidates. The source
 count is now 149 files.
+snitch_regfile_ff.sv now uses an explicit generate/endgenerate block with a
+separately declared genvar for the read-port assignment loop.
 ```
 
 New first blocker:
 
 ```text
-snitch_cluster/hw/snitch/src/snitch_regfile_ff.sv:55
-Error (10170): near text: "for"; expecting "endmodule"
+snitch_cluster/hw/snitch/src/snitch_lsu.sv:15
+Error (10170): near text: "type"; expecting an identifier
 ```
 
 The next class is the actual Snitch core RTL.
