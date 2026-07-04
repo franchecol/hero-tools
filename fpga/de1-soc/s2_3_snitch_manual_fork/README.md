@@ -79,7 +79,7 @@ cd /home/ftv/builds/hero-tools/fpga/de1-soc/s2_3_snitch_manual_fork
 
 ## Current Result
 
-Attempt 37 was run locally with Quartus Prime Lite 25.1std.0.
+Attempt 38 was run locally with Quartus Prime Lite 25.1std.0.
 
 Result:
 
@@ -173,14 +173,18 @@ The FPnew implementation files and FPU divider/square-root implementation files
 were removed from the preflight list, leaving fpnew_pkg.sv for type definitions.
 snitch_fpu.sv now has an S2_3_QUARTUS no-op FPU boundary stub. The source count
 is now 201 files.
+Unused register-interface bridge variants were removed from the preflight list,
+and prim_subreg_arb.sv now has an explicit generate/endgenerate wrapper. The
+source count is now 184 files.
 ```
 
 New first blocker:
 
 ```text
-snitch_cluster/.bender/git/checkouts/register_interface-*/vendor/lowrisc_opentitan/src/prim_subreg_arb.sv:28
-Error (10170): near text: "if"; expecting "endmodule"
+snitch_cluster/.bender/git/checkouts/register_interface-*/src/deprecated/axi_to_reg.sv:36
+Error (10170): near text: "type"; expecting an identifier
 ```
 
 The fix now exists as direct edits in the local Snitch fork. The next class is
-register-interface and OpenTitan subregister compatibility.
+active AXI-to-register bridge compatibility and likely unused debug dependency
+pruning.

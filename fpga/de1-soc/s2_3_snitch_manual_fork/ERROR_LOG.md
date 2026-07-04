@@ -2754,3 +2754,88 @@ The parser frontier moved beyond the floating-point implementation stack. The
 next blocker class is the register-interface dependency, which includes
 OpenTitan primitive subregister modules and type-parameterized register bridges.
 ```
+
+## Attempt 38: Prune Register Bridge Variants and Label Subregister Generate
+
+Status:
+
+```text
+FAIL
+quartus_map exit code: 3
+no .sof produced
+```
+
+Command:
+
+```bash
+cd /home/ftv/builds/hero-tools/fpga/de1-soc/s2_3_snitch_manual_fork
+./scripts/quartus_preflight.sh
+```
+
+Manual source edits:
+
+```text
+source_list/snitch_cluster.flist-plus.in
+snitch_cluster/.bender/git/checkouts/register_interface-*/vendor/lowrisc_opentitan/src/prim_subreg_arb.sv
+```
+
+What changed:
+
+```text
+source_list/snitch_cluster.flist-plus.in:
+  kept reg_intf.sv
+  kept prim_subreg_arb.sv
+  kept prim_subreg_ext.sv
+  kept prim_subreg.sv
+  kept deprecated/axi_to_reg.sv
+  removed unused APB/reg bridge variants and prim_subreg_shadow.sv
+
+prim_subreg_arb.sv:
+  wrapped the conditional generate-if chain in explicit generate/endgenerate
+```
+
+Why this is acceptable for this preflight:
+
+```text
+The one-core Snitch cluster path actively uses deprecated axi_to_reg plus
+prim_subreg/prim_subreg_ext. A design-side search did not find active users of
+the removed APB/reg bridge variants in the selected file list.
+```
+
+Important limitation:
+
+```text
+This does not port the removed register bridge variants. It only narrows the
+educational S2.3 preflight to the register-interface files that are reachable
+from the current one-core cluster path.
+```
+
+Important progress:
+
+```text
+The previous prim_subreg_arb.sv generate-if parser errors are gone.
+The source count dropped from 201 to 184 files.
+Quartus now reaches the active deprecated AXI-to-register bridge.
+```
+
+New first Quartus error:
+
+```text
+register_interface/src/deprecated/axi_to_reg.sv:36
+Error (10170): near text: "type"; expecting an identifier
+```
+
+Other errors in the same run:
+
+```text
+riscv-dbg/dm_csrs.sv and dm_mem.sv: unsupported inside expressions and parser
+recovery errors
+```
+
+Interpretation:
+
+```text
+The parser frontier moved through the OpenTitan subregister primitive. The next
+active bridge is axi_to_reg. The riscv-dbg block appears as the next broad
+dependency class to check for reachability before patching.
+```

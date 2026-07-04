@@ -25,6 +25,7 @@ module prim_subreg_arb #(
   output logic [DW-1:0] wr_data
 );
 
+  generate
   if ((SWACCESS == "RW") || (SWACCESS == "WO")) begin : gen_w
     assign wr_en   = we | de;
     assign wr_data = (we == 1'b1) ? wd : d; // SW higher priority
@@ -75,5 +76,6 @@ module prim_subreg_arb #(
     assign unused_wd = wd;
     assign unused_q  = q;
   end
+  endgenerate
 
 endmodule
