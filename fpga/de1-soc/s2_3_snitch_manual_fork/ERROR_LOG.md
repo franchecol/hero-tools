@@ -4128,3 +4128,90 @@ The parser frontier moved beyond the active instruction-cache stack by
 black-boxing it. The next active extension block is the integer processing unit
 ALU, which still uses SystemVerilog generate forms Quartus rejects here.
 ```
+
+## Attempt 55: Port Snitch IPU ALU Generate Syntax
+
+Status:
+
+```text
+FAIL
+quartus_map exit code: 3
+no .sof produced
+```
+
+Command:
+
+```bash
+cd /home/ftv/builds/hero-tools/fpga/de1-soc/s2_3_snitch_manual_fork
+./scripts/quartus_preflight.sh
+```
+
+Manual edits:
+
+```text
+snitch_cluster/hw/snitch_ipu/src/snitch_ipu_alu.sv
+```
+
+What changed:
+
+```text
+wrapped top-level generate constructs in explicit generate/endgenerate:
+  operand_a bit-reversal loop
+  BFP mask bit-reversal loop
+  RV32B feature generate-if
+
+rewrote nested RV32BFull generate loops to the older separate-genvar style:
+  shuffle-mask loop
+  bitcount register-input loops
+  butterfly-control stage/segment loops
+  butterfly-not loop
+  operand_b bit-reversal loop
+  carry-less multiply reduction loops
+  carry-less multiply result bit-reversal loop
+
+renamed reused genvars to unique names so Quartus does not report repeated
+identifier declarations in the same generate scope
+```
+
+Why this is acceptable:
+
+```text
+This is a syntax-only rewrite. The integer processing unit ALU behavior is
+intended to remain unchanged; only generate syntax and genvar declaration style
+were adjusted for Quartus parsing.
+```
+
+Important progress:
+
+```text
+The previous snitch_ipu_alu.sv first blocker is gone.
+The repeated genvar/identifier errors in snitch_ipu_alu.sv are gone.
+The source count remains 140 files.
+Quartus now reaches the Snitch integer subsystem and SSR files.
+```
+
+New first Quartus error:
+
+```text
+hw/snitch_ipu/src/snitch_int_ss.sv:7
+Error (10170): near text: "import"; expecting ";"
+```
+
+Other errors in the same run:
+
+```text
+snitch_ssr_switch.sv: parameter type at line 16
+snitch_ssr_credit_counter.sv: parameter type at line 17
+snitch_ssr_indirector.sv: parameter type at lines 16 and 25
+snitch_ssr_intersector.sv: parameter type at line 11
+snitch_ssr_addr_gen.sv: parameter type at lines 15 and 24
+snitch_ssr.sv: parameter type at line 14 and generate/parser errors later
+```
+
+Interpretation:
+
+```text
+The IPU ALU itself is past Quartus. The next parser frontier is the Snitch
+integer subsystem boundary plus the active SSR block, which still exposes
+type-parameterized interfaces and modern generate syntax.
+```

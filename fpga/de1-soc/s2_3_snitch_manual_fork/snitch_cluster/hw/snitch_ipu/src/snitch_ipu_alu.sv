@@ -29,9 +29,12 @@ module snitch_ipu_alu import snitch_ipu_pkg::*; #(
   logic [32:0] operand_b_neg;
 
   // bit reverse operand_a for left shifts and bit counting
-  for (genvar k = 0; k < 32; k++) begin : gen_rev_operand_a
-    assign operand_a_rev[k] = operand_a_i[31-k];
-  end
+  genvar gen_rev_operand_a_k;
+  generate
+    for (gen_rev_operand_a_k = 0; gen_rev_operand_a_k < 32; gen_rev_operand_a_k++) begin : gen_rev_operand_a
+      assign operand_a_rev[gen_rev_operand_a_k] = operand_a_i[31-gen_rev_operand_a_k];
+    end
+  endgenerate
 
   ///////////
   // Adder //
@@ -230,9 +233,12 @@ module snitch_ipu_alu import snitch_ipu_pkg::*; #(
   assign bfp_len = {~(|operand_b_i[27:24]), operand_b_i[27:24]}; // len = 0 encodes for len = 16
   assign bfp_off = operand_b_i[20:16];
   assign bfp_mask = (RV32B != RV32BNone) ? ~(32'hffff_ffff << bfp_len) : '0;
-  for (genvar i=0; i<32; i++) begin : gen_rev_bfp_mask
-    assign bfp_mask_rev[i] = bfp_mask[31-i];
-  end
+  genvar gen_rev_bfp_mask_i;
+  generate
+    for (gen_rev_bfp_mask_i = 0; gen_rev_bfp_mask_i < 32; gen_rev_bfp_mask_i++) begin : gen_rev_bfp_mask
+      assign bfp_mask_rev[gen_rev_bfp_mask_i] = bfp_mask[31-gen_rev_bfp_mask_i];
+    end
+  endgenerate
 
   assign bfp_result =(RV32B != RV32BNone) ?
       (~shift_result & operand_a_i) | ((operand_b_i & bfp_mask) << bfp_off) : '0;
@@ -369,6 +375,24 @@ module snitch_ipu_alu import snitch_ipu_pkg::*; #(
   logic [31:0] clmul_result;
   logic [31:0] multicycle_result;
 
+  genvar gen_ShuffleMaskNot_i;
+  genvar gen_bitcnt_reg_in_lsb_i;
+  genvar gen_bitcnt_reg_in_b1_i;
+  genvar gen_bitcnt_reg_in_b2_i;
+  genvar gen_bitcnt_reg_in_b3_i;
+  genvar gen_bitcnt_reg_in_b4_i;
+  genvar gen_butterfly_ctrl_stg;
+  genvar gen_butterfly_ctrl_seg;
+  genvar gen_butterfly_not_stg;
+  genvar gen_rev_operand_b_i;
+  genvar gen_clmul_and_op_i;
+  genvar gen_clmul_xor_op_l1_i;
+  genvar gen_clmul_xor_op_l2_i;
+  genvar gen_clmul_xor_op_l3_i;
+  genvar gen_clmul_xor_op_l4_i;
+  genvar gen_rev_clmul_result_i;
+
+  generate
   if (RV32B != RV32BNone) begin : g_alu_rvb
 
     /////////////////
@@ -618,8 +642,9 @@ module snitch_ipu_alu import snitch_ipu_pkg::*; #(
           '{32'h0088_0044, 32'h0000_2200, 32'h0000_8822, 32'h0000_0088};
 
       logic [31:0] ShuffleMaskNot [4];
-      for(genvar i = 0; i < 4; i++) begin : gen_ShuffleMaskNot
-        assign ShuffleMaskNot[i] = ~(ShuffleMaskL[i] | ShuffleMaskR[i]);
+      for (gen_ShuffleMaskNot_i = 0; gen_ShuffleMaskNot_i < 4; gen_ShuffleMaskNot_i++) begin : gen_ShuffleMaskNot
+        assign ShuffleMaskNot[gen_ShuffleMaskNot_i] =
+            ~(ShuffleMaskL[gen_ShuffleMaskNot_i] | ShuffleMaskR[gen_ShuffleMaskNot_i]);
       end
 
       logic shuffle_flip;
@@ -733,24 +758,29 @@ module snitch_ipu_alu import snitch_ipu_pkg::*; #(
 
       // first cycle
       // Store partial bitcnts
-      for (genvar i=0; i<32; i++) begin : gen_bitcnt_reg_in_lsb
-        assign bitcnt_partial_lsb_d[i] = bitcnt_partial[i][0];
+      for (gen_bitcnt_reg_in_lsb_i = 0; gen_bitcnt_reg_in_lsb_i < 32; gen_bitcnt_reg_in_lsb_i++) begin : gen_bitcnt_reg_in_lsb
+        assign bitcnt_partial_lsb_d[gen_bitcnt_reg_in_lsb_i] =
+            bitcnt_partial[gen_bitcnt_reg_in_lsb_i][0];
       end
 
-      for (genvar i=0; i<16; i++) begin : gen_bitcnt_reg_in_b1
-        assign bitcnt_partial_msb_d[i] = bitcnt_partial[2*i+1][1];
+      for (gen_bitcnt_reg_in_b1_i = 0; gen_bitcnt_reg_in_b1_i < 16; gen_bitcnt_reg_in_b1_i++) begin : gen_bitcnt_reg_in_b1
+        assign bitcnt_partial_msb_d[gen_bitcnt_reg_in_b1_i] =
+            bitcnt_partial[2*gen_bitcnt_reg_in_b1_i+1][1];
       end
 
-      for (genvar i=0; i<8; i++) begin : gen_bitcnt_reg_in_b2
-        assign bitcnt_partial_msb_d[16+i] = bitcnt_partial[4*i+3][2];
+      for (gen_bitcnt_reg_in_b2_i = 0; gen_bitcnt_reg_in_b2_i < 8; gen_bitcnt_reg_in_b2_i++) begin : gen_bitcnt_reg_in_b2
+        assign bitcnt_partial_msb_d[16+gen_bitcnt_reg_in_b2_i] =
+            bitcnt_partial[4*gen_bitcnt_reg_in_b2_i+3][2];
       end
 
-      for (genvar i=0; i<4; i++) begin : gen_bitcnt_reg_in_b3
-        assign bitcnt_partial_msb_d[24+i] = bitcnt_partial[8*i+7][3];
+      for (gen_bitcnt_reg_in_b3_i = 0; gen_bitcnt_reg_in_b3_i < 4; gen_bitcnt_reg_in_b3_i++) begin : gen_bitcnt_reg_in_b3
+        assign bitcnt_partial_msb_d[24+gen_bitcnt_reg_in_b3_i] =
+            bitcnt_partial[8*gen_bitcnt_reg_in_b3_i+7][3];
       end
 
-      for (genvar i=0; i<2; i++) begin : gen_bitcnt_reg_in_b4
-        assign bitcnt_partial_msb_d[28+i] = bitcnt_partial[16*i+15][4];
+      for (gen_bitcnt_reg_in_b4_i = 0; gen_bitcnt_reg_in_b4_i < 2; gen_bitcnt_reg_in_b4_i++) begin : gen_bitcnt_reg_in_b4
+        assign bitcnt_partial_msb_d[28+gen_bitcnt_reg_in_b4_i] =
+            bitcnt_partial[16*gen_bitcnt_reg_in_b4_i+15][4];
       end
 
       assign bitcnt_partial_msb_d[30] = bitcnt_partial[31][5];
@@ -793,29 +823,29 @@ module snitch_ipu_alu import snitch_ipu_pkg::*; #(
       `define _N(stg) (16 >> stg)
 
       // bext / bdep control bit generation
-      for (genvar stg=0; stg<5; stg++) begin : gen_butterfly_ctrl_stage
+      for (gen_butterfly_ctrl_stg = 0; gen_butterfly_ctrl_stg < 5; gen_butterfly_ctrl_stg++) begin : gen_butterfly_ctrl_stage
         // number of segs: 2** stg
-        for (genvar seg=0; seg<2**stg; seg++) begin : gen_butterfly_ctrl
+        for (gen_butterfly_ctrl_seg = 0; gen_butterfly_ctrl_seg < 2**gen_butterfly_ctrl_stg; gen_butterfly_ctrl_seg++) begin : gen_butterfly_ctrl
 
-          assign lrotc_stage[stg][2*`_N(stg)*(seg+1)-1 : 2*`_N(stg)*seg] =
-              {{`_N(stg){1'b0}},{`_N(stg){1'b1}}} <<
-                bitcnt_partial_q[`_N(stg)*(2*seg+1)-1][$clog2(`_N(stg)):0];
+          assign lrotc_stage[gen_butterfly_ctrl_stg][2*`_N(gen_butterfly_ctrl_stg)*(gen_butterfly_ctrl_seg+1)-1 : 2*`_N(gen_butterfly_ctrl_stg)*gen_butterfly_ctrl_seg] =
+              {{`_N(gen_butterfly_ctrl_stg){1'b0}},{`_N(gen_butterfly_ctrl_stg){1'b1}}} <<
+                bitcnt_partial_q[`_N(gen_butterfly_ctrl_stg)*(2*gen_butterfly_ctrl_seg+1)-1][$clog2(`_N(gen_butterfly_ctrl_stg)):0];
 
-          assign butterfly_mask_l[stg][`_N(stg)*(2*seg+2)-1 : `_N(stg)*(2*seg+1)]
-                   = ~lrotc_stage[stg][`_N(stg)*(2*seg+2)-1 : `_N(stg)*(2*seg+1)];
+          assign butterfly_mask_l[gen_butterfly_ctrl_stg][`_N(gen_butterfly_ctrl_stg)*(2*gen_butterfly_ctrl_seg+2)-1 : `_N(gen_butterfly_ctrl_stg)*(2*gen_butterfly_ctrl_seg+1)]
+                   = ~lrotc_stage[gen_butterfly_ctrl_stg][`_N(gen_butterfly_ctrl_stg)*(2*gen_butterfly_ctrl_seg+2)-1 : `_N(gen_butterfly_ctrl_stg)*(2*gen_butterfly_ctrl_seg+1)];
 
-          assign butterfly_mask_r[stg][`_N(stg)*(2*seg+1)-1 : `_N(stg)*(2*seg)]
-                   = ~lrotc_stage[stg][`_N(stg)*(2*seg+2)-1 : `_N(stg)*(2*seg+1)];
+          assign butterfly_mask_r[gen_butterfly_ctrl_stg][`_N(gen_butterfly_ctrl_stg)*(2*gen_butterfly_ctrl_seg+1)-1 : `_N(gen_butterfly_ctrl_stg)*(2*gen_butterfly_ctrl_seg)]
+                   = ~lrotc_stage[gen_butterfly_ctrl_stg][`_N(gen_butterfly_ctrl_stg)*(2*gen_butterfly_ctrl_seg+2)-1 : `_N(gen_butterfly_ctrl_stg)*(2*gen_butterfly_ctrl_seg+1)];
 
-          assign butterfly_mask_l[stg][`_N(stg)*(2*seg+1)-1 : `_N(stg)*(2*seg)]   = '0;
-          assign butterfly_mask_r[stg][`_N(stg)*(2*seg+2)-1 : `_N(stg)*(2*seg+1)] = '0;
+          assign butterfly_mask_l[gen_butterfly_ctrl_stg][`_N(gen_butterfly_ctrl_stg)*(2*gen_butterfly_ctrl_seg+1)-1 : `_N(gen_butterfly_ctrl_stg)*(2*gen_butterfly_ctrl_seg)]   = '0;
+          assign butterfly_mask_r[gen_butterfly_ctrl_stg][`_N(gen_butterfly_ctrl_stg)*(2*gen_butterfly_ctrl_seg+2)-1 : `_N(gen_butterfly_ctrl_stg)*(2*gen_butterfly_ctrl_seg+1)] = '0;
         end
       end
       `undef _N
 
-      for (genvar stg=0; stg<5; stg++) begin : gen_butterfly_not
-        assign butterfly_mask_not[stg] =
-            ~(butterfly_mask_l[stg] | butterfly_mask_r[stg]);
+      for (gen_butterfly_not_stg = 0; gen_butterfly_not_stg < 5; gen_butterfly_not_stg++) begin : gen_butterfly_not
+        assign butterfly_mask_not[gen_butterfly_not_stg] =
+            ~(butterfly_mask_l[gen_butterfly_not_stg] | butterfly_mask_r[gen_butterfly_not_stg]);
       end
 
       always_comb begin
@@ -942,8 +972,8 @@ module snitch_ipu_alu import snitch_ipu_pkg::*; #(
 
       logic [31:0] clmul_result_raw;
 
-      for (genvar i=0; i<32; i++) begin: gen_rev_operand_b
-        assign operand_b_rev[i] = operand_b_i[31-i];
+      for (gen_rev_operand_b_i = 0; gen_rev_operand_b_i < 32; gen_rev_operand_b_i++) begin: gen_rev_operand_b
+        assign operand_b_rev[gen_rev_operand_b_i] = operand_b_i[31-gen_rev_operand_b_i];
       end
 
       assign clmul_rmode = operator_i == ALU_CLMULR;
@@ -997,30 +1027,36 @@ module snitch_ipu_alu import snitch_ipu_pkg::*; #(
         end
       end
 
-      for (genvar i=0; i<32; i++) begin : gen_clmul_and_op
-        assign clmul_and_stage[i] = clmul_op_b[i] ? clmul_op_a << i : '0;
+      for (gen_clmul_and_op_i = 0; gen_clmul_and_op_i < 32; gen_clmul_and_op_i++) begin : gen_clmul_and_op
+        assign clmul_and_stage[gen_clmul_and_op_i] =
+            clmul_op_b[gen_clmul_and_op_i] ? clmul_op_a << gen_clmul_and_op_i : '0;
       end
 
-      for (genvar i=0; i<16; i++) begin : gen_clmul_xor_op_l1
-        assign clmul_xor_stage1[i] = clmul_and_stage[2*i] ^ clmul_and_stage[2*i+1];
+      for (gen_clmul_xor_op_l1_i = 0; gen_clmul_xor_op_l1_i < 16; gen_clmul_xor_op_l1_i++) begin : gen_clmul_xor_op_l1
+        assign clmul_xor_stage1[gen_clmul_xor_op_l1_i] =
+            clmul_and_stage[2*gen_clmul_xor_op_l1_i] ^ clmul_and_stage[2*gen_clmul_xor_op_l1_i+1];
       end
 
-      for (genvar i=0; i<8; i++) begin : gen_clmul_xor_op_l2
-        assign clmul_xor_stage2[i] = clmul_xor_stage1[2*i] ^ clmul_xor_stage1[2*i+1];
+      for (gen_clmul_xor_op_l2_i = 0; gen_clmul_xor_op_l2_i < 8; gen_clmul_xor_op_l2_i++) begin : gen_clmul_xor_op_l2
+        assign clmul_xor_stage2[gen_clmul_xor_op_l2_i] =
+            clmul_xor_stage1[2*gen_clmul_xor_op_l2_i] ^ clmul_xor_stage1[2*gen_clmul_xor_op_l2_i+1];
       end
 
-      for (genvar i=0; i<4; i++) begin : gen_clmul_xor_op_l3
-        assign clmul_xor_stage3[i] = clmul_xor_stage2[2*i] ^ clmul_xor_stage2[2*i+1];
+      for (gen_clmul_xor_op_l3_i = 0; gen_clmul_xor_op_l3_i < 4; gen_clmul_xor_op_l3_i++) begin : gen_clmul_xor_op_l3
+        assign clmul_xor_stage3[gen_clmul_xor_op_l3_i] =
+            clmul_xor_stage2[2*gen_clmul_xor_op_l3_i] ^ clmul_xor_stage2[2*gen_clmul_xor_op_l3_i+1];
       end
 
-      for (genvar i=0; i<2; i++) begin : gen_clmul_xor_op_l4
-        assign clmul_xor_stage4[i] = clmul_xor_stage3[2*i] ^ clmul_xor_stage3[2*i+1];
+      for (gen_clmul_xor_op_l4_i = 0; gen_clmul_xor_op_l4_i < 2; gen_clmul_xor_op_l4_i++) begin : gen_clmul_xor_op_l4
+        assign clmul_xor_stage4[gen_clmul_xor_op_l4_i] =
+            clmul_xor_stage3[2*gen_clmul_xor_op_l4_i] ^ clmul_xor_stage3[2*gen_clmul_xor_op_l4_i+1];
       end
 
       assign clmul_result_raw = clmul_xor_stage4[0] ^ clmul_xor_stage4[1];
 
-      for (genvar i=0; i<32; i++) begin : gen_rev_clmul_result
-        assign clmul_result_rev[i] = clmul_result_raw[31-i];
+      for (gen_rev_clmul_result_i = 0; gen_rev_clmul_result_i < 32; gen_rev_clmul_result_i++) begin : gen_rev_clmul_result
+        assign clmul_result_rev[gen_rev_clmul_result_i] =
+            clmul_result_raw[31-gen_rev_clmul_result_i];
       end
 
       // clmulr_result = rev(clmul(rev(a), rev(b)))
@@ -1153,6 +1189,7 @@ module snitch_ipu_alu import snitch_ipu_pkg::*; #(
     assign imd_val_d_o         = '{default: '0};
     assign imd_val_we_o        = '{default: '0};
   end
+  endgenerate
 
   ////////////////
   // Result mux //

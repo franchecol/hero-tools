@@ -79,7 +79,7 @@ cd /home/ftv/builds/hero-tools/fpga/de1-soc/s2_3_snitch_manual_fork
 
 ## Current Result
 
-Attempt 54 was run locally with Quartus Prime Lite 25.1std.0.
+Attempt 55 was run locally with Quartus Prime Lite 25.1std.0.
 
 Result:
 
@@ -217,13 +217,17 @@ The active instruction-cache refill, lookup, handler, LFSR, and top-level
 implementation files were removed from the S2.3 preflight source list as
 black-box/boundary candidates. This is not a semantic port of the instruction
 cache. The source count is now 140 files.
+snitch_ipu_alu.sv top-level RV32B/RV32BFull generate-if blocks and generate-for
+loops now use explicit generate/endgenerate syntax with separately declared,
+unique genvars.
 ```
 
 New first blocker:
 
 ```text
-snitch_cluster/hw/snitch_ipu/src/snitch_ipu_alu.sv:32
-Error (10170): near text: "for"; expecting "endmodule"
+snitch_cluster/hw/snitch_ipu/src/snitch_int_ss.sv:7
+Error (10170): near text: "import"; expecting ";"
 ```
 
-The next active extension block is the integer processing unit ALU.
+The next class is the Snitch integer subsystem boundary and the SSR block's
+type-parameterized interfaces.
