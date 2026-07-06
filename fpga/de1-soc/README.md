@@ -271,4 +271,13 @@ S13: HPS/Linux Snitch-Lite done IRQ
     Current limitation: S13 verifies the FPGA/HPS interrupt path at hardware
     and MMIO level, but does not yet use a Linux kernel/UIO driver to sleep on
     the interrupt.
+
+S14: Linux IRQ consumer preflight
+    Reuse the S13 bitstream and inspect whether the running Terasic Linux image
+    can consume f2h_irq0 through UIO or a loadable kernel module.
+    Current result: S13 baseline still passes on the board. CONFIG_UIO is not
+    enabled, /dev/uio* is absent, and the installed Terasic gpio_interrupt.ko is
+    for kernel 3.9.0 while the board runs 3.12.0-00307. A real blocking IRQ
+    consumer therefore needs either a matching custom kernel module or a rebuilt
+    kernel/device tree with UIO enabled.
 ```
