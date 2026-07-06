@@ -74,7 +74,7 @@ Occamy M0 host/device proof:
 │ Real Snitch core        │ done    │ Same core module, smaller params.   │
 │ Full cluster wrapper    │ partial │ Replaced by DE1-specific wrapper.   │
 │ Tool flow               │ done    │ Quartus-first, not upstream-native. │
-│ Boot/payload loading    │ partial │ Raw small payload, not full ELF.     │
+│ Boot/payload loading    │ partial │ Headered small payload, not ELF.     │
 │ Host control            │ done    │ HPS/Linux MMIO, simpler than Occamy. │
 │ Data input/output       │ done    │ Registers + tiny RAM, not runtime.   │
 │ Local memory/TCDM       │ partial │ Tiny RAM, not banked TCDM.           │
@@ -82,7 +82,7 @@ Occamy M0 host/device proof:
 │ DMA                     │ not-yet │ Upstream has real DMA machinery.     │
 │ Multi-core cluster      │ not-yet │ Upstream is config-generated.        │
 │ FPU/SSR/Xfrep features  │ not-yet │ Disabled locally for area/simplicity │
-│ Linux driver integration│ not-yet │ S14 consumes f2h_irq0 from Linux.    │
+│ Linux driver integration│ not-yet │ S14 preflight found image blocker.   │
 └─────────────────────────┴─────────┴────────────────────────────────────┘
 ```
 
@@ -696,14 +696,15 @@ S6: generated ROM with size and entry checks.
 S11: ARM writes raw instruction words into FPGA instruction memory.
 S12: ARM reads a separate payload file from Linux and loads it into IMEM.
 S13: same file-loaded payload flow, plus done IRQ latch.
+S15: ARM reads a headered payload image and validates metadata before loading.
 ```
 
 Current local shape:
 
 ```text
 ARM Linux filesystem
-  -> /tmp/s13_payload.bin
-  -> ARM loader reads raw little-endian words
+  -> /tmp/s15_payload.img
+  -> ARM loader validates S15 magic/version/header/entry/args/checksum
   -> /dev/mem maps 0xff200000
   -> payload words written to FPGA IMEM window at offset 0x100
   -> CONTROL.start
@@ -732,25 +733,37 @@ Occamy M0 used a simpler embedded-payload trick:
 Gap:
 
 ```text
-Our payload is raw words only.
-It has no ELF loader, no relocation, no sections, no symbol loading, no ABI
-metadata, and no runtime startup.
+Our payload now has a small S15 metadata header.
+It still has no ELF loader, no relocation, no sections, no symbol loading, and
+no upstream runtime startup.
 ```
 
-Plan:
+S15 result:
 
 ```text
-S15 should add a tiny payload header before attempting a full ELF loader:
+S15 adds:
 
   magic number
   format version
   payload word count
   entry address
-  expected ISA/profile
+  input arguments
+  expected result
   checksum
 
-This keeps the educational flow simple while moving closer to a real host/device
-payload contract.
+This keeps the educational flow simple while moving closer to a real
+host/device payload contract.
+```
+
+Plan:
+
+```text
+After S15, the next payload-side improvement would be one of:
+
+  multiple sections
+  explicit data-memory initialization
+  a descriptor block
+  a tiny ELF reader
 ```
 
 ## 4. Host Control
@@ -1226,8 +1239,8 @@ Add a top-level DE1 smoke-test index:
 ┌──────┬──────────────────────────────┬──────────────────────────────────┐
 │ Step │ Name                         │ Why                              │
 ├──────┼──────────────────────────────┼──────────────────────────────────┤
-│ S14  │ Linux IRQ consumer           │ Turn S13 IRQ line into real wait │
-│ S15  │ Payload metadata/header      │ Stop using anonymous raw words.  │
+│ S14  │ Linux IRQ consumer           │ Blocked on current Linux image.  │
+│ S15  │ Payload metadata/header      │ Done: headered image test passes.│
 │ S16  │ Tiny TCDM-like banked memory │ Move closer to Snitch cluster.   │
 │ S17  │ Minimal multi-core proof     │ First real cluster-like behavior.│
 │ S18  │ DMA-lite                     │ First autonomous data movement.  │
@@ -1237,12 +1250,13 @@ Add a top-level DE1 smoke-test index:
 Recommended immediate next step:
 
 ```text
-S14: make Linux consume the S13 FPGA-to-HPS interrupt for real.
+S16: add a tiny TCDM-like banked memory.
 
 Reason:
-  S13 already produces and clears the IRQ line.
-  The missing proof is the Linux side blocking on the interrupt instead of
-  observing it indirectly through MMIO polling.
+  S14's true Linux IRQ wait needs a different kernel/module environment.
+  S15 cleaned the payload contract without new FPGA hardware.
+  The next hardware-side gap versus upstream Snitch is local memory structure:
+  our RAM is still one tiny simple memory, not banked TCDM.
 ```
 
 ## What Not To Do Next
@@ -1251,7 +1265,7 @@ Reason:
 Do not try to port full Occamy to DE1-SoC.
 Do not restart the full upstream snitch_cluster_wrapper Quartus port as the
 main path.
-Do not add FPU/SSR/DMA before the host IRQ and payload contracts are cleaner.
+Do not add FPU/SSR/DMA before the memory model and host contracts are cleaner.
 ```
 
 The practical thesis-quality story is:
@@ -1262,6 +1276,8 @@ We preserved the real Snitch core.
 We built a DE1-compatible wrapper around it.
 We progressively proved control, data, payload loading, and interrupt-style
 completion from ARM Linux.
-The next work is to replace educational polling with a real Linux interrupt
-consumer, then move toward more cluster-like memory and multi-core behavior.
+The true Linux blocking interrupt consumer now depends on a different
+kernel/module environment.
+The practical next local work is to move toward more cluster-like memory and
+multi-core behavior.
 ```

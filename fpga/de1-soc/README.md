@@ -47,6 +47,14 @@ S12: HPS/ARM Linux loads the payload from a file
 S13: HPS/ARM Linux observes a Snitch-Lite done IRQ
     Add an FPGA-side done interrupt latch, connect it to HPS f2h_irq0 through
     Qsys, and verify IRQ enable/pending/clear from ARM Linux.
+
+S14: HPS/ARM Linux IRQ consumer preflight
+    Check whether the current Terasic Linux image can consume f2h_irq0 through
+    UIO or a loadable kernel module.
+
+S15: HPS/ARM Linux loads a headered Snitch-Lite payload image
+    Reuse the S13 bitstream, but load a structured payload image with
+    magic/version/entry/word-count/arguments/checksum metadata.
 ```
 
 ## Current Board State After microSD Boot
@@ -176,6 +184,23 @@ s13_snitch_hps_irq_done/
   Current result: payload build, ARM tester build, sv2v, Yosys, Qsys, Quartus
   map/fit/assembler/timing, RBF conversion, JTAG programming, UART transfer,
   and ARM Linux MMIO runtime IRQ-pending/clear test pass.
+
+s14_snitch_hps_irq_linux/
+  ARM/HPS Linux IRQ-consumer preflight:
+  inspect the running Terasic Linux image for UIO, matching kernel modules, and
+  device-tree IRQ exposure.
+  Current result: S13 baseline still passes, but CONFIG_UIO is not set,
+  /dev/uio* is absent, and the installed gpio_interrupt.ko targets kernel
+  3.9.0 while the board runs 3.12.0-00307.
+
+s15_snitch_payload_header/
+  ARM/HPS Linux Snitch-Lite payload-header path:
+  reuse the S13 bitstream, but transfer a structured S15 image with
+  magic/version/entry/word-count/arguments/checksum metadata before the RISC-V
+  instruction words.
+  Current result: local payload-image build, ARM loader cross-build, UART
+  transfer, S13-bitstream reuse, header validation, Snitch-Lite execution, done
+  IRQ pending/clear check, and ARM Linux runtime test pass.
 ```
 
 Manual GUI scratch projects should use a `*_gui_manual/` directory name. Those
@@ -280,4 +305,12 @@ S14: Linux IRQ consumer preflight
     for kernel 3.9.0 while the board runs 3.12.0-00307. A real blocking IRQ
     consumer therefore needs either a matching custom kernel module or a rebuilt
     kernel/device tree with UIO enabled.
+
+S15: HPS/Linux Snitch-Lite payload metadata/header
+    Reuse the S13 bitstream and replace the anonymous raw payload file with a
+    structured S15 image.
+    Verified status: ARM Linux validates magic/version/header size/entry
+    word/payload word count/arguments/expected result/checksum, loads the
+    payload words into FPGA instruction memory, runs Snitch-Lite, and observes
+    the done IRQ pending/clear behavior with TEST_RC=0.
 ```
