@@ -1,4 +1,4 @@
-# Snitch-Lite S14: Linux IRQ Consumer Preflight
+# Snitch-Lite S14: Linux IRQ Consumer
 
 S14 continues after S13.
 
@@ -12,49 +12,94 @@ Snitch payload writes done MMIO
   -> ARM Linux can observe pending/clear through MMIO
 ```
 
-S14 is the next step: make Linux consume that FPGA-to-HPS interrupt for real.
-That means the ARM program should block in Linux until the FPGA IRQ arrives,
-instead of only polling MMIO.
+S14 makes Linux consume that FPGA-to-HPS interrupt for real. The ARM program
+blocks in Linux until the FPGA IRQ arrives instead of only polling MMIO.
 
 ## Current Result
 
-S14 is currently a **preflight stage**, not a completed blocking IRQ driver.
-
-The S13 hardware/runtime baseline was rerun on the local DE1-SoC board on
-2026-07-06:
+S14 is complete on both tested local DE1-SoC Linux images:
 
 ```text
-JTAG chain:         DE-SoC [1-1], SOCVHPS + 5CSE device detected
-S13 .sof program:   pass
-S13 ARM runtime:    pass
-S13 TEST_RC:        0
+older console image:
+  kernel: 3.12.0-00307-g507abb4-dirty
+  IRQ path: direct Linux IRQ 72
+  result: TEST_RC=0
+
+LXDE Ubuntu image:
+  kernel: 4.5.0-00183-g4647b69-dirty
+  IRQ path: GIC SPI 40 -> Linux virtual IRQ 131
+  result: TEST_RC=0
 ```
 
-The board Linux IRQ preflight found:
+The console-image automated run was executed on the local DE1-SoC board on
+2026-07-06 with kernel `3.12.0-00307-g507abb4-dirty`:
+
+```text
+S13 .sof program:       pass
+kernel module build:    pass
+ARM waiter build:       pass
+UART file transfer:     pass
+insmod snitch_lite_irq: pass
+blocking IRQ wait:      pass
+S14 TEST_RC:            0
+```
+
+The key evidence:
 
 ```text
 Kernel:
   Linux socfpga 3.12.0-00307-g507abb4-dirty
 
-Userspace IRQ route:
-  /dev/uio*:           not present
-  CONFIG_UIO:          not set
+Module:
+  snitch_lite_irq.ko
+  vermagic: 3.12.0-00307-g507abb4-dirty SMP mod_unload ARMv7 p2v8
+  registered: /dev/snitch_lite_irq
 
-Kernel module route:
-  CONFIG_MODULES:      y
-  CONFIG_MODULE_UNLOAD:y
-  running kernel:      3.12.0-00307-g507abb4-dirty
-  installed modules:   /lib/modules/3.9.0
-  stale demo module:   /lib/modules/3.9.0/extra/gpio_interrupt.ko
-  stale module load:   fails, invalid vermagic
+Interrupt:
+  Linux IRQ: 72
+  owner:     snitch_lite_irq
+  before:    72: 4
+  after:     72: 6
 
-Device tree:
-  no custom Snitch-Lite/f2h_irq0 node is present in the running tree
+Userspace:
+  RUN0_IRQ_EVENT_COUNT = 1
+  RUN1_IRQ_EVENT_COUNT = 2
+  RUN0_IRQ_EVENT_STATUS = 0x7
+  RUN1_IRQ_EVENT_STATUS = 0x7
+  PASS
 ```
 
-So the easy UIO path is blocked on this SD-card image. The existing Terasic
-`gpio_interrupt.ko` is also unusable because it was built for a different
-kernel.
+The original UIO route is still unavailable on the tested console SD-card
+image:
+
+```text
+/dev/uio*:  not present
+CONFIG_UIO: not set
+```
+
+The existing Terasic `gpio_interrupt.ko` is also unusable because it was built
+for kernel 3.9.0 while the board runs 3.12.0. S14 therefore uses a tiny custom
+module built against a matching 3.12.0 kernel build tree.
+
+LXDE image result:
+
+```text
+LXDE kernel:     4.5.0-00183-g4647b69-dirty
+module vermagic: 4.5.0-00183-g4647b69-dirty SMP mod_unload ARMv7 p2v8
+Qsys IRQ:        f2h_irq0, offset 40
+driver mapping:  gic_spi=40
+Linux IRQ:       131
+/proc/interrupts before:
+  131: 0 0 GIC-0 72 Level snitch_lite_irq
+/proc/interrupts after:
+  131: 2 0 GIC-0 72 Level snitch_lite_irq
+S14 TEST_RC:     0
+```
+
+Important: on the LXDE 4.5 kernel, `irq=72` is wrong. Linux IRQ 72 belongs to
+`gpio-dwapb`, not f2h_irq0. The driver must request the interrupt through the
+GIC device-tree mapping using `gic_spi=40`; Linux then allocates virtual IRQ
+131.
 
 ## Why S13 Is Not Enough
 
@@ -78,9 +123,9 @@ Linux kernel IRQ handler wakes userspace
 For that, Linux must have a driver or device-tree binding that registers the
 FPGA IRQ line.
 
-## S14 Target Behavior
+## S14 Behavior
 
-The final S14 behavior should be:
+The final S14 behavior is:
 
 ```text
 ARM Linux program
@@ -102,72 +147,162 @@ ARM Linux program
 │ Option │ Path                          │ Current status                     │
 ├────────┼───────────────────────────────┼────────────────────────────────────┤
 │ A      │ UIO / generic-uio             │ blocked: CONFIG_UIO is not set     │
-│ B      │ tiny custom kernel module     │ viable, but needs matching kernel  │
-│ C      │ rebuild/replace Linux image   │ viable, heavier but cleanest       │
+│ B      │ tiny custom kernel module     │ done: S14 uses this path           │
+│ C      │ rebuild/replace Linux image   │ viable, heavier, not needed now    │
 └────────┴───────────────────────────────┴────────────────────────────────────┘
 ```
 
-Recommended next engineering route:
+The implemented console-image route:
 
 ```text
-1. Obtain or build the exact kernel source/build tree for:
+1. Use the exact kernel source/build tree for:
      3.12.0-00307-g507abb4-dirty
 
-2. Build one of:
-     a. a tiny char/misc driver that request_irq()s f2h_irq0
-     b. a kernel with CONFIG_UIO enabled plus a device-tree node
+2. Build a tiny misc driver:
+     request_irq(72, ...)
+     expose /dev/snitch_lite_irq
+     wake blocking read()/poll() callers
 
-3. Add a device-tree node or module parameter that binds:
+3. Pass module parameters instead of editing the device tree:
      MMIO base: 0xff200000
      MMIO size: 0x1000
-     IRQ: f2h_irq0, irqNumber 0 from Qsys
+     IRQ:       72, f2h_irq0 bit 0 on this image
+     pending:   0x3c, S13 REG_IRQ_PENDING
 
-4. Run the final blocking wait test.
+4. Run the blocking wait test from ARM Linux.
 ```
 
 ## Files
 
 ```text
 README.md
-  This document and the current S14 decision record.
+  This document and the current S14 result.
 
 captures/s14_preflight_2026-07-06.txt
   Condensed live board evidence from the S14 preflight.
 
+captures/s14_irq_wait_2026-07-06.txt
+  Condensed live board evidence from the completed S14 run.
+
+captures/s14_irq_wait_lxde_2026-07-06.txt
+  Condensed live board evidence from the completed S14 LXDE run.
+
 scripts/board_irq_preflight.py
   UART helper that logs into the board and prints IRQ/UIO/module/device-tree
-  state needed before implementing the Linux IRQ consumer.
+  state.
+
+scripts/build_kernel_module.sh
+  Builds snitch_lite_irq.ko against the matching kernel build tree.
+  Use `BOARD_KERNEL=console` for the 3.12 console image and
+  `BOARD_KERNEL=lxde` for the 4.5 LXDE image.
+
+scripts/build_arm_waiter.sh
+  Builds the static no-libc ARM userspace waiter.
+
+scripts/send_and_run.sh
+  Transfers the module, waiter, and payload to the board, loads the module, and
+  runs the blocking IRQ wait test.
+
+scripts/program_and_run.sh
+  Programs the S13 bitstream first, then runs send_and_run.sh.
+
+driver/snitch_lite_irq.c
+  Minimal Linux misc driver for f2h_irq0/S13 REG_IRQ_PENDING.
+
+sw/s14_irq_wait_nolibc.c
+  ARM Linux userspace test that blocks on /dev/snitch_lite_irq.
 ```
 
-## Run The Preflight
+## Run S14
 
-Boot the board, program the S13 bitstream, ensure the ARM Linux console is
-available on `/dev/ttyUSB0`, then run:
+Boot the board, ensure the ARM Linux console is available on `/dev/ttyUSB0`,
+and keep the prepared kernel/module build inputs available.
+
+Console image inputs:
+
+```text
+KERNEL_SRC:
+  /home/ftv/builds/kernel-src/linux-socfpga-criticallink
+
+TOOLCHAIN:
+  /home/ftv/builds/toolchains/gcc-linaro-4.9.4-2017.01-x86_64_arm-linux-gnueabihf
+```
+
+Console image run:
 
 ```bash
 cd /home/ftv/builds/hero-tools/fpga/de1-soc/s14_snitch_hps_irq_linux
-./scripts/board_irq_preflight.py
+BOARD_KERNEL=console ./scripts/program_and_run.sh
 ```
 
-Optional:
+LXDE image inputs:
+
+```text
+KERNEL_SRC:
+  /home/ftv/builds/kernel-src/linux-socfpga-altera-4.5
+
+TOOLCHAIN:
+  /home/ftv/builds/toolchains/gcc-linaro-4.9.4-2017.01-x86_64_arm-linux-gnueabihf
+```
+
+LXDE image run:
 
 ```bash
-TTY=/dev/ttyUSB0 ./scripts/board_irq_preflight.py
+cd /home/ftv/builds/hero-tools/fpga/de1-soc/s14_snitch_hps_irq_linux
+
+BOARD_KERNEL=lxde \
+PREPARE_LXDE_HEADLESS=1 \
+BOARD_USER=ubuntu \
+BOARD_PASSWORD=temppwd \
+BOARD_SUDO_PASSWORD=temppwd \
+./scripts/program_and_run.sh
 ```
 
-The script does not modify the board. It only reads kernel/device state.
+If the S13 bitstream is already loaded and LXDE has already been moved to
+serial-only/headless mode, the runtime-only LXDE check is:
 
-## What Would Count As S14 Complete
+```bash
+BOARD_KERNEL=lxde \
+BOARD_USER=ubuntu \
+BOARD_PASSWORD=temppwd \
+BOARD_SUDO_PASSWORD=temppwd \
+./scripts/send_and_run.sh
+```
 
-S14 should be considered complete only when all of these are true:
+Expected console evidence:
+
+```text
+insmod /tmp/snitch_lite_irq.ko irq=72 ...
+snitch_lite_irq: irq=72 mmio=0xff200000 size=0x1000 pending=0x3c
+/dev/snitch_lite_irq exists
+RUN0_IRQ_EVENT_COUNT = 0x00000001
+RUN1_IRQ_EVENT_COUNT = 0x00000002
+PASS
+TEST_RC=0
+/proc/interrupts IRQ 72 increments by two
+```
+
+Expected LXDE evidence:
+
+```text
+insmod /tmp/snitch_lite_irq.ko gic_spi=40 ...
+snitch_lite_irq: mapped GIC SPI 40 to Linux irq=131
+snitch_lite_irq: irq=131 gic_spi=40 gic_hwirq=-1 mmio=0xff200000 size=0x1000 pending=0x3c
+RUN0_IRQ_EVENT_COUNT = 0x00000001
+RUN1_IRQ_EVENT_COUNT = 0x00000002
+PASS
+TEST_RC=0
+/proc/interrupts IRQ 131 increments by two
+```
+
+## Completion Criteria
+
+S14 is considered complete because all of these are true:
 
 ```text
 Linux has a registered IRQ consumer for f2h_irq0.
 Userspace blocks waiting for that interrupt.
 Snitch completion wakes userspace without polling STATUS.done.
-/proc/interrupts shows the relevant interrupt count incrementing.
+/proc/interrupts shows the registered IRQ incrementing.
 The Snitch result/RAM/pass checks still match S13.
 ```
-
-Until then, S14 is correctly documented as blocked by the current Linux image's
-missing UIO support and missing matching kernel module build environment.

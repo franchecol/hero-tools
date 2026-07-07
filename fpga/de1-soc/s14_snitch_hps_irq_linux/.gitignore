@@ -1,0 +1,10 @@
+build/
+driver/*.ko
+driver/*.mod.c
+driver/*.mod.o
+driver/*.o
+driver/*.order
+driver/*.symvers
+driver/.*.cmd
+driver/.tmp_versions/
+
