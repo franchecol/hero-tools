@@ -20,42 +20,56 @@ TTY="${TTY:-/dev/ttyUSB0}"
     "${S15_DIR}/generated/sw/s15_payload.img" \
     /tmp/s15_payload.img
 
+export D3_SERIAL_RUN="${D3_DIR}/scripts/serial_run.py"
+export TTY
 python3 - <<'PY'
 import os
-import serial
-import time
+import shlex
+import subprocess
 
 tty = os.environ.get("TTY", "/dev/ttyUSB0")
-marker = "__S15_PAYLOAD_HEADER_DONE__"
-cmd = r'''
-stty sane -echo
-echo ---S15-PAYLOAD-HEADER---
-md5sum /tmp/s15_header_loader_nolibc /tmp/s15_payload.img
-for b in lwhps2fpga hps2fpga fpga2hps; do echo 1 > /sys/class/fpga-bridge/$b/enable; printf "bridge %s=" "$b"; cat /sys/class/fpga-bridge/$b/enable; done
-chmod +x /tmp/s15_header_loader_nolibc
-/tmp/s15_header_loader_nolibc
-rc=$?
-echo TEST_RC=$rc
-echo __S15_PAYLOAD_HEADER_DONE__
-'''
+serial_run = os.environ["D3_SERIAL_RUN"]
+sudo_password = os.environ.get("BOARD_SUDO_PASSWORD")
 
-with serial.Serial(tty, 115200, timeout=0.1, write_timeout=10) as ser:
-    ser.write(b'\x03\r')
-    time.sleep(0.2)
-    ser.read(8192)
-    ser.write(cmd.replace('\n', '\r').encode())
-    deadline = time.time() + 30
-    out = bytearray()
-    while time.time() < deadline:
-        chunk = ser.read(4096)
-        if chunk:
-            out += chunk
-            if marker.encode() in out:
-                break
-    text = out.decode("utf-8", errors="replace")
-    print(text)
-    if marker.encode() not in out:
-        raise SystemExit("timeout waiting for S15 marker")
-    if "TEST_RC=0" not in text:
-        raise SystemExit("S15 test did not return 0")
+
+def sudo_cmd(command):
+    if not sudo_password:
+        return command
+    return "printf '%s\\n' " + shlex.quote(sudo_password) + " | sudo -S sh -c " + shlex.quote(command)
+
+
+def bridge_cmd():
+    script = (
+        'for name in lwhps2fpga hps2fpga fpga2hps; do '
+        'if [ -e "/sys/class/fpga-bridge/$name/enable" ]; then '
+        'echo 1 > "/sys/class/fpga-bridge/$name/enable"; '
+        'printf "bridge %s=" "$name"; cat "/sys/class/fpga-bridge/$name/enable"; '
+        'elif [ -d /sys/class/fpga_bridge ]; then '
+        'for br in /sys/class/fpga_bridge/br*; do '
+        '[ -e "$br/name" ] || continue; '
+        '[ "$(cat "$br/name")" = "$name" ] || continue; '
+        'printf "bridge %s=" "$name"; cat "$br/state"; '
+        'done; '
+        'else echo "bridge $name=missing"; fi; '
+        'done'
+    )
+    return "sh -c " + shlex.quote(script)
+
+
+commands = [
+    "stty sane -echo",
+    "echo ---S15-PAYLOAD-HEADER---",
+    "md5sum /tmp/s15_header_loader_nolibc /tmp/s15_payload.img",
+    bridge_cmd(),
+    "chmod +x /tmp/s15_header_loader_nolibc",
+    sudo_cmd("/tmp/s15_header_loader_nolibc") + "; rc=$?; echo TEST_RC=$rc",
+    "echo __S15_PAYLOAD_HEADER_DONE__",
+]
+
+subprocess.run(
+    [serial_run, "--tty", tty, "--require", "TEST_RC=0", "--require", "__S15_PAYLOAD_HEADER_DONE__"],
+    input="\n".join(commands) + "\n",
+    text=True,
+    check=True,
+)
 PY

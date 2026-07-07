@@ -134,10 +134,28 @@ cd /home/ftv/builds/hero-tools/fpga/de1-soc/s13_snitch_hps_irq_done
 ./scripts/program.sh
 ```
 
+On the Terasic LXDE Ubuntu image, use the serial-only headless preparation
+before programming. This stops the vendor display path before the Snitch-Lite
+fabric replaces the FPGA framebuffer design:
+
+```bash
+cd /home/ftv/builds/hero-tools/fpga/de1-soc/s13_snitch_hps_irq_done
+
+PREPARE_LXDE_HEADLESS=1 \
+BOARD_USER=ubuntu \
+BOARD_PASSWORD=temppwd \
+BOARD_SUDO_PASSWORD=temppwd \
+./scripts/program.sh
+```
+
 Transfer and run the ARM tester plus payload over the UART console:
 
 ```bash
 cd /home/ftv/builds/hero-tools/fpga/de1-soc/s13_snitch_hps_irq_done
+
+BOARD_USER=ubuntu \
+BOARD_PASSWORD=temppwd \
+BOARD_SUDO_PASSWORD=temppwd \
 ./scripts/send_and_run.sh
 ```
 
@@ -211,6 +229,21 @@ Board checks:
   JTAG programming:                      pass
   UART transfer to ARM Linux:            pass
   ARM Linux runtime test:                pass
+  LXDE serial-only runtime test:         pass
+```
+
+LXDE-specific verified command sequence:
+
+```text
+PREPARE_LXDE_HEADLESS=1 BOARD_USER=ubuntu BOARD_PASSWORD=temppwd \
+  BOARD_SUDO_PASSWORD=temppwd ./scripts/program.sh
+
+BOARD_USER=ubuntu BOARD_PASSWORD=temppwd BOARD_SUDO_PASSWORD=temppwd \
+  ./scripts/send_and_run.sh
+
+Result:
+  PASS
+  TEST_RC=0
 ```
 
 Runtime transcript:

@@ -258,7 +258,7 @@ static int run_test(void) {
         fd,
         LWH2F_BASE >> 12);
 
-    if (mapped < 0) {
+    if ((usize)mapped >= (usize)-4095) {
         write_all(STDERR_FD, "mmap2 failed\n");
         syscall1(SYS_CLOSE, fd);
         return 1;

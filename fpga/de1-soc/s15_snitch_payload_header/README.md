@@ -130,6 +130,21 @@ PASS
 TEST_RC=0
 ```
 
+LXDE serial-only verification:
+
+```text
+Prerequisite:
+  S13 bitstream programmed with PREPARE_LXDE_HEADLESS=1.
+
+Command:
+  BOARD_USER=ubuntu BOARD_PASSWORD=temppwd BOARD_SUDO_PASSWORD=temppwd \
+    ./scripts/send_and_run.sh
+
+Result:
+  PASS
+  TEST_RC=0
+```
+
 ## Relation To Upstream Snitch/Occamy
 
 This is not yet an upstream-style runtime ABI.
@@ -154,6 +169,7 @@ The same S13 Snitch-Lite hardware still runs and asserts done IRQ.
 No relocation.
 No dynamic memory layout.
 No multi-section ELF loading.
-No Linux blocking IRQ consumer; S14 remains blocked by the current kernel image.
+No reuse of the S14 blocking IRQ consumer yet; S15 still checks the S13 IRQ
+pending/clear register contract directly.
 No upstream Snitch runtime ABI.
 ```
