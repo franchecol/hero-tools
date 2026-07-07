@@ -34,6 +34,12 @@ Local S13 implementation:
   fpga/de1-soc/s13_snitch_hps_irq_done/scripts/create_qsys.tcl
   fpga/de1-soc/s13_snitch_hps_irq_done/sw/s13_irq_nolibc.c
 
+Local S14 implementation:
+  fpga/de1-soc/s14_snitch_hps_irq_linux/driver/snitch_lite_irq.c
+  fpga/de1-soc/s14_snitch_hps_irq_linux/sw/s14_irq_wait_nolibc.c
+  fpga/de1-soc/s14_snitch_hps_irq_linux/scripts/program_and_run.sh
+  fpga/de1-soc/s14_snitch_hps_irq_linux/captures/s14_irq_wait_2026-07-06.txt
+
 Upstream Snitch checkout used by Occamy:
   platforms/occamy/.bender/git/checkouts/snitch_cluster-85bc3373558d290b/
 
@@ -78,11 +84,11 @@ Occamy M0 host/device proof:
 │ Host control            │ done    │ HPS/Linux MMIO, simpler than Occamy. │
 │ Data input/output       │ done    │ Registers + tiny RAM, not runtime.   │
 │ Local memory/TCDM       │ partial │ Tiny RAM, not banked TCDM.           │
-│ Done interrupt          │ partial │ IRQ line exists; Linux wait not yet. │
+│ Done interrupt          │ done    │ S13 IRQ + S14 Linux wait pass.      │
 │ DMA                     │ not-yet │ Upstream has real DMA machinery.     │
 │ Multi-core cluster      │ not-yet │ Upstream is config-generated.        │
 │ FPU/SSR/Xfrep features  │ not-yet │ Disabled locally for area/simplicity │
-│ Linux driver integration│ not-yet │ S14 preflight found image blocker.   │
+│ Linux driver integration│ done    │ S14 module passes console + LXDE.   │
 └─────────────────────────┴─────────┴────────────────────────────────────┘
 ```
 
@@ -923,9 +929,9 @@ S16 should add a tiny TCDM-like memory:
 Only after that should we consider multiple cores contending for memory.
 ```
 
-## 7. Done Interrupt: S13 Worked Example
+## 7. Done Interrupt: S13/S14 Worked Example
 
-Local status: `partial`
+Local status: `done`
 
 Why S13 matters:
 
@@ -995,42 +1001,49 @@ Our S13:
 So S13 is conceptually close to the Occamy M0 completion proof, not a full copy
 of upstream cluster interrupt infrastructure.
 
-What S13 still does not prove:
+What S14 adds:
 
 ```text
-The FPGA IRQ line is produced and cleared.
-Linux does not yet block on that interrupt.
-The ARM program still polls MMIO to observe that the IRQ line became active.
+Linux registers a real IRQ consumer for f2h_irq0 bit 0.
+The ARM userspace process blocks on /dev/snitch_lite_irq.
+Snitch completion wakes the blocked process.
+The driver acknowledges REG_IRQ_PENDING.
+/proc/interrupts shows the registered IRQ increment by two for two Snitch runs.
 ```
 
-Plan after S13: S14 Linux-visible interrupt consumer
+S14 Linux-visible interrupt consumer result
 
 ```text
 1. Keep the S13 hardware IRQ register contract.
 
-2. Identify the exact Cyclone V HPS interrupt number for f2h_irq0 on the
-   running Terasic Linux image. Do not hardcode this from memory; inspect the
-   board's device tree and /proc/interrupts.
+2. Use the image-specific Linux IRQ mapping:
 
-3. Prefer a UIO-based userspace interrupt path if the kernel supports it:
+     older console image:
+       direct Linux IRQ 72
 
-     /dev/uioX
-       -> mmap registers
-       -> enable IRQ
-       -> start Snitch
-       -> blocking read(/dev/uioX)
+     LXDE Ubuntu image:
+       Qsys f2h_irq0 offset 40 -> GIC SPI 40 -> Linux virtual IRQ 131
+
+3. UIO was checked first but is unavailable:
+
+     /dev/uio*: not present
+     CONFIG_UIO: not set
+
+4. Build and load a tiny matching kernel module instead:
+
+     snitch_lite_irq.ko
+       -> request_irq(72, ...)
+       -> expose /dev/snitch_lite_irq
+       -> wake read()/poll() waiters
        -> clear REG_IRQ_PENDING bit0
-       -> re-enable UIO interrupt
 
-4. If UIO is missing in the old Terasic kernel, use a tiny kernel module as the
-   fallback.
+5. Verified on board:
 
-5. Verification target:
-
-     /proc/interrupts counter increments
-     blocking userspace wait returns
-     S13 result checks still pass
-     IRQ pending clears cleanly
+     TEST_RC=0
+     RUN0_IRQ_EVENT_COUNT = 1
+     RUN1_IRQ_EVENT_COUNT = 2
+     console: /proc/interrupts IRQ 72 increments by two
+     LXDE:    /proc/interrupts IRQ 131 increments by two
 ```
 
 ## 8. DMA
@@ -1239,7 +1252,7 @@ Add a top-level DE1 smoke-test index:
 ┌──────┬──────────────────────────────┬──────────────────────────────────┐
 │ Step │ Name                         │ Why                              │
 ├──────┼──────────────────────────────┼──────────────────────────────────┤
-│ S14  │ Linux IRQ consumer           │ Blocked on current Linux image.  │
+│ S14  │ Linux IRQ consumer           │ Done: blocking IRQ wait passes.  │
 │ S15  │ Payload metadata/header      │ Done: headered image test passes.│
 │ S16  │ Tiny TCDM-like banked memory │ Move closer to Snitch cluster.   │
 │ S17  │ Minimal multi-core proof     │ First real cluster-like behavior.│
@@ -1253,7 +1266,7 @@ Recommended immediate next step:
 S16: add a tiny TCDM-like banked memory.
 
 Reason:
-  S14's true Linux IRQ wait needs a different kernel/module environment.
+  S14's true Linux IRQ wait is now solved with a matching kernel module.
   S15 cleaned the payload contract without new FPGA hardware.
   The next hardware-side gap versus upstream Snitch is local memory structure:
   our RAM is still one tiny simple memory, not banked TCDM.

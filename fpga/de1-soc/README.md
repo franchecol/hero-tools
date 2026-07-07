@@ -6,7 +6,7 @@ It is intentionally separate from the full Occamy FPGA path. The DE1-SoC board
 is useful for small staged hardware experiments, not for full Occamy.
 
 For a feature-by-feature comparison against upstream Snitch/Occamy, including
-the S13 interrupt-done path and the proposed S14 continuation, see
+the S13 interrupt-done path and the S14 Linux IRQ consumer, see
 [`SNITCH_LITE_FEATURE_COMPARISON.md`](SNITCH_LITE_FEATURE_COMPARISON.md).
 
 ## Stages
@@ -48,9 +48,10 @@ S13: HPS/ARM Linux observes a Snitch-Lite done IRQ
     Add an FPGA-side done interrupt latch, connect it to HPS f2h_irq0 through
     Qsys, and verify IRQ enable/pending/clear from ARM Linux.
 
-S14: HPS/ARM Linux IRQ consumer preflight
-    Check whether the current Terasic Linux image can consume f2h_irq0 through
-    UIO or a loadable kernel module.
+S14: HPS/ARM Linux IRQ consumer
+    Build a matching kernel module for the current Terasic Linux image,
+    register f2h_irq0, expose /dev/snitch_lite_irq, and wake userspace from a
+    blocking interrupt wait.
 
 S15: HPS/ARM Linux loads a headered Snitch-Lite payload image
     Reuse the S13 bitstream, but load a structured payload image with
@@ -72,6 +73,48 @@ D3 target:                               ARM Linux controls FPGA over HPS bridge
 Do not test the D2/S8 register map against the counter demo. The next useful
 test is D3: program an HPS-connected register block and access it from Linux at
 the lightweight bridge base, `0xff200000`.
+
+## LXDE Image, Serial-Only Use
+
+The Terasic LXDE Ubuntu image can be used as a serial-only Linux host. The
+desktop is not required for the Snitch-Lite experiments.
+
+Before JTAG-programming a custom Snitch-Lite `.sof` while LXDE is running, stop
+the GUI/display path first:
+
+```bash
+cd /home/ftv/builds/hero-tools/fpga/de1-soc/s13_snitch_hps_irq_done
+
+PREPARE_LXDE_HEADLESS=1 \
+BOARD_USER=ubuntu \
+BOARD_PASSWORD=temppwd \
+BOARD_SUDO_PASSWORD=temppwd \
+./scripts/program.sh
+```
+
+Why: the LXDE image boots a vendor FPGA framebuffer/display design. If Linux is
+still using that display IP when JTAG replaces the fabric with Snitch-Lite, the
+HPS serial console can freeze. `PREPARE_LXDE_HEADLESS=1` runs:
+
+```text
+stop lightdm / graphical target
+unbind the altvipfb framebuffer driver if present
+leave the FPGA bridges visible/enabled
+then program the Snitch-Lite bitstream
+```
+
+Then run the host test over UART:
+
+```bash
+BOARD_USER=ubuntu \
+BOARD_PASSWORD=temppwd \
+BOARD_SUDO_PASSWORD=temppwd \
+./scripts/send_and_run.sh
+```
+
+The no-libc ARM host programs use raw Linux syscalls. Their `/dev/mem` mapping
+checks must use the Linux syscall error convention, not `mapped < 0`, because
+valid 32-bit ARM user pointers can have the high bit set.
 
 ## Current Projects
 
@@ -183,15 +226,22 @@ s13_snitch_hps_irq_done/
   and verify from ARM Linux that the done IRQ line asserts and clears.
   Current result: payload build, ARM tester build, sv2v, Yosys, Qsys, Quartus
   map/fit/assembler/timing, RBF conversion, JTAG programming, UART transfer,
-  and ARM Linux MMIO runtime IRQ-pending/clear test pass.
+  and ARM Linux MMIO runtime IRQ-pending/clear test pass. The same S13 runtime
+  path is verified on the LXDE Ubuntu image when `PREPARE_LXDE_HEADLESS=1` is
+  used before JTAG programming.
 
 s14_snitch_hps_irq_linux/
-  ARM/HPS Linux IRQ-consumer preflight:
-  inspect the running Terasic Linux image for UIO, matching kernel modules, and
-  device-tree IRQ exposure.
-  Current result: S13 baseline still passes, but CONFIG_UIO is not set,
-  /dev/uio* is absent, and the installed gpio_interrupt.ko targets kernel
-  3.9.0 while the board runs 3.12.0-00307.
+  ARM/HPS Linux IRQ consumer:
+  build/load a matching snitch_lite_irq.ko module, register the f2h_irq0
+  interrupt, expose /dev/snitch_lite_irq, block userspace in read()/poll(),
+  and wake on Snitch-Lite completion.
+  Current result on the older console image: S13 bitstream programming passes,
+  the module vermagic matches 3.12.0-00307-g507abb4-dirty, insmod registers GIC
+  IRQ 72, userspace wakes twice from real Snitch completions, /proc/interrupts
+  increments by two, and TEST_RC=0. Current result on the LXDE image: the
+  module vermagic matches 4.5.0-00183-g4647b69-dirty, the driver maps Qsys
+  f2h_irq0/GIC SPI 40 to Linux virtual IRQ 131, userspace wakes twice from real
+  Snitch completions, /proc/interrupts increments by two, and TEST_RC=0.
 
 s15_snitch_payload_header/
   ARM/HPS Linux Snitch-Lite payload-header path:
@@ -200,7 +250,9 @@ s15_snitch_payload_header/
   instruction words.
   Current result: local payload-image build, ARM loader cross-build, UART
   transfer, S13-bitstream reuse, header validation, Snitch-Lite execution, done
-  IRQ pending/clear check, and ARM Linux runtime test pass.
+  IRQ pending/clear check, and ARM Linux runtime test pass. This now also
+  passes on the LXDE Ubuntu serial-only path after the S13 headless-prepared
+  bitstream is programmed.
 ```
 
 Manual GUI scratch projects should use a `*_gui_manual/` directory name. Those
@@ -291,20 +343,25 @@ S13: HPS/Linux Snitch-Lite done IRQ
     wrapper and connect it to HPS f2h_irq0.
     Verified status: ARM Linux enables the done IRQ, runs the file-loaded
     payload twice, observes IRQ_PENDING/irq-line assertion after each run,
-    clears the pending bit, and sees the irq line deassert.
+    clears the pending bit, and sees the irq line deassert. This now passes on
+    the LXDE Ubuntu image after running the headless-prep step before JTAG
+    programming.
 
     Current limitation: S13 verifies the FPGA/HPS interrupt path at hardware
     and MMIO level, but does not yet use a Linux kernel/UIO driver to sleep on
-    the interrupt.
+    the interrupt. S14 below closes that Linux-consumer gap.
 
-S14: Linux IRQ consumer preflight
-    Reuse the S13 bitstream and inspect whether the running Terasic Linux image
-    can consume f2h_irq0 through UIO or a loadable kernel module.
-    Current result: S13 baseline still passes on the board. CONFIG_UIO is not
-    enabled, /dev/uio* is absent, and the installed Terasic gpio_interrupt.ko is
-    for kernel 3.9.0 while the board runs 3.12.0-00307. A real blocking IRQ
-    consumer therefore needs either a matching custom kernel module or a rebuilt
-    kernel/device tree with UIO enabled.
+S14: Linux IRQ consumer
+    Reuse the S13 bitstream and consume f2h_irq0 from ARM Linux with a tiny
+    matching kernel module.
+    Verified status on the older console image: CONFIG_UIO is absent, so S14
+    uses snitch_lite_irq.ko instead. Linux registers GIC IRQ 72, creates
+    /dev/snitch_lite_irq, userspace blocks on the device, two Snitch-Lite
+    completions wake userspace, IRQ 72 increments by two in /proc/interrupts,
+    and TEST_RC=0. Verified status on the LXDE image: S14 builds a separate
+    module against kernel 4.5.0-00183-g4647b69-dirty, maps Qsys f2h_irq0/GIC
+    SPI 40 to Linux virtual IRQ 131, wakes userspace twice, increments IRQ 131
+    by two in /proc/interrupts, and exits with TEST_RC=0.
 
 S15: HPS/Linux Snitch-Lite payload metadata/header
     Reuse the S13 bitstream and replace the anonymous raw payload file with a
@@ -312,5 +369,7 @@ S15: HPS/Linux Snitch-Lite payload metadata/header
     Verified status: ARM Linux validates magic/version/header size/entry
     word/payload word count/arguments/expected result/checksum, loads the
     payload words into FPGA instruction memory, runs Snitch-Lite, and observes
-    the done IRQ pending/clear behavior with TEST_RC=0.
+    the done IRQ pending/clear behavior with TEST_RC=0. This path now also
+    passes on the LXDE Ubuntu serial-only image after the S13 headless-prepared
+    bitstream is loaded.
 ```
