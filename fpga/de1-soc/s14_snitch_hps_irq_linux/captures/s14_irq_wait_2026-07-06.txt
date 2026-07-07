@@ -1,0 +1,80 @@
+S14 Linux IRQ wait, 2026-07-06
+================================
+
+Board:
+  DE1-SoC
+  ARM Linux console: /dev/ttyUSB0
+  FPGA programming: USB-Blaster/JTAG
+
+Linux:
+  Linux socfpga 3.12.0-00307-g507abb4-dirty #2 SMP Mon Jan 6 19:54:56 CST 2014 armv7l GNU/Linux
+
+Kernel module build:
+  Module: snitch_lite_irq.ko
+  Driver: driver/snitch_lite_irq.c
+  Kernel source: /home/ftv/builds/kernel-src/linux-socfpga-criticallink
+  Kernel release: 3.12.0-00307-g507abb4-dirty
+  Toolchain: /home/ftv/builds/toolchains/gcc-linaro-4.9.4-2017.01-x86_64_arm-linux-gnueabihf
+  vermagic: 3.12.0-00307-g507abb4-dirty SMP mod_unload ARMv7 p2v8
+
+Transferred files:
+  /tmp/snitch_lite_irq.ko       md5=a9323070b5f3477b43bf880b862b0c67
+  /tmp/s14_irq_wait_nolibc      md5=864fcc17c2b30c9a43745bb7cfa43eec
+  /tmp/s14_payload.bin          md5=e8fd938849aa2d521b7bd5e4a4edae79
+
+Bridge state:
+  bridge lwhps2fpga=1
+  bridge hps2fpga=1
+  bridge fpga2hps=1
+
+Module load:
+  insmod /tmp/snitch_lite_irq.ko irq=72 mmio_base=0xff200000 irq_pending_offset=0x3c
+  snitch_lite_irq: irq=72 mmio=0xff200000 size=0x1000 pending=0x3c
+
+Device:
+  crw-------    1 root     root       10,  60 Sep 28 05:11 /dev/snitch_lite_irq
+
+Interrupts before userspace wait:
+             CPU0       CPU1
+   72:          4          0       GIC  72  snitch_lite_irq
+
+Userspace run:
+  PAYLOAD_FILE_BYTES = 0x00000024
+  PAYLOAD_FILE_WORDS = 0x00000009
+  ID           = 0x53130001
+  IMEM_CAPACITY = 0x00000010
+  PAYLOAD_WORDS = 0x00000009
+  RUN0_IRQ_EVENT_COUNT = 0x00000001
+  RUN0_IRQ_EVENT_STATUS = 0x00000007
+  RUN0_STATUS = 0x00000015
+  RUN0_RESULT = 0x000001a5
+  RUN0_RAM0 = 0x00000100
+  RUN0_RAM1 = 0x000000a5
+  RUN0_RAM2 = 0x000001a5
+  RUN0_IRQ_ENABLE = 0x00000001
+  RUN0_IRQ_PENDING_AFTER_DRIVER_ACK = 0x00000002
+  START_COUNT = 0x00000001
+  RUN_CYCLES  = 0x0000000a
+  RUN1_IRQ_EVENT_COUNT = 0x00000002
+  RUN1_IRQ_EVENT_STATUS = 0x00000007
+  RUN1_STATUS = 0x00000015
+  RUN1_RESULT = 0x00000255
+  RUN1_RAM0 = 0x00000200
+  RUN1_RAM1 = 0x00000055
+  RUN1_RAM2 = 0x00000255
+  RUN1_IRQ_ENABLE = 0x00000001
+  RUN1_IRQ_PENDING_AFTER_DRIVER_ACK = 0x00000002
+  START_COUNT = 0x00000001
+  RUN_CYCLES  = 0x0000000a
+  PASS
+  TEST_RC=0
+
+Interrupts after userspace wait:
+             CPU0       CPU1
+   72:          6          0       GIC  72  snitch_lite_irq
+
+Conclusion:
+  S14 is complete. Linux registered a real IRQ consumer for f2h_irq0 bit 0,
+  userspace blocked on /dev/snitch_lite_irq, two Snitch completions woke the
+  process, the driver acknowledged REG_IRQ_PENDING, and /proc/interrupts showed
+  IRQ 72 increment by two.
