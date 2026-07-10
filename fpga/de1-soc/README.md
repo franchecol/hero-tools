@@ -66,6 +66,10 @@ S17: direct Genus Snitch-core synthesis
     Feed the original upstream reduced Snitch integer-core SystemVerilog to
     Genus without sv2v, map it to TSMC65 cells, and validate the mapped core in
     Questa before testing a scalable Quartus import boundary.
+
+S18: Genus-generated Snitch core executes ROM software
+    Feed a generated four-instruction RV32E ROM into the S17 Genus-generic
+    core and capture its deterministic MMIO store on the DE1-SoC LEDs.
 ```
 
 ## Current Board State After microSD Boot
@@ -285,6 +289,15 @@ s17_genus_snitch_core/
   Fit passes 50 MHz timing with 0.244 ns worst setup slack, and JTAG programming
   of the physical FPGA passes. Physical reset behavior also passes: LEDR[9]
   turns off while KEY[0] is pressed and returns on when reset is released.
+
+s18_genus_snitch_rom_mmio/
+  First deterministic software test through the Genus-to-Quartus core path:
+  build an RV32E payload, generate an instruction ROM, execute it on the S17
+  imported core, and capture a store of 0x155 to MMIO address 0x40000000.
+  Current result: software generation and Verilator structural simulation pass
+  with LEDR=0x355; Quartus compile and 50 MHz timing pass using 82 ALMs and 91
+  registers; JTAG programming also passes. The expected physical 0x355 LED
+  vector was observed, completing the deterministic software-execution proof.
 ```
 
 Manual GUI scratch projects should use a `*_gui_manual/` directory name. Those
