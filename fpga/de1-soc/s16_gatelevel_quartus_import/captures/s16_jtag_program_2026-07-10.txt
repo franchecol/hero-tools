@@ -40,4 +40,5 @@ Result:
 Scope of evidence:
   This proves that the Genus-generated toy gate-level structure, compatibility
   shims, and DE1 wrapper compile and configure the physical Cyclone V FPGA.
-  LED counter behavior still requires direct visual confirmation.
+  The user physically confirmed the expected SW, KEY, and LED behavior after
+  programming, completing the board-level S16 check.

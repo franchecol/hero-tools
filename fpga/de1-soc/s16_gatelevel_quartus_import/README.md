@@ -131,6 +131,10 @@ Configuration succeeded -- 1 device(s) configured
 Quartus Prime Programmer was successful. 0 errors, 0 warnings
 ```
 
+The expected `SW[0]`, `KEY[0]`, and LED behavior was then physically confirmed
+on the board.  S16 is therefore complete from Genus synthesis through physical
+Cyclone V execution.
+
 The reconstructed local netlist and the server-generated netlist have different
 whole-file hashes because their provenance comments differ.  After removing
 comments and blank lines, both produce this SHA-256 hash, confirming that their

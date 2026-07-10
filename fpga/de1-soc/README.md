@@ -61,6 +61,11 @@ S16: external gate-level netlist import probe
     Test the professor-proposed path on a toy design: synthesize RTL with
     Genus, import the generated gate-level netlist into Quartus through small
     compatibility shims, and compile it for Cyclone V.
+
+S17: direct Genus Snitch-core synthesis
+    Feed the original upstream reduced Snitch integer-core SystemVerilog to
+    Genus without sv2v, map it to TSMC65 cells, and validate the mapped core in
+    Questa before testing a scalable Quartus import boundary.
 ```
 
 ## Current Board State After microSD Boot
@@ -267,7 +272,19 @@ s16_gatelevel_quartus_import/
   Current result: Quartus Lite 25.1 analysis/synthesis, fitter, assembler, and
   timing pass for Cyclone V with 0 errors and 2 fitter warnings. JTAG
   programming of device `5CSEMA5F31@2` also passes with 0 errors; direct visual
-  confirmation of the LED counter behavior remains pending.
+  confirmation of the SW/KEY/LED counter behavior also passes.
+
+s17_genus_snitch_core/
+  Direct external synthesis of a meaningful upstream Snitch integer core:
+  Genus reads the original package-heavy SystemVerilog without sv2v, preserves
+  dynamic instruction and data-request behavior, and maps the reduced core to
+  3296 TSMC65 cells with area 12413.520. Questa gate-level simulation passes
+  with 16 valid NOP fetches through address 0x40 and 0 errors or warnings. The
+  generic structural netlist is then identifier-sanitized without logic
+  changes and compiled by Quartus into 1216 ALMs and 988 registers. Standard
+  Fit passes 50 MHz timing with 0.244 ns worst setup slack, and JTAG programming
+  of the physical FPGA passes. Physical reset behavior also passes: LEDR[9]
+  turns off while KEY[0] is pressed and returns on when reset is released.
 ```
 
 Manual GUI scratch projects should use a `*_gui_manual/` directory name. Those

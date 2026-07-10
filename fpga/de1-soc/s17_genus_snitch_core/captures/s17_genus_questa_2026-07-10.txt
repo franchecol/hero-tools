@@ -1,0 +1,61 @@
+S17 direct Genus Snitch-core synthesis and gate simulation
+Date: 2026-07-10
+
+Source revisions:
+  snitch_cluster: 8cae8d282bc12be4993c0e6c51161374f924c92b
+  common_cells:   1281545696eb3fcba50ec5b4275993476a3c710e
+
+Tools:
+  Cadence Genus 21.18-s082_1
+  Questa Sim 2019.4_5
+  TSMC65 tcbn65lptc Liberty and Verilog cell models
+
+Initial setup failure:
+  The first Tcl revision passed -incdir to legacy read_hdl. Genus treated
+  -incdir and its value as input filenames, so common_cells macros were not
+  found. This was a script-interface error, not an RTL compatibility result.
+
+Correction:
+  Set the Genus init_hdl_search_path root attribute to common_cells/include and
+  remove -incdir from read_hdl.
+
+Direct frontend result:
+  Genus directly parsed and elaborated the original upstream SystemVerilog.
+  No sv2v translation was used as an input to Genus.
+
+Generic synthesis result:
+  Status: PASS
+  Generic instances after constant propagation: 8834
+  Generic area estimate: 34338
+  Runtime: approximately 160 seconds
+
+TSMC65 mapping result:
+  Status: PASS
+  Mapped cell instances: 3296
+  Mapped cell area: 12413.520
+  Mapped netlist size: 447 KiB
+  Genus result: Done mapping 'snitch_genus_probe'.
+  Exit: Normal exit.
+
+Most frequent mapped cells:
+  606 SDFQD0
+  434 AOI22D0
+  307 CKND2D0
+  184 INVD1
+  158 AO22D0
+  143 AOI221D0
+  110 NR2D0
+  103 AOI222D0
+
+Questa gate-level simulation:
+  Cell model: tcbn65lp.v
+  Test: reset mapped core, feed RV32 NOPs, accept instruction requests
+  Result: PASS: fetches=16 highest_addr=0x40
+  Errors: 0
+  Warnings: 0
+
+Interpretation:
+  A meaningful reduced upstream Snitch integer core can be read directly by
+  Genus, synthesized, mapped into TSMC65 cells, and simulated as a mapped
+  gate-level design. The next decision gate is conversion/import into Quartus
+  without manually maintaining a large ASIC-cell shim library.
