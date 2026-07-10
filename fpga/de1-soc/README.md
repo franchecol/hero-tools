@@ -56,6 +56,11 @@ S14: HPS/ARM Linux IRQ consumer
 S15: HPS/ARM Linux loads a headered Snitch-Lite payload image
     Reuse the S13 bitstream, but load a structured payload image with
     magic/version/entry/word-count/arguments/checksum metadata.
+
+S16: external gate-level netlist import probe
+    Test the professor-proposed path on a toy design: synthesize RTL with
+    Genus, import the generated gate-level netlist into Quartus through small
+    compatibility shims, and compile it for Cyclone V.
 ```
 
 ## Current Board State After microSD Boot
@@ -253,6 +258,16 @@ s15_snitch_payload_header/
   IRQ pending/clear check, and ARM Linux runtime test pass. This now also
   passes on the LXDE Ubuntu serial-only path after the S13 headless-prepared
   bitstream is programmed.
+
+s16_gatelevel_quartus_import/
+  External gate-level netlist import probe:
+  use a Cadence Genus-generated TSMC65 toy counter netlist, provide tiny public
+  compatibility shims for the generated cell names, wrap it for DE1-SoC
+  CLOCK_50/KEY/SW/LEDR pins, and compile it in Quartus.
+  Current result: Quartus Lite 25.1 analysis/synthesis, fitter, assembler, and
+  timing pass for Cyclone V with 0 errors and 2 fitter warnings. JTAG
+  programming of device `5CSEMA5F31@2` also passes with 0 errors; direct visual
+  confirmation of the LED counter behavior remains pending.
 ```
 
 Manual GUI scratch projects should use a `*_gui_manual/` directory name. Those
