@@ -70,6 +70,10 @@ S17: direct Genus Snitch-core synthesis
 S18: Genus-generated Snitch core executes ROM software
     Feed a generated four-instruction RV32E ROM into the S17 Genus-generic
     core and capture its deterministic MMIO store on the DE1-SoC LEDs.
+
+S19: Genus-generated Snitch core uses local data RAM
+    Extend the Genus synthesis boundary with a complete data-response channel,
+    then store, load, compare, and report PASS/FAIL from RV32E software.
 ```
 
 ## Current Board State After microSD Boot
@@ -298,6 +302,15 @@ s18_genus_snitch_rom_mmio/
   with LEDR=0x355; Quartus compile and 50 MHz timing pass using 82 ALMs and 91
   registers; JTAG programming also passes. The expected physical 0x355 LED
   vector was observed, completing the deterministic software-execution proof.
+
+s19_genus_snitch_data_ram/
+  First load-response test through the Genus-to-Quartus core path: expose the
+  upstream Snitch request/response data protocol, attach a 16-word local RAM,
+  and execute an RV32E store/load/compare payload. Genus generic synthesis and
+  TSMC65 mapping pass; both Questa mapped-netlist and Verilator generic-netlist
+  simulations observe RAM[0]=0xA5 and LEDR=0x3A5. Quartus fitting and 50 MHz
+  timing pass using 670 ALMs and 817 registers, and JTAG programming passes.
+  The expected physical LEDR=0x3A5 vector was observed, completing S19.
 ```
 
 Manual GUI scratch projects should use a `*_gui_manual/` directory name. Those

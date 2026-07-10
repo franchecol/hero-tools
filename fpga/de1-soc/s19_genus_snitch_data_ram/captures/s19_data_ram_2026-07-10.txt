@@ -1,0 +1,68 @@
+S19 Genus Snitch data-RAM evidence
+Date: 2026-07-10
+
+Purpose:
+  Preserve a complete Snitch request/response data channel through Genus,
+  attach a 16-word local RAM, and execute a store/load/compare RV32E payload.
+
+Pinned upstream inputs:
+  snitch_cluster  8cae8d282bc12be4993c0e6c51161374f924c92b
+  common_cells    1281545696eb3fcba50ec5b4275993476a3c710e
+
+Software:
+  Payload size: 56 bytes / 14 RV32E instructions
+  Store value:  0x000000a5 to address 0x00001000
+  Load/compare: expected 0x000000a5
+  PASS MMIO:    0x1a5 to address 0x40000000
+  Expected pins: LEDR[9:0] = 0x3a5
+
+Genus 21.18-s082_1:
+  Elaboration:       PASS
+  Generic synthesis: PASS
+  TSMC65 mapping:    PASS
+  Mapped cells:      3393
+  Mapped area:       12817
+  Normal exit:       yes
+
+Netlists:
+  Generic size: 763332 bytes
+  Generic SHA-256:
+    558f10a2df2b65d74f35532d985ad892e035d8873cd306b1f5c3de107807d882
+  TSMC65 mapped SHA-256:
+    7ddea4a260985157e29eac20aeb555711b60920e5dfb8366ab5c9e846f6bae9f
+  Sanitized escaped identifiers: 857
+
+Questa 2019.4 mapped-netlist simulation:
+  Compile: PASS, 0 errors / 0 warnings
+  Result:
+    PASS: Genus Snitch stored and loaded RAM[0]=0x000000a5; LEDR=0x3a5
+  Simulation: PASS, 0 errors / 0 warnings
+  Finish time: 1670 ns
+
+Verilator 5.050 generic-netlist simulation:
+  Result:
+    PASS: Genus Snitch stored and loaded RAM[0]=0x000000a5; LEDR=0x3a5
+  Finish time: 2 us
+
+Quartus Prime Lite 25.1:
+  Analysis/synthesis: PASS
+  Fitter:             PASS
+  Assembler:          PASS
+  Timing analyzer:    PASS
+  Flow status:        Successful
+  Logic utilization:  670 / 32070 ALMs (2%)
+  Registers:          817
+  Block RAM:          0 bits / 0 blocks
+  Worst setup slack:  +4.160 ns at 50 MHz
+  Worst hold slack:   +0.170 ns
+
+JTAG programming:
+  Cable:        DE-SoC [1-2]
+  Device:       5CSEMA5F31@2
+  JTAG ID:      0x02D120DD
+  SOF checksum: 0x00CB5941
+  Result:       PASS, 0 errors / 0 warnings
+
+Physical observation:
+  PASS. The user physically confirmed LEDR[9:0] = 0x3a5.
+  This completes the S19 store/load/compare proof on the DE1-SoC.
