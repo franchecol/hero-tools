@@ -1,0 +1,46 @@
+SL14 LXDE run, DE1-SoC, 2026-07-06
+
+Board image:
+  Ubuntu 16.04.1 LXDE, serial-only use
+
+Kernel:
+  Linux DE1_SoC 4.5.0-00183-g4647b69-dirty
+
+Kernel module:
+  snitch_lite_irq.ko
+  vermagic: 4.5.0-00183-g4647b69-dirty SMP mod_unload ARMv7 p2v8
+
+Important IRQ mapping:
+  Qsys f2h_irq0 offset: 40
+  GIC SPI:              40
+  GIC hwirq shown:      72
+  Linux virtual IRQ:    131
+
+Wrong attempt:
+  irq=72 is not f2h_irq0 on Linux 4.5.
+  /proc/interrupts shows IRQ 72 as gpio-dwapb.
+  Using irq=72 directly caused an interrupt storm and Linux disabled IRQ 72.
+
+Correct command:
+  BOARD_KERNEL=lxde BOARD_USER=ubuntu BOARD_PASSWORD=temppwd \
+    BOARD_SUDO_PASSWORD=temppwd ./scripts/send_and_run.sh
+
+Module load evidence:
+  snitch_lite_irq: mapped GIC SPI 40 to Linux irq=131
+  snitch_lite_irq: irq=131 gic_spi=40 gic_hwirq=-1 mmio=0xff200000 size=0x1000 pending=0x3c
+
+/proc/interrupts before:
+  131: 0 0 GIC-0 72 Level snitch_lite_irq
+
+/proc/interrupts after:
+  131: 2 0 GIC-0 72 Level snitch_lite_irq
+
+Runtime result:
+  RUN0_IRQ_EVENT_COUNT = 0x00000001
+  RUN0_IRQ_EVENT_STATUS = 0x00000007
+  RUN0_RESULT = 0x000001a5
+  RUN1_IRQ_EVENT_COUNT = 0x00000002
+  RUN1_IRQ_EVENT_STATUS = 0x00000007
+  RUN1_RESULT = 0x00000255
+  PASS
+  TEST_RC=0

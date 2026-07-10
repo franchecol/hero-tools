@@ -1,2 +1,3 @@
 *_gui_manual/
-
+__pycache__/
+*.pyc

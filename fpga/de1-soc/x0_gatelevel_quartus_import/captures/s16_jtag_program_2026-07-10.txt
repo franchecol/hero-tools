@@ -1,0 +1,44 @@
+X0 gate-level netlist physical programming
+Date: 2026-07-10
+Host tool: Quartus Prime Lite 25.1std.0 Build 1129
+Board: DE1-SoC
+FPGA: 5CSEMA5F31C6, Cyclone V
+
+Netlist identity check:
+  Server complete-file SHA-256:
+    71dfec512b650ef65f0edaf9d62859dd16a9316bc84d9332133fa70ea6398c3d
+  Local complete-file SHA-256:
+    a595b5b12d7b71525b68a99f17c6f7bc5fd2147a0ecdbc8a85883ceafa57b83e
+  The complete hashes differ because the provenance comments differ.
+  SHA-256 after removing comments and blank lines on both systems:
+    d34fbfd5c87bc2438e0708dbdad20f89bb25ce7240a15f0dc771761312c7a3cf
+  Result: the generated Verilog logic is identical.
+
+JTAG detection:
+  Command: quartus_pgm -l
+  Result: 1) DE-SoC [1-2]
+
+Initial programming attempt:
+  Command: quartus_pgm -m JTAG -o
+           p;output_files/de1_s16_gatelevel_import.sof
+  Result: failed because the operation selected JTAG index 1, the ARM HPS
+          debug endpoint with ID 0x4BA00477, instead of the FPGA.
+
+Corrected programming operation:
+  Command: quartus_pgm -m JTAG -o
+           p;output_files/de1_s16_gatelevel_import.sof@2
+  Cable: DE-SoC [1-2]
+  Target: 5CSEMA5F31@2
+  FPGA JTAG ID: 0x02D120DD
+  SOF checksum: 0x00AF8F9A
+
+Result:
+  Configuration succeeded -- 1 device(s) configured.
+  Successfully performed operation(s).
+  Quartus Prime Programmer was successful. 0 errors, 0 warnings.
+
+Scope of evidence:
+  This proves that the Genus-generated toy gate-level structure, compatibility
+  shims, and DE1 wrapper compile and configure the physical Cyclone V FPGA.
+  The user physically confirmed the expected SW, KEY, and LED behavior after
+  programming, completing the board-level X0 check.

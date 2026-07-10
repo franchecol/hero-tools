@@ -1,0 +1,73 @@
+SL15 payload-header run, 2026-07-06
+
+Setup:
+
+```text
+Board:       DE1-SoC
+Bitstream:   SL13 Snitch-Lite IRQ-capable payload loader
+Host:        ARM Linux over /dev/ttyUSB0
+Payload:     generated/sw/s15_payload.img
+Loader:      build/s15_header_loader_nolibc
+```
+
+Local build:
+
+```text
+generated/sw/s15_payload.elf
+generated/sw/s15_payload.dump
+generated/sw/s15_payload.raw.bin
+generated/sw/s15_payload.img
+generated/sw/s15_payload_manifest.json
+build/s15_header_loader_nolibc
+```
+
+UART transfer:
+
+```text
+receiver ok: /tmp/d3_serial_recv md5=f015cb8514756a4923d05eb31d580073
+file ok: /tmp/s15_header_loader_nolibc md5=210288716ef11b414d120a610b32c367
+file ok: /tmp/s15_payload.img md5=5968640a43932602fda80c2f5dd84341
+```
+
+Runtime:
+
+```text
+IMAGE_BYTES = 0x0000004c
+MAGIC = 0x50353153
+VERSION = 0x00000001
+HEADER_WORDS = 0x0000000a
+ENTRY_WORD = 0x00000000
+PAYLOAD_WORDS = 0x00000009
+ARG0 = 0x00000300
+ARG1 = 0x00000077
+EXPECTED = 0x00000377
+PAYLOAD_CHECKSUM = 0x42032b6f
+CHECKSUM_READ = 0x42032b6f
+ID = 0x53130001
+IRQ_ENABLE = 0x00000001
+IRQ_PENDING = 0x00000002
+IMEM_CAPACITY = 0x00000010
+PAYLOAD_WORDS_REG = 0x00000009
+RUN_STATUS = 0x00000015
+RUN_RESULT = 0x00000377
+RUN_RAM0 = 0x00000300
+RUN_RAM1 = 0x00000077
+RUN_RAM2 = 0x00000377
+RUN_IRQ_ENABLE = 0x00000001
+RUN_IRQ_PENDING = 0x00000007
+START_COUNT = 0x00000001
+RUN_CYCLES = 0x0000000a
+RUN_IRQ_AFTER_CLEAR = 0x00000002
+PASS
+TEST_RC=0
+```
+
+Conclusion:
+
+```text
+SL15 passes.
+The ARM host rejects anonymous payload loading and now validates a small
+metadata header before writing instruction words to the SL13 FPGA IMEM window.
+The existing SL13 Snitch-Lite hardware still executes the payload and asserts
+the done IRQ latch.
+```

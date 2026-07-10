@@ -1,0 +1,46 @@
+X0 gate-level netlist import probe
+Date: 2026-07-09
+Host tool: Quartus Prime Lite 25.1std.0 Build 1129
+Device: 5CSEMA5F31C6, Cyclone V, DE1-SoC
+
+Command:
+  ./scripts/build.sh
+
+Important frontend result:
+  Found 7 design units in rtl/tcbn65lp_toy_shims.v.
+  Found 1 design unit in rtl/toy_counter_genus_netlist.v.
+  Elaborated de1_s16_gatelevel_import.
+  Elaborated toy_counter.
+  Elaborated SDFCNQD1, MOAI22D0, OA21D0, CKND2D0, IAO21D0, CKAN2D1, CKND0.
+  Quartus Prime Analysis & Synthesis was successful. 0 errors, 0 warnings.
+
+Resource result after synthesis:
+  Implemented 22 device resources after synthesis.
+  Implemented 3 input pins.
+  Implemented 10 output pins.
+  Implemented 9 logic cells.
+
+Full compile result:
+  Quartus Prime Fitter was successful. 0 errors, 2 warnings.
+  Quartus Prime Assembler was successful. 0 errors, 0 warnings.
+  Quartus Prime Timing Analyzer was successful. 0 errors, 0 warnings.
+  Quartus Prime Full Compilation was successful. 0 errors, 2 warnings.
+
+Timing result:
+  Slow 1100mV 85C setup slack: 16.424 ns.
+  Slow 1100mV 85C hold slack: 0.374 ns.
+  Fast 1100mV 0C setup slack: 17.956 ns.
+  Fast 1100mV 0C hold slack: 0.172 ns.
+
+Programmer check:
+  quartus_pgm -l
+  No JTAG hardware available.
+
+Interpretation:
+  The toy version of the professor's gate-level import idea is feasible:
+  Quartus can consume an externally generated Genus gate-level netlist when
+  the required generated cell names are backed by compatible Verilog shims.
+
+  This does not yet prove Snitch feasibility.  A real Snitch netlist may require
+  many more cells, memory macro handling, clock/reset cleanup, and resource/timing
+  checks on Cyclone V.

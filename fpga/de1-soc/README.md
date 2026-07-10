@@ -1,94 +1,65 @@
 # DE1-SoC FPGA Bring-Up
 
-This directory tracks the educational DE1-SoC path toward a tiny accelerator.
+This directory contains several independent experiment tracks. They are not a
+single linear sequence and should not be read as one.
 
 It is intentionally separate from the full Occamy FPGA path. The DE1-SoC board
-is useful for small staged hardware experiments, not for full Occamy.
+is useful for a reduced upstream Snitch cluster and heterogeneous proof, not
+for reproducing the complete VCU128-targeted Occamy platform.
 
-For a feature-by-feature comparison against upstream Snitch/Occamy, including
-the S13 interrupt-done path and the S14 Linux IRQ consumer, see
-[`SNITCH_LITE_FEATURE_COMPARISON.md`](SNITCH_LITE_FEATURE_COMPARISON.md).
-
-## Stages
+## Start Here
 
 ```text
-D0: LED/switch smoke test
-    Proves Quartus, USB-Blaster/JTAG, FPGA programming, switches, and LEDs.
+┌────────┬──────────────────────────────────────────┬─────────────────────┐
+│ Prefix │ Purpose                                  │ Current role        │
+├────────┼──────────────────────────────────────────┼─────────────────────┤
+│ D      │ DE1 board, JTAG, Avalon and HPS bring-up │ Shared foundation   │
+│ Q      │ Direct Quartus/upstream frontend trials  │ Historical evidence │
+│ SL     │ Custom Snitch-Lite DE1 platform          │ Proven fallback     │
+│ X      │ External-synthesis bridge experiments    │ Tool-flow evidence  │
+│ U      │ Original upstream Snitch through Genus   │ Preferred path      │
+│ H      │ Future ARM/Linux + upstream Snitch       │ Deferred            │
+└────────┴──────────────────────────────────────────┴─────────────────────┘
+```
 
-D1: register accelerator smoke test
-    Adds clocked state, operand registers, opcode selection, result, busy, done,
-    and 7-segment output.
+Read [`TRACKS.md`](TRACKS.md) for the decision history, directory migration
+map, and current roadmap. Read
+[`SNITCH_LITE_FEATURE_COMPARISON.md`](SNITCH_LITE_FEATURE_COMPARISON.md) only
+when studying the custom `SL` fallback against upstream Snitch/Occamy.
 
-D2: JTAG/PC to FPGA MMIO register access
-    Replace manual buttons/switches with real Avalon-MM register writes using
-    System Console over USB-Blaster/JTAG. The same register block is intended
-    for the later HPS lightweight bridge.
+## Current Focus
 
-D3: HPS/ARM Linux to FPGA MMIO register access
-    Connect the same D2 register block to the HPS lightweight bridge and access
-    it from ARM Linux.
-
-S9: HPS/ARM Linux to Snitch-Lite MMIO control
-    Replace the D3 toy register accelerator with the S8 Snitch-Lite control
-    block behind the same HPS lightweight bridge.
-
-S10: HPS/ARM Linux passes input data to Snitch-Lite
-    ARM writes input words over MMIO, starts Snitch-Lite, and reads back the
-    Snitch-computed result.
-
-S11: HPS/ARM Linux loads a Snitch-Lite payload image
-    ARM writes RISC-V instruction words into FPGA instruction memory, writes
-    ARG0/ARG1/EXPECTED, starts Snitch-Lite, and reads back the result.
-
-S12: HPS/ARM Linux loads the payload from a file
-    Reuse the S11 bitstream, but keep the ARM host loader and Snitch payload
-    image as separate Linux files.
-
-S13: HPS/ARM Linux observes a Snitch-Lite done IRQ
-    Add an FPGA-side done interrupt latch, connect it to HPS f2h_irq0 through
-    Qsys, and verify IRQ enable/pending/clear from ARM Linux.
-
-S14: HPS/ARM Linux IRQ consumer
-    Build a matching kernel module for the current Terasic Linux image,
-    register f2h_irq0, expose /dev/snitch_lite_irq, and wake userspace from a
-    blocking interrupt wait.
-
-S15: HPS/ARM Linux loads a headered Snitch-Lite payload image
-    Reuse the S13 bitstream, but load a structured payload image with
-    magic/version/entry/word-count/arguments/checksum metadata.
-
-S16: external gate-level netlist import probe
-    Test the professor-proposed path on a toy design: synthesize RTL with
-    Genus, import the generated gate-level netlist into Quartus through small
-    compatibility shims, and compile it for Cyclone V.
-
-S17: direct Genus Snitch-core synthesis
-    Feed the original upstream reduced Snitch integer-core SystemVerilog to
-    Genus without sv2v, map it to TSMC65 cells, and validate the mapped core in
-    Questa before testing a scalable Quartus import boundary.
-
-S18: Genus-generated Snitch core executes ROM software
-    Feed a generated four-instruction RV32E ROM into the S17 Genus-generic
-    core and capture its deterministic MMIO store on the DE1-SoC LEDs.
-
-S19: Genus-generated Snitch core uses local data RAM
-    Extend the Genus synthesis boundary with a complete data-response channel,
-    then store, load, compare, and report PASS/FAIL from RV32E software.
+```text
+Q direct Quartus path ── failed on upstream SystemVerilog frontend
+          │
+          ├──► SL custom fallback ── heterogeneous concept fully proved
+          │
+          └──► X external synthesis ── bridge proved
+                         │
+                         ▼
+                 U upstream path
+                 U0 real core synthesis       PASS
+                 U1 real core ROM/MMIO        PASS
+                 U2 real core data RAM        PASS
+                 U3 one-core upstream cluster NEXT
+                         │
+                         ▼
+                 H heterogeneous integration LATER
 ```
 
 ## Current Board State After microSD Boot
 
 The Terasic SD-card Linux image can load or leave running a default FPGA demo.
 If the board is counting through `0,1,2,3,...,f`, that is not evidence that the
-S8 Snitch-Lite bitstream is still loaded.
+SL8 Snitch-Lite bitstream is still loaded.
 
 ```text
-S8 bitstream loaded by USB-Blaster/JTAG: volatile, lost after power/reset.
+SL8 bitstream loaded by USB-Blaster/JTAG: volatile, lost after power/reset.
 Terasic demo/counter bitstream:          useful only as a board-alive sign.
 D3 target:                               ARM Linux controls FPGA over HPS bridge.
 ```
 
-Do not test the D2/S8 register map against the counter demo. The next useful
+Do not test the D2/SL8 register map against the counter demo. The next useful
 test is D3: program an HPS-connected register block and access it from Linux at
 the lightweight bridge base, `0xff200000`.
 
@@ -101,7 +72,7 @@ Before JTAG-programming a custom Snitch-Lite `.sof` while LXDE is running, stop
 the GUI/display path first:
 
 ```bash
-cd /home/ftv/builds/hero-tools/fpga/de1-soc/s13_snitch_hps_irq_done
+cd /home/ftv/builds/hero-tools/fpga/de1-soc/sl13_snitch_hps_irq_done
 
 PREPARE_LXDE_HEADLESS=1 \
 BOARD_USER=ubuntu \
@@ -148,49 +119,49 @@ d2_jtag_mmio_accel/
   System Console/JTAG-controlled mini accelerator:
   Avalon-MM register block, ID/status/control/data/result registers
 
-s0_snitch_verilator/
+q0_snitch_verilator/
   Real-Snitch simulation path:
   one-core Snitch config, tiny bare-metal ELF, Verilator testbench
 
-s1_snitch_mmio_trace/
+q1_snitch_mmio_trace/
   Real-Snitch simulated MMIO path:
   one-core Snitch config, fake MMIO store, trace-checked result
 
-s2_snitch_quartus_wrapper/
+q2_snitch_quartus_wrapper/
   Quartus-facing Snitch wrapper path:
   one-core Snitch config, Bender-to-QSF export, analysis/elaboration preflight.
   Current result: export works; Quartus Lite reaches Snitch RTL and then stops
   on unsupported advanced SystemVerilog syntax.
 
-s3_snitch_core_only_probe/
+sl3_snitch_core_only_probe/
   Reduced real-Snitch path:
   instantiate snitch.sv directly, add tiny local shims, and probe the smaller
   core-only subset with sv2v/yosys before trying Quartus again.
   Current result: sv2v, Yosys, Quartus analysis/elaboration, and full Quartus
-  compile pass. A .sof is produced, but S3 still uses a constant NOP input and
+  compile pass. A .sof is produced, but SL3 still uses a constant NOP input and
   Quartus optimizes away most unused core behavior.
 
-s4_snitch_rom_mmio_led/
+sl4_snitch_rom_mmio_led/
   First board-visible real-Snitch shell:
   feed Snitch a tiny ROM program, accept its MMIO store, and expose the written
   value on LEDR.
 
-s5_snitch_generated_rom_mmio_led/
+sl5_snitch_generated_rom_mmio_led/
   Software-generated ROM path:
   compile RV32E assembly into an ELF/binary, generate ROM contents, and reuse
   the Snitch MMIO LED proof with software-owned instruction words.
 
-s6_snitch_checked_rom_mmio_led/
+sl6_snitch_checked_rom_mmio_led/
   Checked software-generated ROM path:
   add max-size checks, entry-address checks, generated metadata, and a
-  configurable assembly source path around the S5 flow.
+  configurable assembly source path around the SL5 flow.
 
-s7_snitch_tiny_ram_check/
+sl7_snitch_tiny_ram_check/
   Tiny data-RAM check path:
   Snitch stores to local FPGA RAM, loads the value back, checks it, and reports
   pass/fail through LED MMIO.
 
-s8_snitch_jtag_host_ctrl/
+sl8_snitch_jtag_host_ctrl/
   Temporary host-control path:
   expose Snitch-Lite start/done/pass/fail/result registers through a
   JTAG-to-Avalon master before the ARM/HPS Linux microSD flow is available.
@@ -204,15 +175,15 @@ d3_hps_mmio_accel/
   and ARM Linux MMIO runtime test pass. Linux-side FPGA Manager `.rbf` loading
   remains blocked by the board MSEL setting, but that is optional for D3.
 
-s9_snitch_hps_host_ctrl/
+sl9_snitch_hps_host_ctrl/
   ARM/HPS Linux-controlled Snitch-Lite accelerator:
-  expose the S8 Snitch-Lite control/status block through the HPS lightweight
+  expose the SL8 Snitch-Lite control/status block through the HPS lightweight
   bridge and test it from the ARM Linux shell.
   Current result: Snitch-Lite generation, Qsys generation, Quartus
   map/fit/assembler/timing, RBF conversion, JTAG programming, ARM tester
   cross-build, UART transfer, and ARM Linux MMIO runtime test pass.
 
-s10_snitch_hps_data_input/
+sl10_snitch_hps_data_input/
   ARM/HPS Linux-controlled Snitch-Lite data-input accelerator:
   ARM writes ARG0/ARG1/EXPECTED registers, Snitch consumes ARG0/ARG1 from
   local RAM, computes ARG0 + ARG1, stores the result to RAM2, and reports done.
@@ -220,7 +191,7 @@ s10_snitch_hps_data_input/
   map/fit/assembler/timing, RBF conversion, JTAG programming, ARM tester
   cross-build, UART transfer, and two ARM Linux MMIO runtime runs pass.
 
-s11_snitch_hps_payload_loader/
+sl11_snitch_hps_payload_loader/
   ARM/HPS Linux-controlled Snitch-Lite payload loader:
   ARM writes a tiny RISC-V instruction payload into FPGA instruction memory,
   writes ARG0/ARG1/EXPECTED registers, starts Snitch-Lite, and reads back the
@@ -229,31 +200,31 @@ s11_snitch_hps_payload_loader/
   map/fit/assembler/timing, RBF conversion, JTAG programming, ARM tester
   cross-build, UART transfer, and two ARM Linux MMIO runtime payload runs pass.
 
-s12_snitch_hps_file_loader/
+sl12_snitch_hps_file_loader/
   ARM/HPS Linux file-payload loader:
-  reuse the S11 FPGA bitstream, transfer an ARM loader executable plus a
+  reuse the SL11 FPGA bitstream, transfer an ARM loader executable plus a
   separate RISC-V payload binary to Linux, and have the ARM loader read the
   payload file before writing it into FPGA instruction memory.
   Current result: local software build, UART transfer of separate host/payload
-  files, S11-bitstream reuse, and ARM Linux runtime file-payload test pass.
+  files, SL11-bitstream reuse, and ARM Linux runtime file-payload test pass.
 
-s13_snitch_hps_irq_done/
+sl13_snitch_hps_irq_done/
   ARM/HPS Linux Snitch-Lite done-IRQ path:
-  add IRQ_ENABLE and IRQ_PENDING registers to the S11/S12 payload-loader
+  add IRQ_ENABLE and IRQ_PENDING registers to the SL11/SL12 payload-loader
   hardware, connect the wrapper interrupt sender to HPS f2h_irq0 through Qsys,
   and verify from ARM Linux that the done IRQ line asserts and clears.
   Current result: payload build, ARM tester build, sv2v, Yosys, Qsys, Quartus
   map/fit/assembler/timing, RBF conversion, JTAG programming, UART transfer,
-  and ARM Linux MMIO runtime IRQ-pending/clear test pass. The same S13 runtime
+  and ARM Linux MMIO runtime IRQ-pending/clear test pass. The same SL13 runtime
   path is verified on the LXDE Ubuntu image when `PREPARE_LXDE_HEADLESS=1` is
   used before JTAG programming.
 
-s14_snitch_hps_irq_linux/
+sl14_snitch_hps_irq_linux/
   ARM/HPS Linux IRQ consumer:
   build/load a matching snitch_lite_irq.ko module, register the f2h_irq0
   interrupt, expose /dev/snitch_lite_irq, block userspace in read()/poll(),
   and wake on Snitch-Lite completion.
-  Current result on the older console image: S13 bitstream programming passes,
+  Current result on the older console image: SL13 bitstream programming passes,
   the module vermagic matches 3.12.0-00307-g507abb4-dirty, insmod registers GIC
   IRQ 72, userspace wakes twice from real Snitch completions, /proc/interrupts
   increments by two, and TEST_RC=0. Current result on the LXDE image: the
@@ -261,18 +232,18 @@ s14_snitch_hps_irq_linux/
   f2h_irq0/GIC SPI 40 to Linux virtual IRQ 131, userspace wakes twice from real
   Snitch completions, /proc/interrupts increments by two, and TEST_RC=0.
 
-s15_snitch_payload_header/
+sl15_snitch_payload_header/
   ARM/HPS Linux Snitch-Lite payload-header path:
-  reuse the S13 bitstream, but transfer a structured S15 image with
+  reuse the SL13 bitstream, but transfer a structured SL15 image with
   magic/version/entry/word-count/arguments/checksum metadata before the RISC-V
   instruction words.
   Current result: local payload-image build, ARM loader cross-build, UART
-  transfer, S13-bitstream reuse, header validation, Snitch-Lite execution, done
+  transfer, SL13-bitstream reuse, header validation, Snitch-Lite execution, done
   IRQ pending/clear check, and ARM Linux runtime test pass. This now also
-  passes on the LXDE Ubuntu serial-only path after the S13 headless-prepared
+  passes on the LXDE Ubuntu serial-only path after the SL13 headless-prepared
   bitstream is programmed.
 
-s16_gatelevel_quartus_import/
+x0_gatelevel_quartus_import/
   External gate-level netlist import probe:
   use a Cadence Genus-generated TSMC65 toy counter netlist, provide tiny public
   compatibility shims for the generated cell names, wrap it for DE1-SoC
@@ -282,7 +253,7 @@ s16_gatelevel_quartus_import/
   programming of device `5CSEMA5F31@2` also passes with 0 errors; direct visual
   confirmation of the SW/KEY/LED counter behavior also passes.
 
-s17_genus_snitch_core/
+u0_genus_snitch_core/
   Direct external synthesis of a meaningful upstream Snitch integer core:
   Genus reads the original package-heavy SystemVerilog without sv2v, preserves
   dynamic instruction and data-request behavior, and maps the reduced core to
@@ -294,74 +265,75 @@ s17_genus_snitch_core/
   of the physical FPGA passes. Physical reset behavior also passes: LEDR[9]
   turns off while KEY[0] is pressed and returns on when reset is released.
 
-s18_genus_snitch_rom_mmio/
+u1_genus_snitch_rom_mmio/
   First deterministic software test through the Genus-to-Quartus core path:
-  build an RV32E payload, generate an instruction ROM, execute it on the S17
+  build an RV32E payload, generate an instruction ROM, execute it on the U0
   imported core, and capture a store of 0x155 to MMIO address 0x40000000.
   Current result: software generation and Verilator structural simulation pass
   with LEDR=0x355; Quartus compile and 50 MHz timing pass using 82 ALMs and 91
   registers; JTAG programming also passes. The expected physical 0x355 LED
   vector was observed, completing the deterministic software-execution proof.
 
-s19_genus_snitch_data_ram/
+u2_genus_snitch_data_ram/
   First load-response test through the Genus-to-Quartus core path: expose the
   upstream Snitch request/response data protocol, attach a 16-word local RAM,
   and execute an RV32E store/load/compare payload. Genus generic synthesis and
   TSMC65 mapping pass; both Questa mapped-netlist and Verilator generic-netlist
   simulations observe RAM[0]=0xA5 and LEDR=0x3A5. Quartus fitting and 50 MHz
   timing pass using 670 ALMs and 817 registers, and JTAG programming passes.
-  The expected physical LEDR=0x3A5 vector was observed, completing S19.
+  The expected physical LEDR=0x3A5 vector was observed, completing U2.
 ```
 
 Manual GUI scratch projects should use a `*_gui_manual/` directory name. Those
 directories are ignored because they contain generated Quartus build outputs.
 
-## Snitch-Lite Track
+## Detailed Stage History
 
-The `D*` projects are DE1-SoC FPGA board bring-up projects. The `S*` projects
-are the path toward a real Snitch core/cluster.
+The following list preserves the experiment details. `Q` records the direct
+frontend attempts; `SL` is the custom fallback. The successful `X` and `U`
+external-synthesis stages are summarized in **Current Projects** above.
 
 ```text
-S0: Verilator first
+Q0: Verilator first
     Build a reduced real Snitch target and run a tiny bare-metal program.
 
-S1: simulated MMIO
+Q1: simulated MMIO
     Add a small MMIO register and make Snitch write it from software.
-    Current S1 checks the MMIO-style store in the Verilator trace.
+    Current Q1 checks the MMIO-style store in the Verilator trace.
 
-S2: Quartus wrapper
+Q2: Quartus wrapper
     Try to synthesize the reduced Snitch wrapper for the DE1-SoC FPGA.
-    Current S2 first exports a Quartus project and runs analysis/elaboration.
+    Current Q2 first exports a Quartus project and runs analysis/elaboration.
     Verified status: project export passes; Quartus Lite analysis does not yet
     pass because real Snitch dependencies use advanced SystemVerilog features.
 
-S2.1: translation experiment
+Q2.1: translation experiment
     Try sv2v/yosys as a preprocessing route before Quartus.
     Verified status: useful tools installed, but full snitch_cluster_wrapper
     translation is high-friction and not recommended to continue.
 
-S3: core-only probe
+SL3: core-only probe
     Stop using snitch_cluster_wrapper for DE1-SoC.
     Instantiate the real snitch core directly with local shims and a tiny shell.
     Verified status: sv2v/yosys and Quartus full compile pass for the reduced
     core-only shell.
 
-S4: board-visible MMIO
+SL4: board-visible MMIO
     Feed Snitch a tiny instruction ROM and connect its MMIO store to LEDR.
 
-S5: generated software ROM
+SL5: generated software ROM
     Compile assembly into ROM contents instead of hardcoding instruction words
     in RTL.
 
-S6: checked generated ROM
+SL6: checked generated ROM
     Make the generated-ROM path safer and easier to reuse with different small
     assembly payloads.
 
-S7: tiny RAM check
+SL7: tiny RAM check
     Add a small local data RAM and make Snitch perform a store/load/compare
     sequence before reporting pass/fail on LEDs.
 
-S8: JTAG host control
+SL8: JTAG host control
     Wrap the Snitch-Lite RAM check in host-visible control/status registers and
     use System Console over USB-Blaster/JTAG as the temporary host.
 
@@ -372,31 +344,31 @@ D3: HPS/Linux host control
     programming passes; ARM Linux reads/writes the FPGA MMIO registers and gets
     the expected result.
 
-S9: HPS/Linux Snitch-Lite host control
-    Replace D3's toy register accelerator with the S8 Snitch-Lite block while
+SL9: HPS/Linux Snitch-Lite host control
+    Replace D3's toy register accelerator with the SL8 Snitch-Lite block while
     keeping the same ARM Linux and HPS lightweight bridge host path.
     Verified status: ARM Linux starts Snitch-Lite through the HPS bridge and
     reads back done/pass/result/RAM state from the Snitch payload.
 
-S10: HPS/Linux Snitch-Lite host data input
+SL10: HPS/Linux Snitch-Lite host data input
     Add ARM-written input data registers and copy them into Snitch local RAM
     before start.
     Verified status: ARM Linux runs Snitch-Lite twice without reprogramming,
     passing different input values each time and reading the computed results.
 
-S11: HPS/Linux Snitch-Lite payload loader
+SL11: HPS/Linux Snitch-Lite payload loader
     Add ARM-written instruction-memory payload loading before start.
     Verified status: ARM Linux writes a 9-word RISC-V payload into FPGA
     instruction memory, runs it twice with different input data, and reads the
     expected Snitch-computed results.
 
-S12: HPS/Linux Snitch-Lite file payload loader
+SL12: HPS/Linux Snitch-Lite file payload loader
     Split the ARM host executable from the RISC-V/Snitch payload image.
     Verified status: ARM Linux reads `/tmp/s12_payload.bin`, writes its 9
     instruction words into FPGA instruction memory, runs the payload twice, and
     reads the expected Snitch-computed results.
 
-S13: HPS/Linux Snitch-Lite done IRQ
+SL13: HPS/Linux Snitch-Lite done IRQ
     Add an interrupt-producing done latch around the Snitch-Lite payload-loader
     wrapper and connect it to HPS f2h_irq0.
     Verified status: ARM Linux enables the done IRQ, runs the file-loaded
@@ -405,29 +377,29 @@ S13: HPS/Linux Snitch-Lite done IRQ
     the LXDE Ubuntu image after running the headless-prep step before JTAG
     programming.
 
-    Current limitation: S13 verifies the FPGA/HPS interrupt path at hardware
+    Current limitation: SL13 verifies the FPGA/HPS interrupt path at hardware
     and MMIO level, but does not yet use a Linux kernel/UIO driver to sleep on
-    the interrupt. S14 below closes that Linux-consumer gap.
+    the interrupt. SL14 below closes that Linux-consumer gap.
 
-S14: Linux IRQ consumer
-    Reuse the S13 bitstream and consume f2h_irq0 from ARM Linux with a tiny
+SL14: Linux IRQ consumer
+    Reuse the SL13 bitstream and consume f2h_irq0 from ARM Linux with a tiny
     matching kernel module.
-    Verified status on the older console image: CONFIG_UIO is absent, so S14
+    Verified status on the older console image: CONFIG_UIO is absent, so SL14
     uses snitch_lite_irq.ko instead. Linux registers GIC IRQ 72, creates
     /dev/snitch_lite_irq, userspace blocks on the device, two Snitch-Lite
     completions wake userspace, IRQ 72 increments by two in /proc/interrupts,
-    and TEST_RC=0. Verified status on the LXDE image: S14 builds a separate
+    and TEST_RC=0. Verified status on the LXDE image: SL14 builds a separate
     module against kernel 4.5.0-00183-g4647b69-dirty, maps Qsys f2h_irq0/GIC
     SPI 40 to Linux virtual IRQ 131, wakes userspace twice, increments IRQ 131
     by two in /proc/interrupts, and exits with TEST_RC=0.
 
-S15: HPS/Linux Snitch-Lite payload metadata/header
-    Reuse the S13 bitstream and replace the anonymous raw payload file with a
-    structured S15 image.
+SL15: HPS/Linux Snitch-Lite payload metadata/header
+    Reuse the SL13 bitstream and replace the anonymous raw payload file with a
+    structured SL15 image.
     Verified status: ARM Linux validates magic/version/header size/entry
     word/payload word count/arguments/expected result/checksum, loads the
     payload words into FPGA instruction memory, runs Snitch-Lite, and observes
     the done IRQ pending/clear behavior with TEST_RC=0. This path now also
-    passes on the LXDE Ubuntu serial-only image after the S13 headless-prepared
+    passes on the LXDE Ubuntu serial-only image after the SL13 headless-prepared
     bitstream is loaded.
 ```

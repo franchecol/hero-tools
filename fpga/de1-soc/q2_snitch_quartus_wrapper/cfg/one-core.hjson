@@ -1,0 +1,90 @@
+// Educational one-core Snitch cluster configuration for Quartus Q2 preflight.
+//
+// This is still real Snitch RTL generated through the upstream Snitch cluster
+// flow. It is intentionally smaller than the upstream default config, which has
+// eight compute cores plus one DMA core.
+{
+    nr_s1_quadrant: 1,
+    s1_quadrant: {
+        nr_clusters: 1,
+    },
+
+    cluster: {
+        boot_addr: 4096, // 0x1000
+        cluster_base_addr: 268435456, // 0x1000_0000
+        cluster_base_offset: 0,
+        cluster_base_hartid: 0,
+        addr_width: 48,
+        data_width: 64,
+        tcdm: {
+            size: 16,
+            banks: 4,
+        },
+        cluster_periph_size: 64,
+        zero_mem_size: 16,
+        dma_data_width: 64,
+        dma_axi_req_fifo_depth: 2,
+        dma_req_fifo_depth: 2,
+        timing: {
+            lat_comp_fp32: 3,
+            lat_comp_fp64: 3,
+            lat_comp_fp16: 2,
+            lat_comp_fp16_alt: 2,
+            lat_comp_fp8: 1,
+            lat_comp_fp8_alt: 1,
+            lat_noncomp: 1,
+            lat_conv: 1,
+            lat_sdotp: 2,
+            fpu_pipe_config: "BEFORE",
+            narrow_xbar_latency: "CUT_ALL_PORTS",
+            wide_xbar_latency: "CUT_ALL_PORTS",
+            register_core_req: true,
+            register_core_rsp: true,
+            register_offload_req: true,
+            register_offload_rsp: true,
+        },
+        hives: [
+            {
+                icache: {
+                    size: 4,
+                    sets: 1,
+                    cacheline: 128,
+                },
+                cores: [
+                    { $ref: "#/compute_core_template" },
+                ],
+            },
+        ],
+    },
+    dram: {
+        address: 2147483648, // 0x8000_0000
+        length: 2147483648,
+    },
+    peripherals: {
+        clint: {
+            address: 4294901760, // 0xffff_0000
+            length: 4096,
+        },
+    },
+
+    compute_core_template: {
+        isa: "rv32imafd",
+        xssr: true,
+        xfrep: true,
+        xdma: false,
+        xf16: false,
+        xf16alt: false,
+        xf8: false,
+        xf8alt: false,
+        xfdotp: false,
+        xfvec: false,
+        num_int_outstanding_loads: 1,
+        num_int_outstanding_mem: 2,
+        num_fp_outstanding_loads: 1,
+        num_fp_outstanding_mem: 1,
+        num_sequencer_instructions: 4,
+        num_dtlb_entries: 1,
+        num_itlb_entries: 1,
+        ssrs: [{}, {}, {}],
+    },
+}

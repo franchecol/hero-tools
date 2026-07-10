@@ -1,0 +1,88 @@
+SL14 Linux IRQ preflight, 2026-07-06
+
+Board connection:
+
+```text
+jtagconfig:
+  1) DE-SoC [1-1]
+     4BA00477   SOCVHPS
+     02D120DD   5CSE(BA5|MA5)/5CSTFD5D5/..
+
+USB:
+  FT232 Serial UART present
+  Altera USB-Blaster present
+
+UART:
+  /dev/ttyUSB0
+```
+
+SL13 baseline rerun:
+
+```text
+quartus_pgm:
+  Configuration succeeded
+  0 errors, 0 warnings
+
+SL13 runtime:
+  PAYLOAD_FILE_BYTES = 0x00000024
+  PAYLOAD_FILE_WORDS = 0x00000009
+  ID           = 0x53130001
+  RUN0_RESULT = 0x000001a5
+  RUN0_IRQ_PENDING = 0x00000007
+  RUN0_IRQ_AFTER_CLEAR = 0x00000002
+  RUN1_RESULT = 0x00000255
+  RUN1_IRQ_PENDING = 0x00000007
+  RUN1_IRQ_AFTER_CLEAR = 0x00000002
+  PASS
+  TEST_RC=0
+```
+
+Kernel state:
+
+```text
+uname -a:
+  Linux socfpga 3.12.0-00307-g507abb4-dirty #2 SMP Mon Jan 6 19:54:56 CST 2014 armv7l GNU/Linux
+
+/dev/uio*:
+  no entries
+
+/proc/config.gz:
+  CONFIG_MODULES=y
+  CONFIG_MODULE_UNLOAD=y
+  CONFIG_DEVTMPFS=y
+  CONFIG_DEVTMPFS_MOUNT=y
+  # CONFIG_UIO is not set
+
+/proc/interrupts:
+  No custom Snitch-Lite/f2h_irq0 consumer is registered.
+  Visible entries include:
+    160  ffb40000.usb
+    194  serial
+    207  fpga-mgr
+
+/lib/modules:
+  running kernel: /lib/modules/3.12.0-00307-g507abb4-dirty is absent
+  installed tree: /lib/modules/3.9.0
+
+stale module:
+  /lib/modules/3.9.0/extra/gpio_interrupt.ko
+  vermagic: 3.9.0 SMP mod_unload ARMv7 p2v8
+
+insmod result:
+  gpio_interrupt: version magic '3.9.0 SMP mod_unload ARMv7 p2v8 '
+  should be '3.12.0-00307-g507abb4-dirty SMP mod_unload ARMv7 p2v8 '
+  Error: Invalid module format
+```
+
+Conclusion:
+
+```text
+SL13 is still valid.
+The SL14 UIO route is blocked because CONFIG_UIO is not enabled.
+The existing Terasic gpio_interrupt.ko cannot be reused because it targets
+kernel 3.9.0, not the running 3.12.0 kernel.
+
+SL14 needs either:
+  1. a rebuilt kernel/device tree with UIO enabled, or
+  2. a custom IRQ driver built against the exact running 3.12.0 kernel tree.
+```

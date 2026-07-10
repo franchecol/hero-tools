@@ -19,7 +19,7 @@ D3:
 ```
 
 This is still not Snitch-Lite. It is the smallest bridge proof before putting
-the S8-style Snitch-Lite control block behind the ARM/HPS host.
+the SL8-style Snitch-Lite control block behind the ARM/HPS host.
 
 ## Register Map
 
@@ -282,6 +282,6 @@ No DMA.
 No full Occamy.
 ```
 
-The next step after D3 passes is S9/HPS-Snitch-Lite: replace the D2 register
-accelerator with the S8 Snitch-Lite control/status block and keep the same
+The next step after D3 passes is SL9/HPS-Snitch-Lite: replace the D2 register
+accelerator with the SL8 Snitch-Lite control/status block and keep the same
 ARM/Linux host path.

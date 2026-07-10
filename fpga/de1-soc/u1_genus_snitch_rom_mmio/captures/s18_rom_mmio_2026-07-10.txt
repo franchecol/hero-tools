@@ -1,0 +1,66 @@
+U1 Genus Snitch-core ROM/MMIO execution
+Date: 2026-07-10
+
+Software:
+  ISA/ABI: rv32e / ilp32e
+  Binary size: 16 bytes
+  Binary SHA-256:
+    1997702bbdfc9528d39b5fd3ff16e8f121cbf5b3089afb62b11c2c26dcba401e
+  Instructions:
+    0x00000000  400002b7  lui  t0,0x40000
+    0x00000004  15500313  addi t1,zero,0x155
+    0x00000008  0062a023  sw   t1,0(t0)
+    0x0000000c  0000006f  j    0x0000000c
+
+Core artifact:
+  U0 Genus post-syn_generic netlist
+  SHA-256:
+    2fc7264bb63ffdcd86ba1bf275c2e55de44bda7d6058a732d0c897bff69cf37c
+  Identifier sanitizer: 847 distinct escaped identifiers renamed without
+  changing logic or connectivity.
+
+Verilator structural simulation:
+  Result: PASS
+  Message: Genus Snitch ROM program produced LEDR=0x355
+  Finish time: 550 ns
+
+Quartus Prime Lite 25.1:
+  Analysis and synthesis: PASS, 0 errors
+  Fitter: PASS, 0 errors
+  Assembler: PASS, 0 errors
+  Timing analyzer: PASS, 0 errors
+  Full compilation: PASS, 0 errors
+  ALMs: 82 / 32070 (<1%)
+  Registers: 91
+  Block memory bits: 0
+  DSP blocks: 0
+  Slow 1100mV 85C setup slack: 13.108 ns
+  Slow 1100mV 85C hold slack: 0.372 ns
+
+Optimization scope:
+  U1 uses a fixed four-instruction ROM, so Quartus specializes and removes
+  unused instruction paths. U0, with dynamic instruction input, remains the
+  representative full reduced-core measurement at 1216 ALMs and 988 registers.
+
+JTAG programming:
+  Cable: DE-SoC [1-2]
+  Target: 5CSEMA5F31@2
+  Device ID: 0x02D120DD
+  SOF checksum: 0x00B2774B
+  Result: configuration succeeded, 0 errors, 0 warnings
+
+Expected physical result:
+  LEDR[7:0] = 0x55
+  LEDR[8] = 1, matching MMIO write observed
+  LEDR[9] = 1, reset released
+  Complete vector: LEDR[9:0] = 0x355
+
+Physical observation:
+  PASS. The user physically confirmed the expected 0x355 LED vector on the
+  DE1-SoC after programming.
+
+Board-reset note:
+  The U1 evidence was completed before the subsequent accidental board reset.
+  A KEY[0] reset leaves the JTAG-loaded FPGA configuration in place and reruns
+  the ROM program. A power cycle or board-level configuration reset can reload
+  the board's default volatile FPGA image; in that case, rerun program.sh.

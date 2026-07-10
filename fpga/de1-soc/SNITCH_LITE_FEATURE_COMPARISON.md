@@ -1,7 +1,8 @@
 # Snitch-Lite Feature Comparison Against Upstream Snitch
 
-This document compares the DE1-SoC Snitch-Lite path against the original
-Snitch/Occamy style.
+This document compares the custom DE1-SoC `SL` Snitch-Lite path against the
+original Snitch/Occamy style. It does not describe the newer preferred `U`
+Genus/upstream path; see [`TRACKS.md`](TRACKS.md) for that distinction.
 
 It answers three questions for each feature:
 
@@ -26,19 +27,19 @@ the Cyclone V FPGA.
 ```text
 Local DE1 path:
   fpga/de1-soc/README.md
-  fpga/de1-soc/s0_snitch_verilator/
-  fpga/de1-soc/s13_snitch_hps_irq_done/
+  fpga/de1-soc/q0_snitch_verilator/
+  fpga/de1-soc/sl13_snitch_hps_irq_done/
 
-Local S13 implementation:
-  fpga/de1-soc/s13_snitch_hps_irq_done/rtl/s13_snitch_irq_payload_core.sv
-  fpga/de1-soc/s13_snitch_hps_irq_done/scripts/create_qsys.tcl
-  fpga/de1-soc/s13_snitch_hps_irq_done/sw/s13_irq_nolibc.c
+Local SL13 implementation:
+  fpga/de1-soc/sl13_snitch_hps_irq_done/rtl/s13_snitch_irq_payload_core.sv
+  fpga/de1-soc/sl13_snitch_hps_irq_done/scripts/create_qsys.tcl
+  fpga/de1-soc/sl13_snitch_hps_irq_done/sw/s13_irq_nolibc.c
 
-Local S14 implementation:
-  fpga/de1-soc/s14_snitch_hps_irq_linux/driver/snitch_lite_irq.c
-  fpga/de1-soc/s14_snitch_hps_irq_linux/sw/s14_irq_wait_nolibc.c
-  fpga/de1-soc/s14_snitch_hps_irq_linux/scripts/program_and_run.sh
-  fpga/de1-soc/s14_snitch_hps_irq_linux/captures/s14_irq_wait_2026-07-06.txt
+Local SL14 implementation:
+  fpga/de1-soc/sl14_snitch_hps_irq_linux/driver/snitch_lite_irq.c
+  fpga/de1-soc/sl14_snitch_hps_irq_linux/sw/s14_irq_wait_nolibc.c
+  fpga/de1-soc/sl14_snitch_hps_irq_linux/scripts/program_and_run.sh
+  fpga/de1-soc/sl14_snitch_hps_irq_linux/captures/s14_irq_wait_2026-07-06.txt
 
 Upstream Snitch checkout used by Occamy:
   platforms/occamy/.bender/git/checkouts/snitch_cluster-85bc3373558d290b/
@@ -84,11 +85,11 @@ Occamy M0 host/device proof:
 │ Host control            │ done    │ HPS/Linux MMIO, simpler than Occamy. │
 │ Data input/output       │ done    │ Registers + tiny RAM, not runtime.   │
 │ Local memory/TCDM       │ partial │ Tiny RAM, not banked TCDM.           │
-│ Done interrupt          │ done    │ S13 IRQ + S14 Linux wait pass.      │
+│ Done interrupt          │ done    │ SL13 IRQ + SL14 Linux wait pass.      │
 │ DMA                     │ not-yet │ Upstream has real DMA machinery.     │
 │ Multi-core cluster      │ not-yet │ Upstream is config-generated.        │
 │ FPU/SSR/Xfrep features  │ not-yet │ Disabled locally for area/simplicity │
-│ Linux driver integration│ done    │ S14 module passes console + LXDE.   │
+│ Linux driver integration│ done    │ SL14 module passes console + LXDE.   │
 └─────────────────────────┴─────────┴────────────────────────────────────┘
 ```
 
@@ -113,10 +114,10 @@ Compare these files:
 
 ```text
 Our DE1-SoC logic:
-  fpga/de1-soc/s13_snitch_hps_irq_done/rtl/s13_snitch_irq_payload_core.sv:1-55
+  fpga/de1-soc/sl13_snitch_hps_irq_done/rtl/s13_snitch_irq_payload_core.sv:1-55
     Local type shims for Snitch data/accelerator interfaces.
 
-  fpga/de1-soc/s13_snitch_hps_irq_done/rtl/s13_snitch_irq_payload_core.sv:385-449
+  fpga/de1-soc/sl13_snitch_hps_irq_done/rtl/s13_snitch_irq_payload_core.sv:385-449
     Direct instantiation of the real snitch module with small parameters:
     RV32E-style, 32-bit data path, no FPU, no DMA, no SSR, no virtual memory.
 
@@ -146,13 +147,13 @@ Compare these files:
 
 ```text
 Our DE1-SoC logic:
-  fpga/de1-soc/s13_snitch_hps_irq_done/rtl/s13_snitch_irq_payload_core.sv:57-70
+  fpga/de1-soc/sl13_snitch_hps_irq_done/rtl/s13_snitch_irq_payload_core.sv:57-70
     Our top-level IP-facing module: clock/reset, Avalon-MM registers, irq, LEDs.
 
-  fpga/de1-soc/s13_snitch_hps_irq_done/ip/s13_snitch_irq_payload/s13_snitch_irq_payload_hw.tcl:69-103
+  fpga/de1-soc/sl13_snitch_hps_irq_done/ip/s13_snitch_irq_payload/s13_snitch_irq_payload_hw.tcl:69-103
     Qsys component definition: Avalon-MM slave, LED conduit, interrupt sender.
 
-  fpga/de1-soc/s13_snitch_hps_irq_done/scripts/create_qsys.tcl:15-37
+  fpga/de1-soc/sl13_snitch_hps_irq_done/scripts/create_qsys.tcl:15-37
     HPS instance, lightweight HPS-to-FPGA bridge, and f2h_irq0 connection.
 
 Upstream Snitch logic:
@@ -188,19 +189,19 @@ Compare these files:
 
 ```text
 Our DE1-SoC logic:
-  fpga/de1-soc/s13_snitch_hps_irq_done/sw/s13_irq_nolibc.c:160-224
+  fpga/de1-soc/sl13_snitch_hps_irq_done/sw/s13_irq_nolibc.c:160-224
     ARM Linux reads /tmp/s13_payload.bin and converts bytes to 32-bit words.
 
-  fpga/de1-soc/s13_snitch_hps_irq_done/sw/s13_irq_nolibc.c:227-258
+  fpga/de1-soc/sl13_snitch_hps_irq_done/sw/s13_irq_nolibc.c:227-258
     ARM writes payload words into FPGA instruction memory through MMIO.
 
-  fpga/de1-soc/s13_snitch_hps_irq_done/rtl/s13_snitch_irq_payload_core.sv:184-190
+  fpga/de1-soc/sl13_snitch_hps_irq_done/rtl/s13_snitch_irq_payload_core.sv:184-190
     Snitch instruction fetch reads from the local imem_q array.
 
-  fpga/de1-soc/s13_snitch_hps_irq_done/rtl/s13_snitch_irq_payload_core.sv:240-284
+  fpga/de1-soc/sl13_snitch_hps_irq_done/rtl/s13_snitch_irq_payload_core.sv:240-284
     Hardware accepts host writes to PAYLOAD_WORDS and PAYLOAD[n].
 
-  fpga/de1-soc/s13_snitch_hps_irq_done/sw/payload_sum.S:1-27
+  fpga/de1-soc/sl13_snitch_hps_irq_done/sw/payload_sum.S:1-27
     The tiny Snitch-side payload that gets compiled to /tmp/s13_payload.bin.
 
 Upstream Snitch/Occamy logic:
@@ -234,19 +235,19 @@ Compare these files:
 
 ```text
 Our DE1-SoC logic:
-  fpga/de1-soc/s13_snitch_hps_irq_done/sw/s13_irq_nolibc.c:31-47
+  fpga/de1-soc/sl13_snitch_hps_irq_done/sw/s13_irq_nolibc.c:31-47
     ARM-side register offsets.
 
-  fpga/de1-soc/s13_snitch_hps_irq_done/sw/s13_irq_nolibc.c:331-350
+  fpga/de1-soc/sl13_snitch_hps_irq_done/sw/s13_irq_nolibc.c:331-350
     ARM opens /dev/mem and maps the lightweight bridge at 0xff200000.
 
-  fpga/de1-soc/s13_snitch_hps_irq_done/sw/s13_irq_nolibc.c:260-328
+  fpga/de1-soc/sl13_snitch_hps_irq_done/sw/s13_irq_nolibc.c:260-328
     One host run: write args, start, poll done, check result, check IRQ state.
 
-  fpga/de1-soc/s13_snitch_hps_irq_done/rtl/s13_snitch_irq_payload_core.sv:75-95
+  fpga/de1-soc/sl13_snitch_hps_irq_done/rtl/s13_snitch_irq_payload_core.sv:75-95
     Hardware register IDs.
 
-  fpga/de1-soc/s13_snitch_hps_irq_done/rtl/s13_snitch_irq_payload_core.sv:357-383
+  fpga/de1-soc/sl13_snitch_hps_irq_done/rtl/s13_snitch_irq_payload_core.sv:357-383
     Hardware register readback mux.
 
 Occamy M0 host logic:
@@ -278,16 +279,16 @@ Compare these files:
 
 ```text
 Our DE1-SoC logic:
-  fpga/de1-soc/s13_snitch_hps_irq_done/sw/s13_irq_nolibc.c:260-267
+  fpga/de1-soc/sl13_snitch_hps_irq_done/sw/s13_irq_nolibc.c:260-267
     ARM writes ARG0, ARG1, EXPECTED, then CONTROL.start.
 
-  fpga/de1-soc/s13_snitch_hps_irq_done/rtl/s13_snitch_irq_payload_core.sv:291-305
+  fpga/de1-soc/sl13_snitch_hps_irq_done/rtl/s13_snitch_irq_payload_core.sv:291-305
     On start, hardware clears RAM and copies host_arg0_q/host_arg1_q to RAM0/1.
 
-  fpga/de1-soc/s13_snitch_hps_irq_done/sw/payload_sum.S:15-24
+  fpga/de1-soc/sl13_snitch_hps_irq_done/sw/payload_sum.S:15-24
     Snitch payload loads RAM0/RAM1, adds, stores RAM2, writes done MMIO.
 
-  fpga/de1-soc/s13_snitch_hps_irq_done/rtl/s13_snitch_irq_payload_core.sv:315-346
+  fpga/de1-soc/sl13_snitch_hps_irq_done/rtl/s13_snitch_irq_payload_core.sv:315-346
     Hardware services Snitch data-port reads/writes to RAM and done MMIO.
 
 Upstream Snitch logic:
@@ -315,16 +316,16 @@ Compare these files:
 
 ```text
 Our DE1-SoC logic:
-  fpga/de1-soc/s13_snitch_hps_irq_done/rtl/s13_snitch_irq_payload_core.sv:102-104
+  fpga/de1-soc/sl13_snitch_hps_irq_done/rtl/s13_snitch_irq_payload_core.sv:102-104
     Local done-MMIO address, RAM base address, RAM word count.
 
-  fpga/de1-soc/s13_snitch_hps_irq_done/rtl/s13_snitch_irq_payload_core.sv:142-146
+  fpga/de1-soc/sl13_snitch_hps_irq_done/rtl/s13_snitch_irq_payload_core.sv:142-146
     Local RAM and IMEM arrays.
 
-  fpga/de1-soc/s13_snitch_hps_irq_done/rtl/s13_snitch_irq_payload_core.sv:193-197
+  fpga/de1-soc/sl13_snitch_hps_irq_done/rtl/s13_snitch_irq_payload_core.sv:193-197
     Data request decoding for done MMIO and local RAM.
 
-  fpga/de1-soc/s13_snitch_hps_irq_done/rtl/s13_snitch_irq_payload_core.sv:333-346
+  fpga/de1-soc/sl13_snitch_hps_irq_done/rtl/s13_snitch_irq_payload_core.sv:333-346
     RAM write strobes from Snitch data-port stores.
 
 Upstream Snitch logic:
@@ -344,12 +345,12 @@ What to compare:
   address boundaries.
 ```
 
-### 7. Done Interrupt And S13
+### 7. Done Interrupt And SL13
 
 What to understand:
 
 ```text
-Our S13 interrupt is a Snitch-to-HPS done signal.
+Our SL13 interrupt is a Snitch-to-HPS done signal.
 Upstream also has interrupt inputs into Snitch and cluster-local interrupt
 helpers. Occamy M0 has a Snitch-to-host completion interrupt proof.
 ```
@@ -358,37 +359,37 @@ Compare these files:
 
 ```text
 Our DE1-SoC logic:
-  fpga/de1-soc/s13_snitch_hps_irq_done/rtl/s13_snitch_irq_payload_core.sv:91-92
+  fpga/de1-soc/sl13_snitch_hps_irq_done/rtl/s13_snitch_irq_payload_core.sv:91-92
     IRQ_ENABLE and IRQ_PENDING register IDs.
 
-  fpga/de1-soc/s13_snitch_hps_irq_done/rtl/s13_snitch_irq_payload_core.sv:138-140
+  fpga/de1-soc/sl13_snitch_hps_irq_done/rtl/s13_snitch_irq_payload_core.sv:138-140
     IRQ enable, pending, and output-line state.
 
-  fpga/de1-soc/s13_snitch_hps_irq_done/rtl/s13_snitch_irq_payload_core.sv:170-171
+  fpga/de1-soc/sl13_snitch_hps_irq_done/rtl/s13_snitch_irq_payload_core.sv:170-171
     irq_line = irq_enable_q && irq_pending_q.
 
-  fpga/de1-soc/s13_snitch_hps_irq_done/rtl/s13_snitch_irq_payload_core.sv:266-270
+  fpga/de1-soc/sl13_snitch_hps_irq_done/rtl/s13_snitch_irq_payload_core.sv:266-270
     Host writes IRQ_ENABLE and clears IRQ_PENDING.
 
-  fpga/de1-soc/s13_snitch_hps_irq_done/rtl/s13_snitch_irq_payload_core.sv:327-330
+  fpga/de1-soc/sl13_snitch_hps_irq_done/rtl/s13_snitch_irq_payload_core.sv:327-330
     Snitch done-MMIO write sets result, STATE_DONE, and irq_pending_q.
 
-  fpga/de1-soc/s13_snitch_hps_irq_done/rtl/s13_snitch_irq_payload_core.sv:373-374
+  fpga/de1-soc/sl13_snitch_hps_irq_done/rtl/s13_snitch_irq_payload_core.sv:373-374
     Host reads IRQ_ENABLE, IRQ_PENDING, and live irq_line.
 
-  fpga/de1-soc/s13_snitch_hps_irq_done/scripts/create_qsys.tcl:20-21
+  fpga/de1-soc/sl13_snitch_hps_irq_done/scripts/create_qsys.tcl:20-21
     HPS f2h interrupt input is enabled.
 
-  fpga/de1-soc/s13_snitch_hps_irq_done/scripts/create_qsys.tcl:37
+  fpga/de1-soc/sl13_snitch_hps_irq_done/scripts/create_qsys.tcl:37
     Qsys connects hps_0.f2h_irq0 to snitch_payload.irq.
 
-  fpga/de1-soc/s13_snitch_hps_irq_done/ip/s13_snitch_irq_payload/s13_snitch_irq_payload_hw.tcl:99-103
+  fpga/de1-soc/sl13_snitch_hps_irq_done/ip/s13_snitch_irq_payload/s13_snitch_irq_payload_hw.tcl:99-103
     Qsys component declares irq as an interrupt sender.
 
-  fpga/de1-soc/s13_snitch_hps_irq_done/sw/s13_irq_nolibc.c:315-324
+  fpga/de1-soc/sl13_snitch_hps_irq_done/sw/s13_irq_nolibc.c:315-324
     ARM tester checks IRQ asserted and clearable.
 
-  fpga/de1-soc/s13_snitch_hps_irq_done/sw/s13_irq_nolibc.c:369-373
+  fpga/de1-soc/sl13_snitch_hps_irq_done/sw/s13_irq_nolibc.c:369-373
     ARM tester clears stale pending state and enables IRQ.
 
 Upstream Snitch and Occamy logic:
@@ -422,7 +423,7 @@ Upstream Snitch and Occamy logic:
 What to compare:
   snitch.sv irq_i is platform-to-Snitch interrupt input.
   Occamy M0 minimal_irq.S is Snitch-to-host completion signaling.
-  Our S13 is also Snitch-to-host completion signaling, but through a DE1 Qsys
+  Our SL13 is also Snitch-to-host completion signaling, but through a DE1 Qsys
   f2h_irq0 sender and a simple MMIO pending register.
 ```
 
@@ -439,13 +440,13 @@ Compare these files:
 
 ```text
 Our DE1-SoC logic:
-  fpga/de1-soc/s13_snitch_hps_irq_done/rtl/s13_snitch_irq_payload_core.sv:390
+  fpga/de1-soc/sl13_snitch_hps_irq_done/rtl/s13_snitch_irq_payload_core.sv:390
     Xdma is disabled in the local Snitch instantiation.
 
-  fpga/de1-soc/s13_snitch_hps_irq_done/rtl/s13_snitch_irq_payload_core.sv:167-168
+  fpga/de1-soc/sl13_snitch_hps_irq_done/rtl/s13_snitch_irq_payload_core.sv:167-168
     Accelerator response is tied off.
 
-  fpga/de1-soc/s13_snitch_hps_irq_done/rtl/s13_snitch_irq_payload_core.sv:430-434
+  fpga/de1-soc/sl13_snitch_hps_irq_done/rtl/s13_snitch_irq_payload_core.sv:430-434
     Accelerator request interface is accepted/tied off, not connected to DMA.
 
 Upstream Snitch logic:
@@ -481,10 +482,10 @@ Compare these files:
 
 ```text
 Our DE1-SoC logic:
-  fpga/de1-soc/s13_snitch_hps_irq_done/rtl/s13_snitch_irq_payload_core.sv:421
+  fpga/de1-soc/sl13_snitch_hps_irq_done/rtl/s13_snitch_irq_payload_core.sv:421
     Local Snitch hart_id_i is fixed to 0.
 
-  fpga/de1-soc/s13_snitch_hps_irq_done/rtl/s13_snitch_irq_payload_core.sv:447-449
+  fpga/de1-soc/sl13_snitch_hps_irq_done/rtl/s13_snitch_irq_payload_core.sv:447-449
     Barrier output exists but barrier input is tied off.
 
 Upstream Snitch logic:
@@ -519,7 +520,7 @@ Compare these files:
 
 ```text
 Our DE1-SoC logic:
-  fpga/de1-soc/s13_snitch_hps_irq_done/rtl/s13_snitch_irq_payload_core.sv:390-405
+  fpga/de1-soc/sl13_snitch_hps_irq_done/rtl/s13_snitch_irq_payload_core.sv:390-405
     Xdma, Xssr, FP_EN, RVF, RVD, extra FP/vector options, VM, and Xipu disabled.
 
 Upstream Snitch logic:
@@ -556,12 +557,12 @@ Compare these files:
 ```text
 Our DE1-SoC evidence:
   fpga/de1-soc/README.md:68-179
-    Stage index and current verified status from D0 through S13.
+    Stage index and current verified status from D0 through SL13.
 
-  fpga/de1-soc/s13_snitch_hps_irq_done/README.md:182-214
-    S13 build, timing, board, and runtime checks.
+  fpga/de1-soc/sl13_snitch_hps_irq_done/README.md:182-214
+    SL13 build, timing, board, and runtime checks.
 
-  fpga/de1-soc/s13_snitch_hps_irq_done/README.md:216-240
+  fpga/de1-soc/sl13_snitch_hps_irq_done/README.md:216-240
     Runtime transcript showing payload load, result, RAM state, IRQ pending.
 
 Upstream Snitch evidence structure:
@@ -583,7 +584,7 @@ Local status: `done`
 What we have:
 
 ```text
-S3 and later instantiate the real upstream module:
+SL3 and later instantiate the real upstream module:
 
   snitch
 
@@ -634,11 +635,11 @@ Local status: `partial`
 What we have:
 
 ```text
-S2 tried the upstream-style wrapper path.
+Q2 tried the upstream-style wrapper path.
 Quartus Lite reached real Snitch RTL but failed on advanced SystemVerilog usage
 from the upstream dependency stack.
 
-S3 changed strategy:
+SL3 changed strategy:
 
   upstream snitch.sv core
       │
@@ -696,13 +697,13 @@ Local status: `partial`
 What we have:
 
 ```text
-S4: fixed tiny instruction ROM.
-S5: generated ROM from a RISC-V assembly payload.
-S6: generated ROM with size and entry checks.
-S11: ARM writes raw instruction words into FPGA instruction memory.
-S12: ARM reads a separate payload file from Linux and loads it into IMEM.
-S13: same file-loaded payload flow, plus done IRQ latch.
-S15: ARM reads a headered payload image and validates metadata before loading.
+SL4: fixed tiny instruction ROM.
+SL5: generated ROM from a RISC-V assembly payload.
+SL6: generated ROM with size and entry checks.
+SL11: ARM writes raw instruction words into FPGA instruction memory.
+SL12: ARM reads a separate payload file from Linux and loads it into IMEM.
+SL13: same file-loaded payload flow, plus done IRQ latch.
+SL15: ARM reads a headered payload image and validates metadata before loading.
 ```
 
 Current local shape:
@@ -710,7 +711,7 @@ Current local shape:
 ```text
 ARM Linux filesystem
   -> /tmp/s15_payload.img
-  -> ARM loader validates S15 magic/version/header/entry/args/checksum
+  -> ARM loader validates SL15 magic/version/header/entry/args/checksum
   -> /dev/mem maps 0xff200000
   -> payload words written to FPGA IMEM window at offset 0x100
   -> CONTROL.start
@@ -739,15 +740,15 @@ Occamy M0 used a simpler embedded-payload trick:
 Gap:
 
 ```text
-Our payload now has a small S15 metadata header.
+Our payload now has a small SL15 metadata header.
 It still has no ELF loader, no relocation, no sections, no symbol loading, and
 no upstream runtime startup.
 ```
 
-S15 result:
+SL15 result:
 
 ```text
-S15 adds:
+SL15 adds:
 
   magic number
   format version
@@ -764,7 +765,7 @@ host/device payload contract.
 Plan:
 
 ```text
-After S15, the next payload-side improvement would be one of:
+After SL15, the next payload-side improvement would be one of:
 
   multiple sections
   explicit data-memory initialization
@@ -779,10 +780,10 @@ Local status: `done`
 What we have:
 
 ```text
-S8:
+SL8:
   PC controls Snitch-Lite through USB-Blaster/JTAG System Console.
 
-S9 and later:
+SL9 and later:
   ARM Linux controls Snitch-Lite through the lightweight HPS-to-FPGA bridge.
 
 Current register path:
@@ -828,12 +829,12 @@ Local status: `done`
 What we have:
 
 ```text
-S10:
+SL10:
   ARM writes ARG0, ARG1, EXPECTED.
   Wrapper copies ARG0 and ARG1 into local Snitch RAM before start.
   Snitch loads RAM0/RAM1, computes a result, stores RAM2, and writes done MMIO.
 
-S11-S13:
+SL11-SL13:
   Same idea, but with host-loaded instruction payloads.
 ```
 
@@ -863,7 +864,7 @@ It proves host-to-accelerator data movement, not a general offload ABI.
 Plan:
 
 ```text
-After S14/S15, add a small descriptor in local memory:
+After SL14/SL15, add a small descriptor in local memory:
 
   input pointer or offset
   output pointer or offset
@@ -881,7 +882,7 @@ Local status: `partial`
 What we have:
 
 ```text
-S7 and later add a tiny local RAM:
+SL7 and later add a tiny local RAM:
 
   base address: 0x00001000
   size:         16 words
@@ -919,7 +920,7 @@ real TCDM interconnect.
 Plan:
 
 ```text
-S16 should add a tiny TCDM-like memory:
+SL16 should add a tiny TCDM-like memory:
 
   2 or 4 banks
   address interleaving
@@ -929,18 +930,18 @@ S16 should add a tiny TCDM-like memory:
 Only after that should we consider multiple cores contending for memory.
 ```
 
-## 7. Done Interrupt: S13/S14 Worked Example
+## 7. Done Interrupt: SL13/SL14 Worked Example
 
 Local status: `done`
 
-Why S13 matters:
+Why SL13 matters:
 
 ```text
 Polling STATUS.done works, but real host/accelerator systems usually need an
 interrupt-style completion path.
 ```
 
-What S13 has locally:
+What SL13 has locally:
 
 ```text
 Snitch payload writes DONE_MMIO_ADDR = 0x40000000
@@ -951,7 +952,7 @@ Snitch payload writes DONE_MMIO_ADDR = 0x40000000
   -> ARM Linux verifies pending/clear through MMIO
 ```
 
-S13 register behavior:
+SL13 register behavior:
 
 ```text
 REG_IRQ_ENABLE:
@@ -994,14 +995,14 @@ Upstream Snitch interrupt input:
 Occamy M0 completion proof:
   Snitch writes a host-visible interrupt register to wake the host.
 
-Our S13:
+Our SL13:
   Snitch writes local done MMIO; FPGA wrapper asserts HPS f2h_irq0.
 ```
 
-So S13 is conceptually close to the Occamy M0 completion proof, not a full copy
+So SL13 is conceptually close to the Occamy M0 completion proof, not a full copy
 of upstream cluster interrupt infrastructure.
 
-What S14 adds:
+What SL14 adds:
 
 ```text
 Linux registers a real IRQ consumer for f2h_irq0 bit 0.
@@ -1011,10 +1012,10 @@ The driver acknowledges REG_IRQ_PENDING.
 /proc/interrupts shows the registered IRQ increment by two for two Snitch runs.
 ```
 
-S14 Linux-visible interrupt consumer result
+SL14 Linux-visible interrupt consumer result
 
 ```text
-1. Keep the S13 hardware IRQ register contract.
+1. Keep the SL13 hardware IRQ register contract.
 
 2. Use the image-specific Linux IRQ mapping:
 
@@ -1081,7 +1082,7 @@ The ARM host manually writes data into the FPGA register/memory window.
 Plan:
 
 ```text
-S18 should start with DMA-lite, not full upstream DMA:
+SL18 should start with DMA-lite, not full upstream DMA:
 
   source offset
   destination offset
@@ -1136,10 +1137,10 @@ Do not jump directly to a full cluster.
 
 Recommended order:
 
-  S16: tiny banked memory
-  S17: second simple Snitch core or a tiny helper core
-  S17.1: basic shared-memory synchronization
-  S17.2: tiny software barrier
+  SL16: tiny banked memory
+  SL17: second simple Snitch core or a tiny helper core
+  SL17.1: basic shared-memory synchronization
+  SL17.2: tiny software barrier
 
 Only then revisit a real cluster-like wrapper.
 ```
@@ -1208,7 +1209,7 @@ Each stage documents:
   verified result
   remaining limitations
 
-S13 evidence includes:
+SL13 evidence includes:
 
   payload build pass
   ARM tester build pass
@@ -1252,22 +1253,22 @@ Add a top-level DE1 smoke-test index:
 ┌──────┬──────────────────────────────┬──────────────────────────────────┐
 │ Step │ Name                         │ Why                              │
 ├──────┼──────────────────────────────┼──────────────────────────────────┤
-│ S14  │ Linux IRQ consumer           │ Done: blocking IRQ wait passes.  │
-│ S15  │ Payload metadata/header      │ Done: headered image test passes.│
-│ S16  │ Tiny TCDM-like banked memory │ Move closer to Snitch cluster.   │
-│ S17  │ Minimal multi-core proof     │ First real cluster-like behavior.│
-│ S18  │ DMA-lite                     │ First autonomous data movement.  │
+│ SL14  │ Linux IRQ consumer           │ Done: blocking IRQ wait passes.  │
+│ SL15  │ Payload metadata/header      │ Done: headered image test passes.│
+│ SL16  │ Tiny TCDM-like banked memory │ Move closer to Snitch cluster.   │
+│ SL17  │ Minimal multi-core proof     │ First real cluster-like behavior.│
+│ SL18  │ DMA-lite                     │ First autonomous data movement.  │
 └──────┴──────────────────────────────┴──────────────────────────────────┘
 ```
 
 Recommended immediate next step:
 
 ```text
-S16: add a tiny TCDM-like banked memory.
+SL16: add a tiny TCDM-like banked memory.
 
 Reason:
-  S14's true Linux IRQ wait is now solved with a matching kernel module.
-  S15 cleaned the payload contract without new FPGA hardware.
+  SL14's true Linux IRQ wait is now solved with a matching kernel module.
+  SL15 cleaned the payload contract without new FPGA hardware.
   The next hardware-side gap versus upstream Snitch is local memory structure:
   our RAM is still one tiny simple memory, not banked TCDM.
 ```
