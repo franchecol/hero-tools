@@ -1,0 +1,57 @@
+U3 upstream one-core Snitch cluster Genus evidence
+Date: 2026-07-10
+
+Configuration
+  Top: de1_u3_snitch_cluster_wrapper
+  Core: 1 x RV32IMA
+  TCDM: 16 KiB, 4 banks, 512 x 64 bits per bank
+  I-cache data: 2 ways, 128 x 128 bits per way
+  I-cache tag: 2 ways, 128 x 24 bits per way
+  FPU / SSR / FREP / XDMA / VM / debug: disabled
+
+Tools
+  Bender: 0.32.1
+  Genus: 21.18-s082_1
+  Genus UI: Common UI, not legacy UI
+  Library: TSMC65 tcbn65lptc 200
+
+Decision gates
+  clustergen configuration generation: PASS
+  Bender native Genus manifest: PASS
+  SystemVerilog parsing: PASS
+  Full upstream cluster elaboration: PASS
+  Genus generic synthesis: PASS
+
+Generated output
+  Elaborated netlist bytes: 20,751,212
+  Generic netlist bytes: 102,166,274
+  Generic netlist SHA-256:
+    0bb23b13e1172e8bcf0208caa86cebbf5a6570257b22f4d6aa21c759fd90550c
+  Genus errors: 0
+  Genus warnings: 195
+
+Synthesis result
+  Initial elaborated instances: 497,348
+  Initial generic optimization input: 523,199
+  Final generic instances: 415,192
+  Final generic sequential instances: 176,969
+  Final generic logic instances: 238,120
+  Generic synthesis wall time: approximately 55 minutes
+  Peak physical memory: 9,172.1 MiB
+
+Interpretation
+  This proves that Genus can parse, elaborate, and generically synthesize the
+  original upstream one-core snitch_cluster hierarchy and dependencies.
+
+  The generic instance count is not a Cyclone V fit estimate. The ASIC-oriented
+  tc_sram models were expanded into registers and logic. U4 must replace or
+  preserve those memory boundaries for Quartus M10K inference before attempting
+  a meaningful DE1-SoC fit.
+
+Resolved setup failures
+  1. Bender Common UI script was initially run with -legacy_ui. Removing that
+     option fixed false parser errors in legal SystemVerilog type parameters.
+  2. Disabled SSR generated illegal zero-width arrays. A U3-local, fail-fast
+     generated-wrapper normalizer inserts one inert slot while Xssr remains 0.
+  3. A 4 KiB direct-mapped I-cache generated a 23-bit tag SRAM and zero-width
+     replacement LFSR. A 4 KiB two-way cache gives 24-bit tags and a legal LFSR.

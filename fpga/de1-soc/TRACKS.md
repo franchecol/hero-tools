@@ -85,25 +85,24 @@ architecture.
 U0  Original upstream Snitch integer core through Genus          PASS
 U1  U0 core executes generated ROM and writes MMIO               PASS
 U2  U0 core performs store/load/compare through local RAM        PASS
-U3  Smallest upstream one-core snitch_cluster through Genus      NEXT
-U4  Upstream TCDM software execution and Cyclone V fit           planned
+U3  Smallest upstream one-core snitch_cluster through Genus      PASS
+U4  Cyclone memory boundary, TCDM execution, and device fit      NEXT
 H0  ARM/Linux loads and controls upstream-derived cluster        deferred
 H1  Completion interrupt and Linux blocking wait                 deferred
 ```
 
-U3 should first answer feasibility questions, not silently substitute custom
-logic:
+U3 answered the frontend and generic-synthesis feasibility questions without
+substituting a custom cluster:
 
 ```text
 1. Can Genus elaborate the original snitch_cluster hierarchy?
 2. Can it synthesize a meaningful one-core generic netlist?
 3. Which upstream modules and parameters dominate area?
-4. Can Quartus import and fit that netlist on Cyclone V?
-5. Can software execute against the upstream TCDM path?
+4. Can Quartus import and fit that netlist on Cyclone V? U4
+5. Can software execute against the upstream TCDM path? U4
 ```
 
-If the complete cluster fails, identify the first upstream boundary and add
-original modules incrementally: TCDM interconnect, cluster peripherals,
-instruction-side infrastructure, then the complete one-core cluster. Do not
-replace those blocks with new custom equivalents unless a specific tool or
-device limitation is documented first.
+U4 must not import the 415,192-instance generic netlist as if it were a useful
+FPGA implementation. Most of that size comes from ASIC-style SRAM models being
+expanded into logic. Preserve the upstream TCDM and I-cache interfaces, add a
+Cyclone V memory implementation boundary, then synthesize and measure fit.

@@ -1,0 +1,84 @@
+// Smallest practical upstream Snitch cluster configuration for the U3 Genus gate.
+{
+    nr_s1_quadrant: 1,
+    s1_quadrant: {
+        nr_clusters: 1,
+    },
+
+    cluster: {
+        name: "de1_u3_snitch_cluster",
+        boot_addr: 4096, // 0x0000_1000
+        cluster_base_addr: 268435456, // 0x1000_0000
+        cluster_base_offset: 0,
+        cluster_base_hartid: 0,
+        addr_width: 32,
+        data_width: 64,
+        tcdm: {
+            size: 16,
+            banks: 4,
+        },
+        cluster_periph_size: 64,
+        zero_mem_size: 16,
+        dma_data_width: 64,
+        dma_axi_req_fifo_depth: 2,
+        dma_req_fifo_depth: 2,
+        vm_support: false,
+        enable_debug: false,
+        timing: {
+            // Explicit because this upstream revision's schema and template use
+            // different spellings for the FP8-alt default.
+            lat_comp_fp32: 1,
+            lat_comp_fp64: 1,
+            lat_comp_fp16: 1,
+            lat_comp_fp16_alt: 1,
+            lat_comp_fp8: 1,
+            lat_comp_fp8_alt: 1,
+            lat_noncomp: 1,
+            lat_conv: 1,
+            lat_sdotp: 1,
+            fpu_pipe_config: "BEFORE",
+            narrow_xbar_latency: "NO_LATENCY",
+            wide_xbar_latency: "NO_LATENCY",
+        },
+        hives: [
+            {
+                icache: {
+                    // This is the smallest geometry that gives tc_sram a
+                    // byte-aligned tag and the replacement LFSR a nonzero width.
+                    size: 4,
+                    sets: 2,
+                    cacheline: 128,
+                },
+                cores: [
+                    { $ref: "#/integer_core_template" },
+                ],
+            },
+        ],
+    },
+    dram: {
+        address: 2147483648, // 0x8000_0000
+        length: 2147483648,
+    },
+
+    integer_core_template: {
+        isa: "rv32ima",
+        Xdiv_sqrt: false,
+        xssr: false,
+        xfrep: false,
+        xdma: false,
+        xf16: false,
+        xf16alt: false,
+        xf8: false,
+        xf8alt: false,
+        xfdotp: false,
+        xfvec: false,
+        num_int_outstanding_loads: 1,
+        num_int_outstanding_mem: 1,
+        num_fp_outstanding_loads: 1,
+        num_fp_outstanding_mem: 1,
+        num_sequencer_instructions: 1,
+        num_dtlb_entries: 1,
+        num_itlb_entries: 1,
+        ssrs: [],
+    },
+}

@@ -41,7 +41,8 @@ Q direct Quartus path ── failed on upstream SystemVerilog frontend
                  U0 real core synthesis       PASS
                  U1 real core ROM/MMIO        PASS
                  U2 real core data RAM        PASS
-                 U3 one-core upstream cluster NEXT
+                 U3 one-core upstream cluster PASS
+                 U4 Cyclone memory boundary  NEXT
                          │
                          ▼
                  H heterogeneous integration LATER
