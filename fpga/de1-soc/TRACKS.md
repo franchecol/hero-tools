@@ -88,7 +88,9 @@ U2  U0 core performs store/load/compare through local RAM        PASS
 U3  Smallest upstream one-core snitch_cluster through Genus      PASS
 U4  Genus netlist import and Cyclone V fit measurement           PASS
     Complete imported configuration: 105,570 / 32,070 ALMs       NO FIT
-U5  SRAM-correct reduced upstream configuration sweep            NEXT
+U5.1 Preserve eight upstream SRAM banks as Cyclone M10Ks         PASS
+U5.2 Fit the SRAM-correct complete cluster and measure timing    NEXT
+U5.3 Reduce upstream configuration only if U5.2 requires it      pending
 H0  ARM/Linux loads and controls upstream-derived cluster        deferred
 H1  Completion interrupt and Linux blocking wait                 deferred
 ```
@@ -110,7 +112,9 @@ U4 preserved the upstream TCDM and I-cache interfaces, inserted Cyclone V SRAM
 implementations after Genus specialization, and proved that Quartus can
 elaborate and synthesize the resulting structural netlist. The fitter requires
 105,570 of 32,070 ALMs, so that complete configuration cannot fit the DE1-SoC.
-The full run retained zero M10Ks despite eight patched SRAM instances; U5 must
-first correct that inference boundary, then reduce upstream configuration
-parameters systematically and measure the largest useful configuration that
-fits. See `u4_cyclone_memory_boundary/README.md` for evidence and caveats.
+The full run retained zero M10Ks despite eight patched SRAM instances. U5.1
+corrected that boundary with explicit Cyclone `altsyncram` instances: all eight
+banks survive, registers fall from 176,883 to 6,854, and the mapped estimate
+falls from 129,784 to 13,138 ALMs. U5.2 must now test real placement, routing,
+M10K consumption, and timing before any upstream feature reduction. See
+`u4_cyclone_memory_boundary/README.md` and `u5_1_sram_retention/README.md`.

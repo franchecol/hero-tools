@@ -1,0 +1,24 @@
+U5.1 full-cluster SRAM retention
+Quartus Prime 25.1std.0 Lite Edition, device 5CSEMA5F31C6
+Run completed: 2026-07-11 18:12:52
+
+Analysis and Synthesis status: successful
+Retained altsyncram instances: 8
+Estimated logic: 13,138 / 32,070 ALMs (41%)
+Registers: 6,854
+Block memory: 169,728 bits
+DSP blocks: 0
+
+Logical memory interfaces:
+  4 x 512 x 64 TCDM banks
+  2 x 128 x 128 I-cache data banks
+  2 x 128 x 24 I-cache tag banks
+  Total logical storage: 169,984 bits
+
+Optimization:
+  Quartus removed tag bit 22 from both 128-word tag banks because it is unused.
+  169,984 - (2 x 128) = 169,728 retained physical bits.
+
+Conclusion:
+  All eight upstream SRAM banks survive the Genus-to-Quartus boundary as
+  Cyclone V M10K-backed ALTSYNCRAM instances. U5.1 passes.
