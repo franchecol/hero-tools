@@ -1,0 +1,13 @@
+set_global_assignment -name FAMILY "Cyclone V"
+set_global_assignment -name DEVICE 5CSEMA5F31C6
+set_global_assignment -name TOP_LEVEL_ENTITY de1_u3_snitch_cluster_wrapper
+set_global_assignment -name VERILOG_FILE ../generated/de1_u4_cluster_quartus.v
+set_global_assignment -name SYSTEMVERILOG_FILE ../rtl/cyclone_sram.sv
+set_global_assignment -name SDC_FILE cluster_fit.sdc
+set_global_assignment -name NUM_PARALLEL_PROCESSORS ALL
+
+# U4 is a fit gate, not the final board wrapper. Keep flattened AXI ports in
+# the design without consuming physical package pins.
+set_instance_assignment -name VIRTUAL_PIN ON -to *
+
+set_global_assignment -name LAST_QUARTUS_VERSION "25.1std.0 Lite Edition"

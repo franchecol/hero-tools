@@ -86,7 +86,9 @@ U0  Original upstream Snitch integer core through Genus          PASS
 U1  U0 core executes generated ROM and writes MMIO               PASS
 U2  U0 core performs store/load/compare through local RAM        PASS
 U3  Smallest upstream one-core snitch_cluster through Genus      PASS
-U4  Cyclone memory boundary, TCDM execution, and device fit      NEXT
+U4  Genus netlist import and Cyclone V fit measurement           PASS
+    Complete imported configuration: 105,570 / 32,070 ALMs       NO FIT
+U5  SRAM-correct reduced upstream configuration sweep            NEXT
 H0  ARM/Linux loads and controls upstream-derived cluster        deferred
 H1  Completion interrupt and Linux blocking wait                 deferred
 ```
@@ -98,11 +100,17 @@ substituting a custom cluster:
 1. Can Genus elaborate the original snitch_cluster hierarchy?
 2. Can it synthesize a meaningful one-core generic netlist?
 3. Which upstream modules and parameters dominate area?
-4. Can Quartus import and fit that netlist on Cyclone V? U4
-5. Can software execute against the upstream TCDM path? U4
+4. Can Quartus import that netlist on Cyclone V? U4: yes
+5. Does the complete imported configuration fit? U4: no, 329% ALMs
+6. What largest reduced upstream configuration fits? U5
+7. Can software execute against its upstream TCDM path? U5/H0
 ```
 
-U4 must not import the 415,192-instance generic netlist as if it were a useful
-FPGA implementation. Most of that size comes from ASIC-style SRAM models being
-expanded into logic. Preserve the upstream TCDM and I-cache interfaces, add a
-Cyclone V memory implementation boundary, then synthesize and measure fit.
+U4 preserved the upstream TCDM and I-cache interfaces, inserted Cyclone V SRAM
+implementations after Genus specialization, and proved that Quartus can
+elaborate and synthesize the resulting structural netlist. The fitter requires
+105,570 of 32,070 ALMs, so that complete configuration cannot fit the DE1-SoC.
+The full run retained zero M10Ks despite eight patched SRAM instances; U5 must
+first correct that inference boundary, then reduce upstream configuration
+parameters systematically and measure the largest useful configuration that
+fits. See `u4_cyclone_memory_boundary/README.md` for evidence and caveats.

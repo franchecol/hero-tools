@@ -1,0 +1,20 @@
+U4 isolated memory inference probe
+Quartus Prime 25.1std.0 Lite Edition, device 5CSEMA5F31C6
+Run completed: 2026-07-10 23:47:40
+
+Fitter status: successful
+Logic utilization: 77 / 32,070 ALMs (<1%)
+Registers: 160
+Block memory: 52,224 / 4,065,280 bits (1%)
+RAM blocks: 8 / 397 (2%)
+DSP blocks: 0 / 87
+Worst setup slack at 50 MHz: +16.227 ns
+Worst hold slack at 50 MHz: +0.109 ns
+
+Instantiated geometries:
+  512 x 64
+  128 x 128
+  128 x 24
+
+Expected bits: 512*64 + 128*128 + 128*24 = 52,224
+Observed bits: 52,224

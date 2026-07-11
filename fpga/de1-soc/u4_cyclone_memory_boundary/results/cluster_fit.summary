@@ -1,0 +1,30 @@
+U4 Genus-to-Quartus upstream cluster fit
+Quartus Prime 25.1std.0 Lite Edition, device 5CSEMA5F31C6
+Run completed: 2026-07-11 00:41:41
+
+Analysis and Synthesis status: successful, 0 errors
+Fitter status: failed, design does not fit
+Estimated mapped logic: 129,784 ALMs
+Fitter logic requirement: 105,570 / 32,070 ALMs (329%)
+Fitter LAB requirement: 12,053 / 3,207 LABs
+Registers: 176,883
+Virtual pins: 1,185
+Block memory reported: 0 bits, 0 M10Ks
+DSP blocks reported: 0
+
+Memory instances present in the patched structural netlist:
+  4 x 512 x 64 TCDM banks
+  2 x 128 x 128 I-cache data banks
+  2 x 128 x 24 I-cache tag banks
+  Total logical storage: 169,984 bits
+
+Decisive Quartus errors:
+  Error (170012): Fitter requires 12053 LABs to implement the design, but the
+  device contains only 3207 LABs.
+  Error (11802): Can't fit design in device.
+
+Interpretation:
+  The Genus structural netlist passed the Quartus frontend and synthesis. This
+  imported configuration is too large for the DE1-SoC. Zero retained M10Ks is
+  a resource-accounting caveat that must be corrected before using this run as
+  an optimized cluster-size estimate.
