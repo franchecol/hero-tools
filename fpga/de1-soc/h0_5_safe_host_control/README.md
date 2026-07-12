@@ -82,7 +82,26 @@ Build the ARM read-only probe with:
 ```
 
 The program opens `/dev/mem` read-only and does not contain a register-write
-operation. It fails unless `CONTROL=0` and `STATUS` reports reset held. The
-local cross-toolchain lacks its static atomic support archive, so this probe is
-dynamically linked and requires `/lib/ld-linux-armhf.so.3`, provided by the
-current Terasic LXDE image.
+operation. It fails unless `CONTROL=0` and `STATUS` reports reset held. It uses
+raw ARM Linux syscalls and is statically linked without libc, so it also runs
+on the older Ubuntu 16.04 userspace supplied by the Terasic LXDE image.
+
+## Board Result
+
+Verified on the DE1-SoC LXDE image on 2026-07-12. The display/framebuffer path
+was stopped before JTAG programming so Linux remained responsive while the
+fabric changed. The static probe was transferred over UART and run with `sudo`
+because `/dev/mem` is root-only:
+
+```text
+ID           = 0x48300005
+CONTROL      = 0x00000000
+STATUS       = 0x00000005
+CLUSTER_BASE = 0x00001000
+H0.5_READ_ONLY_PASS
+TEST_RC=0
+```
+
+`STATUS=0x5` proves that the PLL is locked and the cluster remains held in
+reset. This test read only the local control page; it neither released reset
+nor accessed the forwarded cluster window.

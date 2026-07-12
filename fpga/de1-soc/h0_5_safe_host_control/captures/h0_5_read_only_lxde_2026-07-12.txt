@@ -1,0 +1,30 @@
+H0.5 DE1-SoC read-only Linux probe
+Date: 2026-07-12
+Image: Terasic LXDE Ubuntu 16.04.1 LTS
+Kernel: 4.5.0-00183-g4647b69-dirty armv7l
+
+Preparation:
+  stopped lightdm and graphical target
+  isolated multi-user target
+  unbound altvipfb when present
+  programmed de1_h0_5_safe_cluster.sof at JTAG device index 2
+  confirmed UART remained responsive
+  transferred static no-libc ARM probe over UART
+
+Command:
+  sudo /tmp/h0_5_read_only_probe
+
+Output:
+  ID           = 0x48300005
+  CONTROL      = 0x00000000
+  STATUS       = 0x00000005
+  CLUSTER_BASE = 0x00001000
+  H0.5_READ_ONLY_PASS
+  TEST_RC=0
+
+Interpretation:
+  local HPS-to-FPGA MMIO path is live
+  PLL locked status is visible
+  cluster reset remains held
+  no control-register write occurred
+  no forwarded cluster access occurred

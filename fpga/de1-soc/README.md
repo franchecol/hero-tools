@@ -50,8 +50,8 @@ Q direct Quartus path ── failed on upstream SystemVerilog frontend
                  H0.2 Avalon/AXI HPS bridge   PASS
                  H0.3 DE1 clock/top/full fit  PASS / 15 MHz
                  H0.4 imported loop handling PASS
-                 H0.5 reset-held HPS control PASS
-                 H0.6 safe Linux ID probe    NEXT
+                 H0.5 reset-held HPS control PASS / Linux verified
+                 H0.6 resolve boot memory    NEXT
                          │
                          ▼
                  H heterogeneous integration LATER

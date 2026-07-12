@@ -23,3 +23,13 @@ Safety state:
 Execution blocker:
   BootAddr 0x00001000 is outside TCDM at 0x10000000.
   The external instruction path is not implemented in the current shell.
+
+Board runtime, 2026-07-12:
+  JTAG SOF programming: PASS
+  Linux remained responsive after headless preparation: PASS
+  Read-only ARM probe: PASS
+  ID: 0x48300005
+  CONTROL: 0x00000000
+  STATUS: 0x00000005 (held + PLL locked)
+  CLUSTER_BASE: 0x00001000
+  Test return code: 0
