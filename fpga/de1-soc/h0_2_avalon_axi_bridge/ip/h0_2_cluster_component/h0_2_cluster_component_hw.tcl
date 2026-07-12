@@ -23,7 +23,10 @@ proc wrapper_text {output_name} {
     input  wire [3:0]  avs_byteenable,
     output wire        avs_waitrequest
 );
-    h0_2_cluster_component_core u_core (.*);
+    h0_2_cluster_component_core u_core (
+        .cluster_hold_reset (1'b0),
+        .*
+    );
 endmodule
 } $output_name]
 }

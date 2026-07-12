@@ -1,0 +1,10 @@
+/build/
+/qsys/
+/db/
+/incremental_db/
+/output_files/
+/generated/
+/hps_isw_handoff/
+/*.log
+/*.rpt
+/c5_pin_model_dump.txt

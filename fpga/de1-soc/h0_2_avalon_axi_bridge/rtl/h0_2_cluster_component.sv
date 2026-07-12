@@ -3,6 +3,7 @@ module h0_2_cluster_component_core #(
 ) (
   input  logic                       clk,
   input  logic                       reset,
+  input  logic                       cluster_hold_reset,
   input  logic [AvalonAddrWidth-1:0] avs_address,
   input  logic                       avs_read,
   output logic [31:0]                avs_readdata,
@@ -41,7 +42,7 @@ module h0_2_cluster_component_core #(
   );
 
   h0_1_upstream_cluster_shell i_cluster_shell (
-    .clk_i(clk), .rst_ni(~reset),
+    .clk_i(clk), .rst_ni(~reset & ~cluster_hold_reset),
     .host_r_ready_i(r_ready), .host_ar_valid_i(ar_valid),
     .host_ar_addr_i(ar_addr), .host_ar_size_i(ar_size), .host_ar_id_i(2'b00),
     .host_ar_ready_o(ar_ready), .host_r_valid_o(r_valid),

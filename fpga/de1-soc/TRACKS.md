@@ -96,7 +96,8 @@ H0.1 Wrap the fitted cluster behind a stable semantic AXI port   PASS
 H0.2 Connect the SL9-derived HPS/Avalon shell to upstream AXI    PASS
 H0.3 Add 15 MHz DE1 clock/top and run the complete physical fit  PASS
 H0.4 Preserve and cut five active Genus loop markers in Quartus  PASS
-H0.5 Add HPS-controlled reset and read-only Linux MMIO probe     NEXT
+H0.5 Add reset-held HPS control and complete physical fit        PASS
+H0.6 Probe local ID on Linux; resolve boot-memory path           NEXT
 H1  Completion interrupt and Linux blocking wait                 deferred
 ```
 

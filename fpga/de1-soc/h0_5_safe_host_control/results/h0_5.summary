@@ -1,0 +1,25 @@
+H0.5 safe HPS host control
+Date: 2026-07-12
+Quartus: 25.1std.0 Build 1129, Lite Edition
+Device: 5CSEMA5F31C6
+
+Verification:
+  Control/router simulation: PASS
+  Qsys generation: PASS, 21 modules / 82 files
+  Fitter: successful
+  Logic utilization: 9,674 / 32,070 ALMs (30%)
+  Registers: 7,397
+  RAM blocks: 24 / 397 (6%)
+  Worst setup slack: +19.479 ns
+  Worst hold slack: +0.125 ns
+  Quartus combinational-loop diagnostics: 0
+  SOF and RBF: generated
+
+Safety state:
+  Cluster reset defaults to held.
+  ID/status reads do not issue cluster transactions.
+  Cluster forwarding begins at local byte offset 0x1000.
+
+Execution blocker:
+  BootAddr 0x00001000 is outside TCDM at 0x10000000.
+  The external instruction path is not implemented in the current shell.
