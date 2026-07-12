@@ -5,11 +5,14 @@ script_dir=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)
 u4_dir=$(cd -- "${script_dir}/.." && pwd)
 input="${u4_dir}/generated/de1_u4_cluster_generic.v"
 output="${u4_dir}/generated/de1_u4_cluster_quartus.v"
+name_map="${u4_dir}/generated/de1_u4_name_map.json"
 
 if [[ ! -f "${input}" ]]; then
     echo "Missing transferred Genus netlist: ${input}" >&2
     exit 1
 fi
 
-python "${script_dir}/inject_cyclone_srams.py" "${input}" "${output}"
+python "${script_dir}/inject_cyclone_srams.py" \
+    --name-map "${name_map}" "${input}" "${output}"
 printf 'Prepared %s\n' "${output}"
+printf 'Prepared %s\n' "${name_map}"

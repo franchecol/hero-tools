@@ -92,7 +92,8 @@ U5.1 Preserve eight upstream SRAM banks as Cyclone M10Ks         PASS
 U5.2 Fit the SRAM-correct complete cluster and measure timing    PASS
      12,029 / 32,070 ALMs; 24 / 397 M10Ks; Fmax 24.11 MHz
 U5.3 Reduce upstream configuration                               not needed
-H0  Wrap the fitted cluster for ARM/Linux at a safe clock        NEXT
+H0.1 Wrap the fitted cluster behind a stable semantic AXI port   PASS
+H0.2 Connect the SL9-derived HPS/Avalon shell to upstream AXI    NEXT
 H1  Completion interrupt and Linux blocking wait                 deferred
 ```
 

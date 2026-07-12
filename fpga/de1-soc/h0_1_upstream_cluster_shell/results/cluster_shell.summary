@@ -1,0 +1,20 @@
+H0.1 stable upstream cluster shell
+Quartus Prime 25.1std.0 Lite Edition, device 5CSEMA5F31C6
+Run completed: 2026-07-11 21:47:00
+
+Analysis and Synthesis status: successful
+Constraint: 20 MHz
+Registers: 6,356
+Block memory: 169,728 bits
+
+Boundary exposed to H0.2:
+  one 64-bit narrow_in AXI slave
+  semantic, deterministic port names
+  external interrupts tied low
+  unused wide input tied inactive
+  unused narrow/wide outbound responses tied inactive/error
+
+Conclusion:
+  The translated upstream cluster can be consumed through a stable host AXI
+  shell without depending on generated u4_escaped_N top-level names. H0.1
+  passes; H0.2 can implement the Avalon-to-AXI and Qsys/HPS connection.

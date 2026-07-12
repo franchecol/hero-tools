@@ -2,6 +2,7 @@
 """Replace Genus SRAM logic abstracts with fixed-width Cyclone implementations."""
 
 import argparse
+import json
 import re
 from pathlib import Path
 
@@ -40,6 +41,7 @@ def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("input", type=Path)
     parser.add_argument("output", type=Path)
+    parser.add_argument("--name-map", type=Path)
     args = parser.parse_args()
 
     text = args.input.read_text()
@@ -70,10 +72,30 @@ def main() -> None:
     def shorten_escaped(match: re.Match[str]) -> str:
         name = match.group(0)
         if name not in escaped_names:
-            escaped_names[name] = f"u4_escaped_{len(escaped_names)}"
+            if name.startswith(("\\narrow_in_", "\\narrow_out_", "\\wide_in_", "\\wide_out_")):
+                semantic = re.sub(r"[^A-Za-z0-9_]+", "_", name.removeprefix("\\")).strip("_")
+                escaped_names[name] = semantic
+            else:
+                escaped_names[name] = f"u4_escaped_{len(escaped_names)}"
         return escaped_names[name]
 
     text = re.sub(r"\\\S+", shorten_escaped, text)
+
+    if args.name_map:
+        args.name_map.write_text(
+            json.dumps(
+                {
+                    "escaped_identifiers": escaped_names,
+                    "long_modules": {
+                        name: f"u4_genus_module_{index}"
+                        for index, name in enumerate(long_names)
+                    },
+                },
+                indent=2,
+                sort_keys=True,
+            )
+            + "\n"
+        )
 
     args.output.write_text(text)
 
