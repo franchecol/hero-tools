@@ -1,0 +1,23 @@
+U5.2 SRAM-correct complete-cluster physical fit
+Quartus Prime 25.1std.0 Lite Edition, device 5CSEMA5F31C6
+Run completed: 2026-07-11 20:11:26
+
+Fitter status: successful
+Logic utilization: 12,029 / 32,070 ALMs (38%)
+Registers: 7,035
+Block memory: 169,728 / 4,065,280 bits (4%)
+RAM blocks: 24 / 397 M10Ks (6%)
+DSP blocks: 0 / 87
+Assembler output: cluster_fit.sof generated
+
+50 MHz timing status: failed
+Worst slow-corner setup slack: -21.477 ns
+Worst multicorner hold slack: +0.148 ns
+Worst-corner Fmax: 24.11 MHz
+
+Conclusion:
+  The complete SRAM-correct upstream cluster fits and routes on the DE1-SoC
+  Cyclone V. Capacity reduction is unnecessary at this stage. Initial board
+  integration must use a safe clock at or below the verified Fmax margin;
+  20 MHz is the recommended first target. Reaching 50 MHz requires a separate
+  timing-closure effort.

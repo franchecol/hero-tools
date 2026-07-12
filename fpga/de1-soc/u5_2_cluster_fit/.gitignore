@@ -1,0 +1,13 @@
+/quartus/db/
+/quartus/incremental_db/
+/quartus/output_files/
+/quartus/*.done
+/quartus/*.jdi
+/quartus/*.log
+/quartus/*.pin
+/quartus/*.qws
+/quartus/*.rpt
+/quartus/*.sld
+/quartus/*.smsg
+/quartus/*.sof
+/quartus/*.summary

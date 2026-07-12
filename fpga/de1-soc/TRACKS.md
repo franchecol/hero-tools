@@ -89,9 +89,10 @@ U3  Smallest upstream one-core snitch_cluster through Genus      PASS
 U4  Genus netlist import and Cyclone V fit measurement           PASS
     Complete imported configuration: 105,570 / 32,070 ALMs       NO FIT
 U5.1 Preserve eight upstream SRAM banks as Cyclone M10Ks         PASS
-U5.2 Fit the SRAM-correct complete cluster and measure timing    NEXT
-U5.3 Reduce upstream configuration only if U5.2 requires it      pending
-H0  ARM/Linux loads and controls upstream-derived cluster        deferred
+U5.2 Fit the SRAM-correct complete cluster and measure timing    PASS
+     12,029 / 32,070 ALMs; 24 / 397 M10Ks; Fmax 24.11 MHz
+U5.3 Reduce upstream configuration                               not needed
+H0  Wrap the fitted cluster for ARM/Linux at a safe clock        NEXT
 H1  Completion interrupt and Linux blocking wait                 deferred
 ```
 
@@ -115,6 +116,9 @@ elaborate and synthesize the resulting structural netlist. The fitter requires
 The full run retained zero M10Ks despite eight patched SRAM instances. U5.1
 corrected that boundary with explicit Cyclone `altsyncram` instances: all eight
 banks survive, registers fall from 176,883 to 6,854, and the mapped estimate
-falls from 129,784 to 13,138 ALMs. U5.2 must now test real placement, routing,
-M10K consumption, and timing before any upstream feature reduction. See
-`u4_cyclone_memory_boundary/README.md` and `u5_1_sram_retention/README.md`.
+falls from 129,784 to 13,138 ALMs. U5.2 then proved physical fit at 12,029 ALMs
+and 24 M10Ks. Its worst-corner Fmax is
+24.11 MHz, so capacity reduction is unnecessary but the 50 MHz constraint is
+not met. H0 should integrate the complete fitted cluster at a conservative
+20 MHz; 50 MHz timing closure remains a separate optimization. See the U4,
+U5.1, and U5.2 experiment READMEs for evidence.

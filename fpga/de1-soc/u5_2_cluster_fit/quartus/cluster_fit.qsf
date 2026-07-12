@@ -1,0 +1,14 @@
+set_global_assignment -name FAMILY "Cyclone V"
+set_global_assignment -name DEVICE 5CSEMA5F31C6
+set_global_assignment -name TOP_LEVEL_ENTITY de1_u3_snitch_cluster_wrapper
+set_global_assignment -name VERILOG_FILE ../../u4_cyclone_memory_boundary/generated/de1_u4_cluster_quartus.v
+set_global_assignment -name SYSTEMVERILOG_FILE ../../u5_1_sram_retention/rtl/cyclone_sram_primitive.sv
+set_global_assignment -name SDC_FILE cluster_fit.sdc
+set_global_assignment -name NUM_PARALLEL_PROCESSORS ALL
+
+# This is a capacity/timing experiment, not yet the DE1 board wrapper. Keep the
+# flattened host interfaces without consuming the board's physical I/O pins.
+set_instance_assignment -name VIRTUAL_PIN ON -to *
+set_instance_assignment -name VIRTUAL_PIN OFF -to clk_i
+
+set_global_assignment -name LAST_QUARTUS_VERSION "25.1std.0 Lite Edition"
