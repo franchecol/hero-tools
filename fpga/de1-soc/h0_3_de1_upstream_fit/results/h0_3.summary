@@ -1,0 +1,25 @@
+H0.3 DE1 upstream-cluster physical integration
+Date: 2026-07-11
+Quartus: 25.1std.0 Build 1129, Lite Edition
+Device: 5CSEMA5F31C6
+
+15 MHz result:
+  Fitter: successful
+  Logic utilization: 9,513 / 32,070 ALMs (30%)
+  Registers: 7,484
+  Block-memory bits: 169,728 / 4,065,280 (4%)
+  RAM blocks: 24 / 397 (6%)
+  PLLs: 1 / 6
+  Worst setup slack: +9.466 ns
+  Worst hold slack: +0.136 ns
+  SOF: generated
+  RBF: generated
+
+Rejected 20 MHz result:
+  Worst setup slack: -2.312 ns
+  Reason: timing-invalid after adding the HPS/Qsys integration path
+
+Open correctness boundary:
+  Quartus reports one 244-node combinational loop inside the imported Genus
+  cluster netlist. H0.3 proves fit, timing for constrained clock paths, and
+  artifact generation; it does not yet prove safe cluster execution.

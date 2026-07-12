@@ -1,4 +1,4 @@
-module h0_2_cluster_component #(
+module h0_2_cluster_component_core #(
   parameter int unsigned AvalonAddrWidth = 16
 ) (
   input  logic                       clk,

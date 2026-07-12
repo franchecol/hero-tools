@@ -1,0 +1,11 @@
+/db/
+/incremental_db/
+/output_files/
+/generated/
+/hps_isw_handoff/
+/h0_2_upstream_hps_system/
+/h0_2_upstream_hps_system.qsys
+/h0_2_upstream_hps_system.sopcinfo
+/*.log
+/*.rpt
+/c5_pin_model_dump.txt

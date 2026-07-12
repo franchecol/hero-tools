@@ -94,7 +94,8 @@ U5.2 Fit the SRAM-correct complete cluster and measure timing    PASS
 U5.3 Reduce upstream configuration                               not needed
 H0.1 Wrap the fitted cluster behind a stable semantic AXI port   PASS
 H0.2 Connect the SL9-derived HPS/Avalon shell to upstream AXI    PASS
-H0.3 Add 20 MHz DE1 clock/top and run the complete physical fit  NEXT
+H0.3 Add 15 MHz DE1 clock/top and run the complete physical fit  PASS
+H0.4 Trace imported combinational loop before cluster execution NEXT
 H1  Completion interrupt and Linux blocking wait                 deferred
 ```
 
@@ -121,6 +122,8 @@ banks survive, registers fall from 176,883 to 6,854, and the mapped estimate
 falls from 129,784 to 13,138 ALMs. U5.2 then proved physical fit at 12,029 ALMs
 and 24 M10Ks. Its worst-corner Fmax is
 24.11 MHz, so capacity reduction is unnecessary but the 50 MHz constraint is
-not met. H0 should integrate the complete fitted cluster at a conservative
-20 MHz; 50 MHz timing closure remains a separate optimization. See the U4,
+not met. H0 initially integrated the complete fitted cluster at 20 MHz, but
+the added HPS/Qsys path missed setup timing by 2.312 ns. H0.3 therefore uses a
+conservative 15 MHz target; 50 MHz timing closure remains a separate
+optimization. See the U4,
 U5.1, and U5.2 experiment READMEs for evidence.

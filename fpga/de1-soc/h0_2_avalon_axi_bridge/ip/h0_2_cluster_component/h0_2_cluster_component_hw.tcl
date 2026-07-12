@@ -11,8 +11,26 @@ set_module_property EDITABLE false
 
 add_fileset quartus_synth QUARTUS_SYNTH fileset_quartus_synth
 
+proc wrapper_text {output_name} {
+    return [format {module %s (
+    input  wire        clk,
+    input  wire        reset,
+    input  wire [15:0] avs_address,
+    input  wire        avs_read,
+    output wire [31:0] avs_readdata,
+    input  wire        avs_write,
+    input  wire [31:0] avs_writedata,
+    input  wire [3:0]  avs_byteenable,
+    output wire        avs_waitrequest
+);
+    h0_2_cluster_component_core u_core (.*);
+endmodule
+} $output_name]
+}
+
 proc fileset_quartus_synth {output_name} {
-    add_fileset_file h0_2_cluster_component.sv SYSTEM_VERILOG PATH ../../rtl/h0_2_cluster_component.sv TOP_LEVEL_FILE
+    add_fileset_file $output_name.sv SYSTEM_VERILOG TEXT [wrapper_text $output_name] TOP_LEVEL_FILE
+    add_fileset_file h0_2_cluster_component.sv SYSTEM_VERILOG PATH ../../rtl/h0_2_cluster_component.sv
     add_fileset_file avalon_to_narrow_axi.sv SYSTEM_VERILOG PATH ../../rtl/avalon_to_narrow_axi.sv
     add_fileset_file upstream_cluster_shell.sv SYSTEM_VERILOG PATH ../../../h0_1_upstream_cluster_shell/rtl/upstream_cluster_shell.sv
     add_fileset_file cyclone_sram_primitive.sv SYSTEM_VERILOG PATH ../../../u5_1_sram_retention/rtl/cyclone_sram_primitive.sv
