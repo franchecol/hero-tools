@@ -17,6 +17,7 @@ set_instance_parameter_value hps_0 MPU_EVENTS_Enable false
 set_instance_parameter_value hps_0 F2S_Width 0
 set_instance_parameter_value hps_0 S2F_Width 0
 set_instance_parameter_value hps_0 LWH2F_Enable true
+set_instance_parameter_value hps_0 F2SINTERRUPT_Enable true
 set_instance_parameter_value hps_0 F2SDRAM_Type {}
 set_instance_parameter_value hps_0 F2SDRAM_Width {}
 
@@ -29,6 +30,7 @@ add_connection reset_bridge.out_reset safe_cluster.reset
 add_connection hps_0.h2f_lw_axi_master safe_cluster.s1
 set_connection_parameter_value hps_0.h2f_lw_axi_master/safe_cluster.s1 baseAddress 0x0000
 lock_avalon_base_address safe_cluster.s1
+add_connection hps_0.f2h_irq0 safe_cluster.irq
 
 set_interface_property clk EXPORT_OF clk_bridge.in_clk
 set_interface_property reset EXPORT_OF reset_bridge.in_reset

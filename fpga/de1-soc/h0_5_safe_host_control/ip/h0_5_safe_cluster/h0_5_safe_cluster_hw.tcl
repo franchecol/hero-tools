@@ -21,7 +21,8 @@ proc wrapper_text {output_name} {
     input  wire        avs_write,
     input  wire [31:0] avs_writedata,
     input  wire [3:0]  avs_byteenable,
-    output wire        avs_waitrequest
+    output wire        avs_waitrequest,
+    output wire        irq
 );
     wire        cluster_hold_reset;
     wire [15:0] cluster_address;
@@ -56,7 +57,8 @@ proc wrapper_text {output_name} {
         .cluster_write_o          (cluster_write),
         .cluster_writedata_o      (cluster_writedata),
         .cluster_byteenable_o     (cluster_byteenable),
-        .cluster_waitrequest_i    (cluster_waitrequest)
+        .cluster_waitrequest_i    (cluster_waitrequest),
+        .irq_o                    (irq)
     );
 
     h0_2_cluster_component_core u_cluster (
@@ -116,3 +118,9 @@ add_interface_port s1 avs_write write Input 1
 add_interface_port s1 avs_writedata writedata Input 32
 add_interface_port s1 avs_byteenable byteenable Input 4
 add_interface_port s1 avs_waitrequest waitrequest Output 1
+
+add_interface irq interrupt sender
+set_interface_property irq associatedAddressablePoint s1
+set_interface_property irq associatedClock clk
+set_interface_property irq associatedReset reset
+add_interface_port irq irq irq Output 1

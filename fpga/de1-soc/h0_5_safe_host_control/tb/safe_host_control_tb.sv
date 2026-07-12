@@ -11,10 +11,11 @@ module safe_host_control_tb;
   logic [31:0] cluster_readdata, cluster_writedata;
   logic [3:0] cluster_byteenable;
   logic cluster_waitrequest;
+  logic boot_result_valid, irq;
 
   safe_host_control dut (
     .clk_i(clk), .rst_i(rst), .pll_locked_i(1'b1), .boot_fetch_seen_i(1'b0),
-    .boot_result_valid_i(1'b0), .boot_result_i(32'b0),
+    .boot_result_valid_i(boot_result_valid), .boot_result_i(32'h0000_05a5),
     .avs_address_i(avs_address), .avs_read_i(avs_read),
     .avs_readdata_o(avs_readdata), .avs_write_i(avs_write),
     .avs_writedata_i(avs_writedata), .avs_byteenable_i(avs_byteenable),
@@ -24,7 +25,7 @@ module safe_host_control_tb;
     .cluster_readdata_i(cluster_readdata), .cluster_write_o(cluster_write),
     .cluster_writedata_o(cluster_writedata),
     .cluster_byteenable_o(cluster_byteenable),
-    .cluster_waitrequest_i(cluster_waitrequest)
+    .cluster_waitrequest_i(cluster_waitrequest), .irq_o(irq)
   );
 
   task automatic tick;
@@ -39,6 +40,7 @@ module safe_host_control_tb;
     avs_address = 0; avs_read = 0; avs_write = 0;
     avs_writedata = 0; avs_byteenable = 4'hf;
     cluster_readdata = 32'hcafe_f00d; cluster_waitrequest = 0;
+    boot_result_valid = 0;
 
     repeat (2) tick();
     assert (cluster_hold_reset);
@@ -67,7 +69,25 @@ module safe_host_control_tb;
     assert (cluster_write && cluster_writedata == 32'h1234_5678);
     assert (cluster_byteenable == 4'b0101 && !avs_waitrequest);
 
-    $display("H0.5_SAFE_CONTROL_PASS");
+    avs_read = 0; avs_write = 0; avs_byteenable = 4'hf;
+    boot_result_valid = 1; tick();
+    avs_address = 6; avs_read = 1; settle();
+    assert (avs_readdata == 32'h0000_0001 && !irq);
+    avs_read = 0; avs_address = 5; avs_writedata = 1; avs_write = 1;
+    tick(); avs_write = 0;
+    assert (irq);
+    avs_address = 6; avs_read = 1; settle();
+    assert (avs_readdata == 32'h0000_0007);
+    avs_read = 0; avs_writedata = 1; avs_write = 1;
+    tick(); avs_write = 0;
+    assert (!irq);
+    avs_read = 1; settle();
+    assert (avs_readdata == 32'h0000_0002);
+    boot_result_valid = 0; tick();
+    boot_result_valid = 1; tick();
+    assert (irq);
+
+    $display("H1_IRQ_CONTROL_PASS");
     $finish;
   end
 endmodule

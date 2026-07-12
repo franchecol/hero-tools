@@ -25,10 +25,12 @@ module safe_host_control #(
   output logic                       cluster_write_o,
   output logic [31:0]                cluster_writedata_o,
   output logic [3:0]                 cluster_byteenable_o,
-  input  logic                       cluster_waitrequest_i
+  input  logic                       cluster_waitrequest_i,
+  output logic                       irq_o
 );
   logic cluster_selected;
   logic release_cluster_q;
+  logic irq_enable_q, irq_pending_q, result_seen_q;
 
   assign cluster_selected = avs_address_i >= ClusterBaseWord;
   assign cluster_address_o = avs_address_i - ClusterBaseWord;
@@ -37,6 +39,7 @@ module safe_host_control #(
   assign cluster_writedata_o = avs_writedata_i;
   assign cluster_byteenable_o = avs_byteenable_i;
   assign cluster_hold_reset_o = ~release_cluster_q;
+  assign irq_o = irq_enable_q && irq_pending_q;
 
   always_comb begin
     avs_readdata_o = 32'h0000_0000;
@@ -53,6 +56,8 @@ module safe_host_control #(
                              cluster_hold_reset_o};
         3: avs_readdata_o = {{(32-AvalonAddrWidth){1'b0}}, ClusterBaseWord} << 2;
         4: avs_readdata_o = boot_result_i;
+        5: avs_readdata_o = {31'b0, irq_enable_q};
+        6: avs_readdata_o = {29'b0, irq_o, irq_enable_q, irq_pending_q};
         default: avs_readdata_o = 32'h0000_0000;
       endcase
     end
@@ -61,9 +66,24 @@ module safe_host_control #(
   always_ff @(posedge clk_i) begin
     if (rst_i) begin
       release_cluster_q <= 1'b0;
-    end else if (avs_write_i && !cluster_selected && avs_address_i == 1 &&
-                 avs_byteenable_i[0]) begin
-      release_cluster_q <= avs_writedata_i[0];
+      irq_enable_q <= 1'b0;
+      irq_pending_q <= 1'b0;
+      result_seen_q <= 1'b0;
+    end else begin
+      if (!boot_result_valid_i) result_seen_q <= 1'b0;
+      if (boot_result_valid_i && !result_seen_q) begin
+        result_seen_q <= 1'b1;
+        irq_pending_q <= 1'b1;
+      end
+
+      if (avs_write_i && !cluster_selected && avs_byteenable_i[0]) begin
+        case (avs_address_i)
+          1: release_cluster_q <= avs_writedata_i[0];
+          5: irq_enable_q <= avs_writedata_i[0];
+          6: if (avs_writedata_i[0]) irq_pending_q <= 1'b0;
+          default: begin end
+        endcase
+      end
     end
   end
 endmodule

@@ -1,0 +1,10 @@
+H1 DE1-SoC physical verification, 2026-07-12
+
+IRQ_READER_WOKE
+event words              = 00000001 00000007
+STATUS after wake        = 0x0000001e
+BOOT_RESULT after wake   = 0x000005a5
+IRQ_PENDING after ack    = 0x00000002
+/proc/interrupts         = Linux IRQ 131, GIC hwirq 72, count 1
+
+Result: H1_IRQ_WAKE_PASS

@@ -102,7 +102,8 @@ H0.6.1 Verify burst-capable AXI boot ROM at 0x00001000           PASS
 H0.6.2 Attach ROM to I-cache wide_out and complete physical fit  PASS
 H0.6.3 Verify fetch-seen on ARM Linux after clean restart        PASS
 H0.7 Execute boot payload and observe data-side store on Linux   PASS
-H1  Completion interrupt and Linux blocking wait                 deferred
+H1  Completion interrupt and Linux blocking wait                 PASS
+H2  Replace fixed boot ROM with a host-selected program image    NEXT
 ```
 
 U3 answered the frontend and generic-synthesis feasibility questions without

@@ -26,6 +26,8 @@ Offsets are bytes from the HPS lightweight bridge base:
 │ 0x08   │ STATUS       │ R      │ held, released, PLL, fetch, result │
 │ 0x0c   │ CLUSTER_BASE │ R      │ 0x00001000                         │
 │ 0x10   │ BOOT_RESULT  │ R      │ H0.7 data-path signature           │
+│ 0x14   │ IRQ_ENABLE   │ R/W    │ bit0 enables completion IRQ        │
+│ 0x18   │ IRQ_PENDING  │ R/W1C  │ pending, enabled, asserted         │
 └────────┴──────────────┴────────┴────────────────────────────────────┘
 ```
 
@@ -36,6 +38,10 @@ enabled. Local accesses complete without asserting any forwarded transaction.
 lock, bit 3 for the H0.6 boot-ROM fetch observation, and bit 4 for the H0.7
 result observation. Observation bits remain set while the cluster runs, then
 clear when cluster reset is reasserted.
+
+`IRQ_PENDING` uses bit 0 for the sticky completion event, bit 1 for the enable
+state, and bit 2 for the resulting interrupt line. Writing one to bit 0 clears
+the event and deasserts the level-high HPS interrupt.
 
 ## Test
 
