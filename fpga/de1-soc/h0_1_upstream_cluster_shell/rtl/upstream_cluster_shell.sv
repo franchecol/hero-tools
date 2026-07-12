@@ -27,8 +27,31 @@ module h0_1_upstream_cluster_shell (
   output logic        host_w_ready_o,
   output logic        host_b_valid_o,
   output logic [1:0]  host_b_resp_o,
-  output logic [1:0]  host_b_id_o
+  output logic [1:0]  host_b_id_o,
+  output logic        boot_fetch_seen_o
 );
+  logic wide_out_r_ready, wide_out_ar_valid;
+  logic [31:0] wide_out_ar_addr;
+  logic [7:0] wide_out_ar_len;
+  logic [2:0] wide_out_ar_size;
+  logic [1:0] wide_out_ar_burst;
+  logic [2:0] wide_out_ar_id;
+  logic boot_r_valid, boot_r_last, boot_ar_ready;
+  logic [63:0] boot_r_data;
+  logic [1:0] boot_r_resp;
+  logic [2:0] boot_r_id;
+
+  axi_boot_rom #(.IdWidth(3)) i_boot_rom (
+    .clk_i(clk_i), .rst_ni(rst_ni),
+    .ar_valid_i(wide_out_ar_valid), .ar_ready_o(boot_ar_ready),
+    .ar_addr_i(wide_out_ar_addr), .ar_len_i(wide_out_ar_len),
+    .ar_size_i(wide_out_ar_size), .ar_burst_i(wide_out_ar_burst),
+    .ar_id_i(wide_out_ar_id), .r_valid_o(boot_r_valid),
+    .r_ready_i(wide_out_r_ready), .r_data_o(boot_r_data),
+    .r_resp_o(boot_r_resp), .r_last_o(boot_r_last), .r_id_o(boot_r_id),
+    .fetch_seen_o(boot_fetch_seen_o)
+  );
+
   de1_u3_snitch_cluster_wrapper i_cluster (
     .clk_i                         (clk_i),
     .rst_ni                        (rst_ni),
@@ -95,17 +118,24 @@ module h0_1_upstream_cluster_shell (
     .narrow_out_resp_i_aw_ready    (1'b0),
 
     .wide_out_resp_i_r_user        ('0),
-    .wide_out_resp_i_r_last        (1'b1),
-    .wide_out_resp_i_r_resp        (2'b11),
-    .wide_out_resp_i_r_data        ('0),
-    .wide_out_resp_i_r_id          ('0),
-    .wide_out_resp_i_r_valid       (1'b0),
+    .wide_out_req_o_r_ready        (wide_out_r_ready),
+    .wide_out_req_o_ar_valid       (wide_out_ar_valid),
+    .wide_out_req_o_ar_addr        (wide_out_ar_addr),
+    .wide_out_req_o_ar_len         (wide_out_ar_len),
+    .wide_out_req_o_ar_size        (wide_out_ar_size),
+    .wide_out_req_o_ar_burst       (wide_out_ar_burst),
+    .wide_out_req_o_ar_id          (wide_out_ar_id),
+    .wide_out_resp_i_r_last        (boot_r_last),
+    .wide_out_resp_i_r_resp        (boot_r_resp),
+    .wide_out_resp_i_r_data        (boot_r_data),
+    .wide_out_resp_i_r_id          (boot_r_id),
+    .wide_out_resp_i_r_valid       (boot_r_valid),
     .wide_out_resp_i_b_user        ('0),
     .wide_out_resp_i_b_resp        (2'b11),
     .wide_out_resp_i_b_id          ('0),
     .wide_out_resp_i_b_valid       (1'b0),
     .wide_out_resp_i_w_ready       (1'b0),
-    .wide_out_resp_i_ar_ready      (1'b0),
+    .wide_out_resp_i_ar_ready      (boot_ar_ready),
     .wide_out_resp_i_aw_ready      (1'b0),
 
     .wide_in_req_i_r_ready         (1'b0),

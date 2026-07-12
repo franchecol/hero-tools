@@ -99,7 +99,8 @@ H0.4 Preserve and cut five active Genus loop markers in Quartus  PASS
 H0.5 Add reset-held HPS control and complete physical fit        PASS
      Read reset-held local ID/status from ARM Linux              PASS
 H0.6.1 Verify burst-capable AXI boot ROM at 0x00001000           PASS
-H0.6.2 Attach ROM to narrow_out and expose fetch-seen status     NEXT
+H0.6.2 Attach ROM to I-cache wide_out and complete physical fit  PASS
+H0.6.3 Verify fetch-seen on ARM Linux after clean restart        NEXT
 H1  Completion interrupt and Linux blocking wait                 deferred
 ```
 

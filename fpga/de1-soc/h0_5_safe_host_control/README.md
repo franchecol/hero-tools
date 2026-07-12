@@ -23,13 +23,16 @@ Offsets are bytes from the HPS lightweight bridge base:
 ├────────┼──────────────┼────────┼────────────────────────────────────┤
 │ 0x00   │ ID           │ R      │ 0x48300005                         │
 │ 0x04   │ CONTROL      │ R/W    │ bit0=release cluster reset         │
-│ 0x08   │ STATUS       │ R      │ bit0=held, bit1=released, bit2=PLL │
+│ 0x08   │ STATUS       │ R      │ held, released, PLL, boot fetch    │
 │ 0x0c   │ CLUSTER_BASE │ R      │ 0x00001000                         │
 └────────┴──────────────┴────────┴────────────────────────────────────┘
 ```
 
 `CONTROL.bit0` resets to zero. Writes affect it only when byte lane zero is
 enabled. Local accesses complete without asserting any forwarded transaction.
+
+`STATUS` uses bit 0 for reset held, bit 1 for reset released, bit 2 for PLL
+lock, and bit 3 for the sticky H0.6 boot-ROM fetch observation.
 
 ## Test
 

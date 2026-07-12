@@ -1,0 +1,24 @@
+H0.6.2 gate-level cluster boot-ROM integration
+Date: 2026-07-12
+
+Architecture:
+  BootAddr: 0x00001000
+  I-cache external master: wide_out AXI, 64-bit data, 3-bit ID
+  Core-data external master: narrow_out AXI
+  STATUS.bit3: sticky successful boot-window AR handshake
+
+Physical result:
+  Fitter: successful
+  Logic utilization: 9,935 / 32,070 ALMs (31%)
+  Registers: 7,464
+  RAM blocks: 24 / 397 (6%)
+  Worst setup slack: +17.406 ns
+  Worst hold slack: +0.122 ns
+  Quartus combinational-loop diagnostics: 0
+  SOF SHA-256: 810a719f3a14e5881dec2ec96fb5c4221e9b1c9638d106ef52854642f7048b83
+  SOF and RBF: generated
+
+Board attempts:
+  narrow_out attachment: no fetch, as expected after source-path correction
+  corrected wide_out attachment: programmed; runtime test blocked by HPS/UART
+  freeze during live fabric replacement before any MMIO command

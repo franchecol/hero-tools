@@ -6,6 +6,7 @@ module safe_host_control #(
   input  logic                       clk_i,
   input  logic                       rst_i,
   input  logic                       pll_locked_i,
+  input  logic                       boot_fetch_seen_i,
 
   input  logic [AvalonAddrWidth-1:0] avs_address_i,
   input  logic                       avs_read_i,
@@ -45,7 +46,7 @@ module safe_host_control #(
       case (avs_address_i)
         0: avs_readdata_o = BlockId;
         1: avs_readdata_o = {31'b0, release_cluster_q};
-        2: avs_readdata_o = {29'b0, pll_locked_i, release_cluster_q,
+        2: avs_readdata_o = {28'b0, boot_fetch_seen_i, pll_locked_i, release_cluster_q,
                              cluster_hold_reset_o};
         3: avs_readdata_o = {{(32-AvalonAddrWidth){1'b0}}, ClusterBaseWord} << 2;
         default: avs_readdata_o = 32'h0000_0000;
