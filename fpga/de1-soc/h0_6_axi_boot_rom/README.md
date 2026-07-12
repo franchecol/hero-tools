@@ -47,7 +47,19 @@ Combinational loops:    0
 SOF and RBF:            generated
 ```
 
-The final board fetch observation remains pending because Linux/UART froze
-during live FPGA replacement before any H0.6 MMIO command ran. The board must
-be restarted and LXDE headless preparation repeated immediately before the
-corrected bitstream is programmed.
+## H0.6.3 Board Result
+
+After a clean restart and immediate LXDE headless preparation, the corrected
+wide-port bitstream remained accessible from ARM Linux. A controlled release,
+one-second observation, and immediate reset reassertion produced:
+
+```text
+INITIAL_STATUS  = 0x00000005  held + PLL locked
+RELEASED_STATUS = 0x0000000e  released + PLL locked + boot fetch seen
+HELD_STATUS     = 0x00000005  held again; fetch observation reset
+```
+
+This proves that the real gate-level Snitch instruction cache issued an AXI
+request after reset release and completed a boot-window address handshake with
+the H0.6 ROM on `wide_out`. The placeholder instruction keeps execution in a
+safe infinite loop at `0x1000`; no useful payload has run yet.

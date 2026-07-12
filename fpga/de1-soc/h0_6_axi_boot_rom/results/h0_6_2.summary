@@ -20,5 +20,7 @@ Physical result:
 
 Board attempts:
   narrow_out attachment: no fetch, as expected after source-path correction
-  corrected wide_out attachment: programmed; runtime test blocked by HPS/UART
-  freeze during live fabric replacement before any MMIO command
+  corrected wide_out attachment: physical fetch verified after clean restart
+  initial status: 0x00000005
+  released status: 0x0000000e (fetch seen)
+  held-again status: 0x00000005

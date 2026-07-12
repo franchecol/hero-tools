@@ -1,0 +1,35 @@
+H0.6.3 upstream Snitch external boot-fetch proof
+Date: 2026-07-12
+Board: DE1-SoC, Cyclone V 5CSEMA5F31C6
+Host image: Terasic LXDE Ubuntu 16.04.1
+Kernel: 4.5.0-00183-g4647b69-dirty armv7l
+
+Preparation:
+  restarted board
+  logged in over UART
+  stopped lightdm and graphical target
+  isolated multi-user target
+  unbound altvipfb when present
+  programmed corrected wide_out H0.6 SOF at JTAG device index 2
+  confirmed UART remained responsive
+
+Pre-release read:
+  STATUS=0x00000005
+
+Controlled command sequence:
+  busybox devmem 0xff200004 32 1
+  sleep 1
+  busybox devmem 0xff200008 32
+  busybox devmem 0xff200004 32 0
+  busybox devmem 0xff200008 32
+
+Observed:
+  RELEASED_STATUS=0x0000000E
+  HELD_STATUS=0x00000005
+
+Interpretation:
+  bit 1: cluster reset released
+  bit 2: PLL locked
+  bit 3: H0.6 boot ROM observed the I-cache AXI AR handshake
+  reset was reasserted after observation
+  placeholder jal x0,0 image prevents escape from the boot ROM

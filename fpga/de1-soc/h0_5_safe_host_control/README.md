@@ -32,7 +32,8 @@ Offsets are bytes from the HPS lightweight bridge base:
 enabled. Local accesses complete without asserting any forwarded transaction.
 
 `STATUS` uses bit 0 for reset held, bit 1 for reset released, bit 2 for PLL
-lock, and bit 3 for the sticky H0.6 boot-ROM fetch observation.
+lock, and bit 3 for the H0.6 boot-ROM fetch observation. Bit 3 remains set
+while the cluster runs, then clears when cluster reset is reasserted.
 
 ## Test
 

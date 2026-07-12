@@ -53,7 +53,8 @@ Q direct Quartus path ── failed on upstream SystemVerilog frontend
                  H0.5 reset-held HPS control PASS / Linux verified
                  H0.6.1 AXI boot ROM         PASS
                  H0.6.2 cluster integration  PASS / physical
-                 H0.6.3 Linux fetch proof    NEXT
+                 H0.6.3 Linux fetch proof    PASS
+                 H0.7 observable boot code   NEXT
                          │
                          ▼
                  H heterogeneous integration LATER
