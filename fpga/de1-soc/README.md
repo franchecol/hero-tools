@@ -54,7 +54,7 @@ Q direct Quartus path ── failed on upstream SystemVerilog frontend
                  H0.6.1 AXI boot ROM         PASS
                  H0.6.2 cluster integration  PASS / physical
                  H0.6.3 Linux fetch proof    PASS
-                 H0.7 observable boot code   NEXT
+                 H0.7 boot store to Linux    PASS / result 0x5A5
                          │
                          ▼
                  H heterogeneous integration LATER

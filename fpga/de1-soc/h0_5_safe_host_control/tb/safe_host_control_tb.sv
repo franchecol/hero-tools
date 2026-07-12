@@ -14,6 +14,7 @@ module safe_host_control_tb;
 
   safe_host_control dut (
     .clk_i(clk), .rst_i(rst), .pll_locked_i(1'b1), .boot_fetch_seen_i(1'b0),
+    .boot_result_valid_i(1'b0), .boot_result_i(32'b0),
     .avs_address_i(avs_address), .avs_read_i(avs_read),
     .avs_readdata_o(avs_readdata), .avs_write_i(avs_write),
     .avs_writedata_i(avs_writedata), .avs_byteenable_i(avs_byteenable),

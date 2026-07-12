@@ -28,7 +28,9 @@ module h0_1_upstream_cluster_shell (
   output logic        host_b_valid_o,
   output logic [1:0]  host_b_resp_o,
   output logic [1:0]  host_b_id_o,
-  output logic        boot_fetch_seen_o
+  output logic        boot_fetch_seen_o,
+  output logic        boot_result_valid_o,
+  output logic [31:0] boot_result_o
 );
   logic wide_out_r_ready, wide_out_ar_valid;
   logic [31:0] wide_out_ar_addr;
@@ -40,6 +42,15 @@ module h0_1_upstream_cluster_shell (
   logic [63:0] boot_r_data;
   logic [1:0] boot_r_resp;
   logic [2:0] boot_r_id;
+  logic narrow_out_b_ready, narrow_out_aw_valid, narrow_out_w_valid;
+  logic [31:0] narrow_out_aw_addr;
+  logic [3:0] narrow_out_aw_id;
+  logic [63:0] narrow_out_w_data;
+  logic [7:0] narrow_out_w_strb;
+  logic narrow_out_w_last;
+  logic sink_aw_ready, sink_w_ready, sink_b_valid;
+  logic [1:0] sink_b_resp;
+  logic [3:0] sink_b_id;
 
   axi_boot_rom #(.IdWidth(3)) i_boot_rom (
     .clk_i(clk_i), .rst_ni(rst_ni),
@@ -50,6 +61,18 @@ module h0_1_upstream_cluster_shell (
     .r_ready_i(wide_out_r_ready), .r_data_o(boot_r_data),
     .r_resp_o(boot_r_resp), .r_last_o(boot_r_last), .r_id_o(boot_r_id),
     .fetch_seen_o(boot_fetch_seen_o)
+  );
+
+  axi_signature_sink i_signature_sink (
+    .clk_i(clk_i), .rst_ni(rst_ni),
+    .aw_valid_i(narrow_out_aw_valid), .aw_ready_o(sink_aw_ready),
+    .aw_addr_i(narrow_out_aw_addr), .aw_id_i(narrow_out_aw_id),
+    .w_valid_i(narrow_out_w_valid), .w_ready_o(sink_w_ready),
+    .w_data_i(narrow_out_w_data), .w_strb_i(narrow_out_w_strb),
+    .w_last_i(narrow_out_w_last), .b_valid_o(sink_b_valid),
+    .b_ready_i(narrow_out_b_ready), .b_resp_o(sink_b_resp),
+    .b_id_o(sink_b_id), .result_valid_o(boot_result_valid_o),
+    .result_o(boot_result_o)
   );
 
   de1_u3_snitch_cluster_wrapper i_cluster (
@@ -110,12 +133,20 @@ module h0_1_upstream_cluster_shell (
     .narrow_out_resp_i_r_id        ('0),
     .narrow_out_resp_i_r_valid     (1'b0),
     .narrow_out_resp_i_b_user      ('0),
-    .narrow_out_resp_i_b_resp      (2'b11),
-    .narrow_out_resp_i_b_id        ('0),
-    .narrow_out_resp_i_b_valid     (1'b0),
-    .narrow_out_resp_i_w_ready     (1'b0),
+    .narrow_out_req_o_b_ready      (narrow_out_b_ready),
+    .narrow_out_req_o_w_valid      (narrow_out_w_valid),
+    .narrow_out_req_o_w_data       (narrow_out_w_data),
+    .narrow_out_req_o_w_strb       (narrow_out_w_strb),
+    .narrow_out_req_o_w_last       (narrow_out_w_last),
+    .narrow_out_req_o_aw_valid     (narrow_out_aw_valid),
+    .narrow_out_req_o_aw_addr      (narrow_out_aw_addr),
+    .narrow_out_req_o_aw_id        (narrow_out_aw_id),
+    .narrow_out_resp_i_b_resp      (sink_b_resp),
+    .narrow_out_resp_i_b_id        (sink_b_id),
+    .narrow_out_resp_i_b_valid     (sink_b_valid),
+    .narrow_out_resp_i_w_ready     (sink_w_ready),
     .narrow_out_resp_i_ar_ready    (1'b0),
-    .narrow_out_resp_i_aw_ready    (1'b0),
+    .narrow_out_resp_i_aw_ready    (sink_aw_ready),
 
     .wide_out_resp_i_r_user        ('0),
     .wide_out_req_o_r_ready        (wide_out_r_ready),

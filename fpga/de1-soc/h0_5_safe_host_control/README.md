@@ -23,8 +23,9 @@ Offsets are bytes from the HPS lightweight bridge base:
 ├────────┼──────────────┼────────┼────────────────────────────────────┤
 │ 0x00   │ ID           │ R      │ 0x48300005                         │
 │ 0x04   │ CONTROL      │ R/W    │ bit0=release cluster reset         │
-│ 0x08   │ STATUS       │ R      │ held, released, PLL, boot fetch    │
+│ 0x08   │ STATUS       │ R      │ held, released, PLL, fetch, result │
 │ 0x0c   │ CLUSTER_BASE │ R      │ 0x00001000                         │
+│ 0x10   │ BOOT_RESULT  │ R      │ H0.7 data-path signature           │
 └────────┴──────────────┴────────┴────────────────────────────────────┘
 ```
 
@@ -32,8 +33,9 @@ Offsets are bytes from the HPS lightweight bridge base:
 enabled. Local accesses complete without asserting any forwarded transaction.
 
 `STATUS` uses bit 0 for reset held, bit 1 for reset released, bit 2 for PLL
-lock, and bit 3 for the H0.6 boot-ROM fetch observation. Bit 3 remains set
-while the cluster runs, then clears when cluster reset is reasserted.
+lock, bit 3 for the H0.6 boot-ROM fetch observation, and bit 4 for the H0.7
+result observation. Observation bits remain set while the cluster runs, then
+clear when cluster reset is reasserted.
 
 ## Test
 

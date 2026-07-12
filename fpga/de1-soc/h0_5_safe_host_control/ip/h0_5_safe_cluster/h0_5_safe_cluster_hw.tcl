@@ -32,12 +32,16 @@ proc wrapper_text {output_name} {
     wire [3:0]  cluster_byteenable;
     wire        cluster_waitrequest;
     wire        boot_fetch_seen;
+    wire        boot_result_valid;
+    wire [31:0] boot_result;
 
     safe_host_control u_control (
         .clk_i                    (clk),
         .rst_i                    (reset),
         .pll_locked_i             (~reset),
         .boot_fetch_seen_i        (boot_fetch_seen),
+        .boot_result_valid_i      (boot_result_valid),
+        .boot_result_i            (boot_result),
         .avs_address_i            (avs_address),
         .avs_read_i               (avs_read),
         .avs_readdata_o           (avs_readdata),
@@ -66,7 +70,9 @@ proc wrapper_text {output_name} {
         .avs_writedata        (cluster_writedata),
         .avs_byteenable       (cluster_byteenable),
         .avs_waitrequest      (cluster_waitrequest),
-        .boot_fetch_seen      (boot_fetch_seen)
+        .boot_fetch_seen      (boot_fetch_seen),
+        .boot_result_valid    (boot_result_valid),
+        .boot_result          (boot_result)
     );
 endmodule
 } $output_name]
@@ -79,6 +85,7 @@ proc fileset_quartus_synth {output_name} {
     add_fileset_file avalon_to_narrow_axi.sv SYSTEM_VERILOG PATH ../../../h0_2_avalon_axi_bridge/rtl/avalon_to_narrow_axi.sv
     add_fileset_file upstream_cluster_shell.sv SYSTEM_VERILOG PATH ../../../h0_1_upstream_cluster_shell/rtl/upstream_cluster_shell.sv
     add_fileset_file axi_boot_rom.sv SYSTEM_VERILOG PATH ../../../h0_6_axi_boot_rom/rtl/axi_boot_rom.sv
+    add_fileset_file axi_signature_sink.sv SYSTEM_VERILOG PATH ../../../h0_7_observable_boot/rtl/axi_signature_sink.sv
     add_fileset_file cyclone_sram_primitive.sv SYSTEM_VERILOG PATH ../../../u5_1_sram_retention/rtl/cyclone_sram_primitive.sv
     add_fileset_file de1_u4_cluster_quartus.v VERILOG PATH ../../../u4_cyclone_memory_boundary/generated/de1_u4_cluster_quartus.v
 }

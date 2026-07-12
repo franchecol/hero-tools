@@ -39,7 +39,10 @@ module axi_boot_rom #(
     begin
       offset = byte_addr - BaseAddr;
       case (offset[7:2])
-        // `jal x0, 0`: remain safely in the external boot ROM.
+        0: rom_word = 32'h0000_22b7; // lui t0, 0x2
+        1: rom_word = 32'h5a50_0313; // li t1, 0x5a5
+        2: rom_word = 32'h0062_a023; // sw t1, 0(t0)
+        3: rom_word = 32'h0000_006f; // jal x0, 0
         default: rom_word = 32'h0000_006f;
       endcase
     end

@@ -33,15 +33,16 @@ module axi_boot_rom_tb;
     ar_addr = 32'h1000; ar_len = 1; ar_id = 4'ha; ar_valid = 1;
     tick(); ar_valid = 0;
     assert (r_valid && !r_last && r_id == 4'ha && r_resp == 0);
-    assert (r_data == 64'h0000006f0000006f && fetch_seen);
+    assert (r_data == 64'h5a500313000022b7 && fetch_seen);
 
     // Backpressure must preserve the first response exactly.
     repeat (2) begin
-      assert (r_valid && !r_last && r_data == 64'h0000006f0000006f);
+      assert (r_valid && !r_last && r_data == 64'h5a500313000022b7);
       tick();
     end
     r_ready = 1; tick(); r_ready = 0;
     assert (r_valid && r_last && r_id == 4'ha && r_resp == 0);
+    assert (r_data == 64'h0000006f0062a023);
     r_ready = 1; tick(); r_ready = 0;
     assert (!r_valid && ar_ready);
 

@@ -11,7 +11,9 @@ module h0_2_cluster_component_core #(
   input  logic [31:0]                avs_writedata,
   input  logic [3:0]                 avs_byteenable,
   output logic                       avs_waitrequest,
-  output logic                       boot_fetch_seen
+  output logic                       boot_fetch_seen,
+  output logic                       boot_result_valid,
+  output logic [31:0]                boot_result
 );
   logic r_ready, ar_valid, ar_ready, r_valid, r_last;
   logic [31:0] ar_addr;
@@ -55,6 +57,7 @@ module h0_2_cluster_component_core #(
     .host_w_data_i(w_data), .host_w_strb_i(w_strb), .host_w_last_i(w_last),
     .host_w_ready_o(w_ready), .host_b_valid_o(b_valid),
     .host_b_resp_o(b_resp), .host_b_id_o(b_id),
-    .boot_fetch_seen_o(boot_fetch_seen)
+    .boot_fetch_seen_o(boot_fetch_seen),
+    .boot_result_valid_o(boot_result_valid), .boot_result_o(boot_result)
   );
 endmodule
