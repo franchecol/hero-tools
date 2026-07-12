@@ -1,0 +1,17 @@
+H0.6.1 external AXI boot ROM protocol boundary
+Date: 2026-07-12
+
+Boot address: 0x00001000
+AXI data width: 64 bits
+AXI ID width: 4 bits
+Placeholder instruction: 0x0000006f (jal x0, 0)
+
+Verified:
+  two-beat INCR read burst: PASS
+  R-channel backpressure stability: PASS
+  ID preservation: PASS
+  RLAST placement: PASS
+  sticky fetch-seen indication: PASS
+  out-of-range DECERR response: PASS
+
+Physical cluster integration: not yet performed

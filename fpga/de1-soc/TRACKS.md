@@ -98,7 +98,8 @@ H0.3 Add 15 MHz DE1 clock/top and run the complete physical fit  PASS
 H0.4 Preserve and cut five active Genus loop markers in Quartus  PASS
 H0.5 Add reset-held HPS control and complete physical fit        PASS
      Read reset-held local ID/status from ARM Linux              PASS
-H0.6 Resolve BootAddr/external-fetch memory path                 NEXT
+H0.6.1 Verify burst-capable AXI boot ROM at 0x00001000           PASS
+H0.6.2 Attach ROM to narrow_out and expose fetch-seen status     NEXT
 H1  Completion interrupt and Linux blocking wait                 deferred
 ```
 
