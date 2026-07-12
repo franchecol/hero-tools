@@ -1,0 +1,24 @@
+H0.2 HPS Avalon to upstream Snitch AXI bridge
+Run completed: 2026-07-11 21:57:00
+
+Adapter verification:
+  Verilator assertions: pass
+  independent AXI AW/W handshakes: pass
+  lower 32-bit write lane and byte strobes: pass
+  lower 32-bit read lane: pass
+  upper 32-bit read lane: pass
+
+Platform Designer verification:
+  Qsys validation: pass
+  Qsys HDL generation: pass
+  generated system: 21 modules, 80 files
+  HPS interface: lightweight HPS-to-FPGA AXI master
+  component interface: 32-bit Avalon-MM slave
+  cluster interface: 64-bit narrow_in AXI slave
+  local address span: 256 KiB
+  AXI base translation: 0x10000000
+
+Conclusion:
+  The SL9-derived HPS shell and the upstream Snitch cluster are connected by a
+  generated Qsys interconnect and a verified custom protocol adapter. H0.2
+  passes. H0.3 must provide a real 20 MHz board clock and complete Quartus fit.

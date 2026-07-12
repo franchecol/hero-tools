@@ -47,7 +47,8 @@ Q direct Quartus path ── failed on upstream SystemVerilog frontend
                  U5.1 retain all SRAM banks   PASS
                  U5.2 SRAM-correct fit        PASS / 24.11 MHz Fmax
                  H0.1 stable upstream shell   PASS
-                 H0.2 Avalon/AXI HPS bridge   NEXT
+                 H0.2 Avalon/AXI HPS bridge   PASS
+                 H0.3 DE1 clock/top/full fit  NEXT
                          │
                          ▼
                  H heterogeneous integration LATER

@@ -93,7 +93,8 @@ U5.2 Fit the SRAM-correct complete cluster and measure timing    PASS
      12,029 / 32,070 ALMs; 24 / 397 M10Ks; Fmax 24.11 MHz
 U5.3 Reduce upstream configuration                               not needed
 H0.1 Wrap the fitted cluster behind a stable semantic AXI port   PASS
-H0.2 Connect the SL9-derived HPS/Avalon shell to upstream AXI    NEXT
+H0.2 Connect the SL9-derived HPS/Avalon shell to upstream AXI    PASS
+H0.3 Add 20 MHz DE1 clock/top and run the complete physical fit  NEXT
 H1  Completion interrupt and Linux blocking wait                 deferred
 ```
 

@@ -1,0 +1,9 @@
+/build/
+/generated/
+/qsys/db/
+/qsys/incremental_db/
+/qsys/*_sim/
+/qsys/*_synthesis/
+/qsys/*/
+/qsys/*.qsys
+/qsys/*.sopcinfo
