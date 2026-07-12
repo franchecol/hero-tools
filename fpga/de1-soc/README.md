@@ -49,7 +49,8 @@ Q direct Quartus path ── failed on upstream SystemVerilog frontend
                  H0.1 stable upstream shell   PASS
                  H0.2 Avalon/AXI HPS bridge   PASS
                  H0.3 DE1 clock/top/full fit  PASS / 15 MHz
-                 H0.4 imported loop analysis NEXT
+                 H0.4 imported loop handling PASS
+                 H0.5 safe Linux MMIO probe  NEXT
                          │
                          ▼
                  H heterogeneous integration LATER

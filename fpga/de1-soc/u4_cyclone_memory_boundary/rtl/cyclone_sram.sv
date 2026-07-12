@@ -68,5 +68,6 @@ module CKBD0 (
   input  logic I,
   output logic Z
 );
-  assign Z = I;
+  // Preserve Genus loop-cut markers through Quartus generic-netlist import.
+  lcell i_loop_cut (.in(I), .out(Z));
 endmodule

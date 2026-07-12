@@ -33,6 +33,10 @@ neutralize_hps_sdram_sdc
 quartus_fit --read_settings_files=off --write_settings_files=off "${project}" -c "${project}"
 quartus_asm --read_settings_files=off --write_settings_files=off "${project}" -c "${project}"
 quartus_sta "${project}" -c "${project}"
+if grep -q "Design contains combinational loop" "output_files/${project}.sta.rpt"; then
+  printf 'ERROR: Quartus still reports a combinational timing loop.\n' >&2
+  exit 1
+fi
 if grep -q "Timing requirements not met" "output_files/${project}.sta.rpt"; then
   printf 'ERROR: Quartus timing requirements were not met.\n' >&2
   exit 1

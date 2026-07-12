@@ -1,0 +1,24 @@
+H0.4 imported Genus loop analysis
+Date: 2026-07-11
+Quartus: 25.1std.0 Build 1129, Lite Edition
+Device: 5CSEMA5F31C6
+
+Source netlist:
+  Genus CKBD0 identity markers: 6
+  Active markers after Quartus constant propagation: 5
+
+Verified result:
+  Quartus combinational-loop diagnostics: 0
+  Fitter: successful
+  Logic utilization: 9,638 / 32,070 ALMs (30%)
+  Registers: 7,448
+  RAM blocks: 24 / 397 (6%)
+  Worst setup slack: +13.421 ns
+  Worst hold slack: +0.129 ns
+  SOF: generated
+  RBF: generated
+
+Method:
+  Model each Genus CKBD0 identity marker with an Intel lcell.
+  Disable timing only through the five active preserved marker cells.
+  Fail SDC processing if the expected active marker count changes.
