@@ -106,7 +106,8 @@ H1  Completion interrupt and Linux blocking wait                 PASS
 H2  Replace fixed boot ROM with a host-selected program image    PASS
 H3  Add shared host/Snitch input and output data memory          PASS
 H4  Add a Linux host program and explicit job descriptor ABI     PASS
-H5  Reuse the runtime for multiple job submissions               NEXT
+H5  Reuse the runtime for multiple job submissions               PASS
+H6  Move MMIO and shared memory into a Linux job driver          NEXT
 ```
 
 U3 answered the frontend and generic-synthesis feasibility questions without

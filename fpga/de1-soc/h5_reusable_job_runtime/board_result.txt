@@ -1,0 +1,13 @@
+H5 DE1-SoC physical verification, 2026-07-13
+
+FPGA programming operations:  1
+IRQ driver load operations:    1
+ARM runtime processes:         1
+RISC-V payload uploads:        1
+Job submissions completed:     3
+IRQ event counts:              1, 2, 3
+Job states:                    DONE, DONE, DONE
+Job statuses:                  OK, OK, OK
+Last outputs:                  17, 5131, 458755
+
+Result: H5_REUSABLE_RUNTIME_PASS

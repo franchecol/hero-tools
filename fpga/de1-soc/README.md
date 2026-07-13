@@ -61,7 +61,8 @@ Q direct Quartus path ── failed on upstream SystemVerilog frontend
                          │
                          ▼
                  H4 Linux job runtime        PASS / descriptor ABI
-                 H5 reusable submissions     NEXT
+                 H5 reusable submissions     PASS / three jobs
+                 H6 Linux job driver         NEXT
 ```
 
 ## Current Board State After microSD Boot
