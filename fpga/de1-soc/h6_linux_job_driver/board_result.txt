@@ -1,0 +1,14 @@
+H6 DE1-SoC physical verification, 2026-07-13
+
+Client UID:                    1000 (ubuntu, non-root)
+Client device:                 /dev/snitch_job
+Client /dev/mem usage:         none
+Client direct IRQ device:      none
+FPGA programming operations:   1
+Kernel driver load operations: 1
+RISC-V payload uploads:        1
+Blocking ioctl submissions:    3
+IRQ event counts:              1, 2, 3
+Last outputs:                  17, 5131, 458755
+
+Result: H6_LINUX_JOB_DRIVER_PASS
