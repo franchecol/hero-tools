@@ -1,6 +1,7 @@
 module axi_shared_data_ram #(
   parameter logic [31:0] BaseAddr = 32'h0000_4000,
   parameter logic [31:0] ResultAddr = 32'h0000_2000,
+  parameter logic [31:0] DoorbellAddr = 32'h0000_3000,
   parameter int unsigned RamBytes = 4096,
   parameter int unsigned IdWidth = 4
 ) (
@@ -11,6 +12,8 @@ module axi_shared_data_ram #(
   input  logic [31:0]        host_wdata_i,
   input  logic [3:0]         host_be_i,
   output logic [31:0]        host_rdata_o,
+  input  logic               job_active_i,
+  input  logic               result_ack_i,
 
   input  logic               ar_valid_i,
   output logic               ar_ready_o,
@@ -72,6 +75,7 @@ module axi_shared_data_ram #(
   logic write_is_data, write_is_result;
   logic [31:0] next_read_addr;
   logic read_address_valid;
+  logic read_is_data, read_is_doorbell;
   logic [BeatAddrWidth-1:0] mem_read_addr, mem_write_addr;
   logic [63:0] mem_rdata;
 
@@ -79,10 +83,13 @@ module axi_shared_data_ram #(
   assign r_valid_o = read_active_q;
   assign r_last_o = read_active_q && read_beats_left_q == 0;
   assign r_id_o = read_id_q;
-  assign read_address_valid = read_addr_q >= BaseAddr &&
-                              read_addr_q + 7 < BaseAddr + RamBytes;
+  assign read_is_data = read_addr_q >= BaseAddr &&
+                        read_addr_q + 7 < BaseAddr + RamBytes;
+  assign read_is_doorbell = read_addr_q == DoorbellAddr;
+  assign read_address_valid = read_is_data || read_is_doorbell;
   assign r_resp_o = read_address_valid ? 2'b00 : 2'b11;
-  assign r_data_o = read_address_valid ? mem_rdata : 64'b0;
+  assign r_data_o = read_is_doorbell ? {63'b0, job_active_i} :
+                    read_is_data ? mem_rdata : 64'b0;
   assign next_read_addr = read_burst_q == 2'b01
                         ? read_addr_q + (32'b1 << read_size_q) : read_addr_q;
 
@@ -183,6 +190,7 @@ module axi_shared_data_ram #(
       result_valid_q <= 1'b0;
       result_q <= '0;
     end else begin
+      if (result_ack_i) result_valid_q <= 1'b0;
       if (ar_valid_i && ar_ready_o) begin
         read_active_q <= 1'b1;
         read_addr_q <= ar_addr_i;

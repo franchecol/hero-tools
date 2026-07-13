@@ -21,12 +21,14 @@ module axi_shared_data_ram_tb;
   logic b_valid, b_ready;
   logic [1:0] b_resp;
   logic result_valid;
+  logic job_active, result_ack;
   logic [31:0] result;
 
   axi_shared_data_ram dut (
     .clk_i(clk), .rst_ni(rst_n), .host_write_i(host_write),
     .host_word_addr_i(host_word_addr), .host_wdata_i(host_wdata),
     .host_be_i(host_be), .host_rdata_o(host_rdata),
+    .job_active_i(job_active), .result_ack_i(result_ack),
     .ar_valid_i(ar_valid), .ar_ready_o(ar_ready), .ar_addr_i(ar_addr),
     .ar_len_i(ar_len), .ar_size_i(ar_size), .ar_burst_i(ar_burst),
     .ar_id_i(ar_id), .r_valid_o(r_valid), .r_ready_i(r_ready),
@@ -56,6 +58,7 @@ module axi_shared_data_ram_tb;
     ar_valid = 0; ar_addr = 0; ar_len = 0; ar_size = 3; ar_burst = 1; ar_id = 0;
     r_ready = 0; aw_valid = 0; aw_addr = 0; aw_id = 0;
     w_valid = 0; w_data = 0; w_strb = 0; w_last = 1; b_ready = 0;
+    job_active = 0; result_ack = 0;
     repeat (2) tick(); rst_n = 1; tick();
 
     host_write_word(0, 32'h1111_2222);
@@ -74,12 +77,16 @@ module axi_shared_data_ram_tb;
     host_word_addr = 1; #1; assert (host_rdata == 32'hdead_beef);
     axi_write(32'h2000, 64'h0000_0000_0000_4833, 8'h0f, 4'h3, 2'b00);
     assert (result_valid && result == 32'h0000_4833);
+    result_ack = 1; tick(); result_ack = 0;
+    assert (!result_valid && result == 32'h0000_4833);
     axi_write(32'h3000, 64'hffff_ffff_ffff_ffff, 8'hff, 4'h7, 2'b11);
 
+    job_active = 1;
     ar_addr = 32'h3000; ar_id = 4'h2; ar_valid = 1; tick(); ar_valid = 0;
-    assert (r_valid && r_resp == 2'b11 && r_data == 0 && r_last);
+    assert (r_valid && r_resp == 2'b00 && r_data == 1 && r_last);
     r_ready = 1; tick(); r_ready = 0;
 
+    $display("H7_DOORBELL_AXI_PASS");
     $display("H3_AXI_SHARED_DATA_RAM_PASS");
     $finish;
   end

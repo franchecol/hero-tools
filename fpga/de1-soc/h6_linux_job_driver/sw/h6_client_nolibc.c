@@ -18,6 +18,7 @@ typedef unsigned long usize;
 #define PAYLOAD_MAX 4096u
 
 static u8 payload[PAYLOAD_MAX];
+static u32 resident_seen;
 
 static long syscall0(long n) {
     register long r7 __asm__("r7") = n;
@@ -99,6 +100,13 @@ static int submit_and_check(int fd, struct h6_job *job, u32 index) {
     long rc = syscall3(SYS_IOCTL, fd, H6_JOB_IOCTL_SUBMIT, (long)job);
     if (rc != 0 || job->status != 0 || job->completion != 0x4834u ||
         job->event_count != index + 1u) return 1;
+    if (job->reserved[0] != 0) {
+        if (job->reserved[0] != 1u || (job->reserved[1] & 7u) != 6u) return 1;
+        resident_seen = 1;
+        write_hex32(index == 0 ? "H7_JOB0_WORKER_STARTS" :
+                    index == 1 ? "H7_JOB1_WORKER_STARTS" : "H7_JOB2_WORKER_STARTS",
+                    job->reserved[0]);
+    }
     for (u32 i = 0; i < job->count; ++i) {
         u32 expected = job->input[i] * job->multiplier + job->bias;
         if (job->output[i] != expected) return 1;
@@ -141,6 +149,7 @@ static int run_h6(void) {
     if (submit_and_check(fd, &job, 2) != 0) goto fail;
 
     syscall1(SYS_CLOSE, fd);
+    if (resident_seen) write_all(1, "H7_RESIDENT_WORKER_PASS\n");
     write_all(1, "H6_LINUX_JOB_DRIVER_PASS\n");
     return 0;
 

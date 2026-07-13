@@ -31,6 +31,7 @@
 #define H6_REG_BOOT_SIZE 0x20
 #define H6_REG_DATA_BASE 0x24
 #define H6_REG_DATA_SIZE 0x28
+#define H6_REG_JOB_DOORBELL 0x2c
 
 #define H6_BOOT_OFFSET 0x1000
 #define H6_BOOT_BYTES 4096
@@ -39,6 +40,8 @@
 #define H6_STATUS_RESULT_VALID BIT(4)
 #define H6_IRQ_PENDING BIT(0)
 #define H6_IRQ_LINE BIT(2)
+#define H7_JOB_ACTIVE BIT(0)
+#define H7_HOST_ACCESS BIT(2)
 
 #define H4_MAGIC 0x48344a42u
 #define H4_VERSION 1u
@@ -70,6 +73,9 @@ static atomic_t open_count = ATOMIC_INIT(0);
 static DECLARE_WAIT_QUEUE_HEAD(job_waitq);
 static DEFINE_MUTEX(job_lock);
 static bool program_loaded;
+static bool resident_mode;
+static bool worker_started;
+static unsigned int worker_start_count;
 
 module_param(irq, int, 0444);
 MODULE_PARM_DESC(irq, "Linux virtual IRQ number for legacy kernels");
@@ -79,6 +85,8 @@ module_param(gic_hwirq, int, 0444);
 MODULE_PARM_DESC(gic_hwirq, "GIC hardware IRQ; Cyclone V f2h_irq0 bit 0 uses 72");
 module_param(mmio_base, ulong, 0444);
 MODULE_PARM_DESC(mmio_base, "HPS lightweight bridge physical base");
+module_param(resident_mode, bool, 0444);
+MODULE_PARM_DESC(resident_mode, "Keep the Snitch worker resident and submit through H7 doorbell");
 
 static inline void h6_write(u32 offset, u32 value)
 {
@@ -96,6 +104,20 @@ static int h6_wait_result_clear(void)
 
 	for (i = 0; i < 1000000; ++i) {
 		if (!(h6_read(H6_REG_STATUS) & H6_STATUS_RESULT_VALID))
+			return 0;
+		udelay(1);
+	}
+	return -ETIMEDOUT;
+}
+
+static int h7_wait_job_idle(void)
+{
+	unsigned int i;
+	u32 state;
+
+	for (i = 0; i < 1000000; ++i) {
+		state = h6_read(H6_REG_JOB_DOORBELL);
+		if (!(state & H7_JOB_ACTIVE) && (state & H7_HOST_ACCESS))
 			return 0;
 		udelay(1);
 	}
@@ -153,6 +175,7 @@ static ssize_t h6_load_program(struct file *file, const char __user *buf,
 		return ret;
 	}
 	h6_write(H6_REG_CONTROL, 0);
+	worker_started = false;
 	ret = h6_wait_result_clear();
 	if (!ret) {
 		for (i = 0; i < count / sizeof(u32); ++i)
@@ -197,16 +220,31 @@ static int h6_run_job(struct h6_job *job)
 	if (!job->count || job->count > H6_JOB_MAX_WORDS)
 		return -EINVAL;
 
-	h6_write(H6_REG_CONTROL, 0);
-	ret = h6_wait_result_clear();
-	if (ret)
-		return ret;
+	if (!resident_mode || !worker_started) {
+		h6_write(H6_REG_CONTROL, 0);
+		ret = h6_wait_result_clear();
+		if (ret)
+			return ret;
+	} else {
+		ret = h7_wait_job_idle();
+		if (ret)
+			return ret;
+	}
 	h6_write_descriptor(job);
 	h6_write(H6_REG_IRQ_PENDING, H6_IRQ_PENDING);
 	h6_write(H6_REG_IRQ_ENABLE, 1);
 	seen = atomic_read(&event_count);
 	wmb();
-	h6_write(H6_REG_CONTROL, 1);
+	if (resident_mode) {
+		if (!worker_started) {
+			h6_write(H6_REG_CONTROL, 1);
+			worker_started = true;
+			++worker_start_count;
+		}
+		h6_write(H6_REG_JOB_DOORBELL, 1);
+	} else {
+		h6_write(H6_REG_CONTROL, 1);
+	}
 
 	waited = wait_event_interruptible_timeout(job_waitq,
 		atomic_read(&event_count) != seen, msecs_to_jiffies(5000));
@@ -218,9 +256,14 @@ static int h6_run_job(struct h6_job *job)
 	job->event_count = atomic_read(&event_count);
 
 stop:
-	h6_write(H6_REG_CONTROL, 0);
-	if (h6_wait_result_clear() && !ret)
+	if (!resident_mode || ret) {
+		h6_write(H6_REG_CONTROL, 0);
+		worker_started = false;
+		if (h6_wait_result_clear() && !ret)
+			ret = -ETIMEDOUT;
+	} else if (h7_wait_job_idle()) {
 		ret = -ETIMEDOUT;
+	}
 	if (ret)
 		return ret;
 	job->status = h6_read(H6_DATA_OFFSET + H4_DESC_STATUS);
@@ -230,6 +273,8 @@ stop:
 	for (i = 0; i < job->count; ++i)
 		job->output[i] = h6_read(H6_DATA_OFFSET + H4_OUTPUT_OFFSET +
 					     i * sizeof(u32));
+	job->reserved[0] = worker_start_count;
+	job->reserved[1] = resident_mode ? h6_read(H6_REG_JOB_DOORBELL) : 0;
 	return 0;
 }
 
@@ -328,6 +373,10 @@ static int __init h6_init(void)
 		ret = -ENODEV;
 		goto err_unmap;
 	}
+	if (resident_mode && !(h6_read(H6_REG_JOB_DOORBELL) & H7_HOST_ACCESS)) {
+		ret = -ENODEV;
+		goto err_unmap;
+	}
 	h6_write(H6_REG_CONTROL, 0);
 	h6_write(H6_REG_IRQ_ENABLE, 0);
 	h6_write(H6_REG_IRQ_PENDING, H6_IRQ_PENDING);
@@ -344,8 +393,8 @@ static int __init h6_init(void)
 	ret = misc_register(&h6_miscdev);
 	if (ret)
 		goto err_free_irq;
-	pr_info("snitch_job: ready at /dev/snitch_job, irq=%d mmio=0x%lx\n",
-		requested_irq, mmio_base);
+	pr_info("snitch_job: ready at /dev/snitch_job, irq=%d mmio=0x%lx resident=%d\n",
+		requested_irq, mmio_base, resident_mode);
 	return 0;
 
 err_free_irq:

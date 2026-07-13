@@ -38,6 +38,8 @@ proc wrapper_text {output_name} {
         .data_host_wdata    ('0),
         .data_host_be       ('0),
         .data_host_rdata    (data_host_rdata_unused),
+        .job_active         (1'b0),
+        .result_ack         (1'b0),
         .boot_fetch_seen    (boot_fetch_seen_unused),
         .boot_result_valid  (boot_result_valid_unused),
         .boot_result        (boot_result_unused),

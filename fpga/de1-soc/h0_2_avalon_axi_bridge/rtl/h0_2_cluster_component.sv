@@ -20,6 +20,8 @@ module h0_2_cluster_component_core #(
   input  logic [31:0]                data_host_wdata,
   input  logic [3:0]                 data_host_be,
   output logic [31:0]                data_host_rdata,
+  input  logic                       job_active,
+  input  logic                       result_ack,
   output logic                       boot_fetch_seen,
   output logic                       boot_result_valid,
   output logic [31:0]                boot_result
@@ -70,6 +72,7 @@ module h0_2_cluster_component_core #(
     .data_host_word_addr_i(data_host_word_addr),
     .data_host_wdata_i(data_host_wdata), .data_host_be_i(data_host_be),
     .data_host_rdata_o(data_host_rdata),
+    .job_active_i(job_active), .result_ack_i(result_ack),
     .host_w_ready_o(w_ready), .host_b_valid_o(b_valid),
     .host_b_resp_o(b_resp), .host_b_id_o(b_id),
     .boot_fetch_seen_o(boot_fetch_seen),

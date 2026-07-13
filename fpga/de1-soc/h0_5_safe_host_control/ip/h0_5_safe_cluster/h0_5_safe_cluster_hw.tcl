@@ -44,6 +44,8 @@ proc wrapper_text {output_name} {
     wire [31:0] data_host_wdata;
     wire [3:0]  data_host_be;
     wire [31:0] data_host_rdata;
+    wire        job_active;
+    wire        result_ack;
 
     safe_host_control u_control (
         .clk_i                    (clk),
@@ -76,6 +78,8 @@ proc wrapper_text {output_name} {
         .data_host_wdata_o        (data_host_wdata),
         .data_host_be_o           (data_host_be),
         .data_host_rdata_i        (data_host_rdata),
+        .job_active_o             (job_active),
+        .result_ack_o             (result_ack),
         .irq_o                    (irq)
     );
 
@@ -99,6 +103,8 @@ proc wrapper_text {output_name} {
         .data_host_wdata      (data_host_wdata),
         .data_host_be         (data_host_be),
         .data_host_rdata      (data_host_rdata),
+        .job_active           (job_active),
+        .result_ack           (result_ack),
         .boot_fetch_seen      (boot_fetch_seen),
         .boot_result_valid    (boot_result_valid),
         .boot_result          (boot_result)

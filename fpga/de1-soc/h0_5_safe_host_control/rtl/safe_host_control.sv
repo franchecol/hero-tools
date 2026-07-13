@@ -37,12 +37,15 @@ module safe_host_control #(
   output logic [31:0]                data_host_wdata_o,
   output logic [3:0]                 data_host_be_o,
   input  logic [31:0]                data_host_rdata_i,
+  output logic                       job_active_o,
+  output logic                       result_ack_o,
   output logic                       irq_o
 );
   logic cluster_selected, boot_selected, data_selected;
   logic release_cluster_q;
   logic irq_enable_q, irq_pending_q, result_seen_q;
   logic data_read_pending_q;
+  logic job_active_q, resident_mode_q, data_host_access;
 
   assign cluster_selected = avs_address_i >= ClusterBaseWord;
   assign data_selected = avs_address_i >= DataBaseWord && avs_address_i < ClusterBaseWord;
@@ -54,11 +57,17 @@ module safe_host_control #(
   assign cluster_byteenable_o = avs_byteenable_i;
   assign cluster_hold_reset_o = ~release_cluster_q;
   assign irq_o = irq_enable_q && irq_pending_q;
+  assign job_active_o = job_active_q;
+  assign result_ack_o = avs_write_i && !cluster_selected && !data_selected &&
+                        !boot_selected && avs_address_i == 11 &&
+                        avs_byteenable_i[0] && avs_writedata_i[0];
+  assign data_host_access = cluster_hold_reset_o ||
+                            (resident_mode_q && !job_active_q);
   assign boot_host_write_o = avs_write_i && boot_selected && cluster_hold_reset_o;
   assign boot_host_word_addr_o = avs_address_i[9:0];
   assign boot_host_wdata_o = avs_writedata_i;
   assign boot_host_be_o = avs_byteenable_i;
-  assign data_host_write_o = avs_write_i && data_selected && cluster_hold_reset_o;
+  assign data_host_write_o = avs_write_i && data_selected && data_host_access;
   assign data_host_word_addr_o = avs_address_i[9:0];
   assign data_host_wdata_o = avs_writedata_i;
   assign data_host_be_o = avs_byteenable_i;
@@ -70,7 +79,7 @@ module safe_host_control #(
       avs_readdata_o = cluster_readdata_i;
       avs_waitrequest_o = cluster_waitrequest_i;
     end else if (data_selected) begin
-      avs_readdata_o = cluster_hold_reset_o ? data_host_rdata_i : 32'h0000_0000;
+      avs_readdata_o = data_host_access ? data_host_rdata_i : 32'h0000_0000;
       avs_waitrequest_o = avs_read_i && !data_read_pending_q;
     end else if (boot_selected) begin
       avs_readdata_o = 32'h0000_0000;
@@ -89,6 +98,8 @@ module safe_host_control #(
         8: avs_readdata_o = 32'd4096;
         9: avs_readdata_o = {{(32-AvalonAddrWidth){1'b0}}, DataBaseWord} << 2;
         10: avs_readdata_o = 32'd4096;
+        11: avs_readdata_o = {29'b0, data_host_access, resident_mode_q,
+                              job_active_q};
         default: avs_readdata_o = 32'h0000_0000;
       endcase
     end
@@ -101,6 +112,8 @@ module safe_host_control #(
       irq_pending_q <= 1'b0;
       result_seen_q <= 1'b0;
       data_read_pending_q <= 1'b0;
+      job_active_q <= 1'b0;
+      resident_mode_q <= 1'b0;
     end else begin
       if (!avs_read_i || !data_selected) data_read_pending_q <= 1'b0;
       else data_read_pending_q <= ~data_read_pending_q;
@@ -109,6 +122,7 @@ module safe_host_control #(
       if (boot_result_valid_i && !result_seen_q) begin
         result_seen_q <= 1'b1;
         irq_pending_q <= 1'b1;
+        job_active_q <= 1'b0;
       end
 
       if (avs_write_i && !cluster_selected && !data_selected && !boot_selected &&
@@ -117,6 +131,10 @@ module safe_host_control #(
           1: release_cluster_q <= avs_writedata_i[0];
           5: irq_enable_q <= avs_writedata_i[0];
           6: if (avs_writedata_i[0]) irq_pending_q <= 1'b0;
+          11: if (avs_writedata_i[0] && release_cluster_q && !job_active_q) begin
+            resident_mode_q <= 1'b1;
+            job_active_q <= 1'b1;
+          end
           default: begin end
         endcase
       end

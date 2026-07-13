@@ -12,6 +12,7 @@ module safe_host_control_tb;
   logic [3:0] cluster_byteenable;
   logic cluster_waitrequest;
   logic boot_result_valid, irq;
+  logic job_active, result_ack;
   logic boot_host_write;
   logic [9:0] boot_host_word_addr;
   logic [31:0] boot_host_wdata;
@@ -38,7 +39,8 @@ module safe_host_control_tb;
     .boot_host_wdata_o(boot_host_wdata), .boot_host_be_o(boot_host_be), .irq_o(irq),
     .data_host_write_o(data_host_write),
     .data_host_word_addr_o(data_host_word_addr), .data_host_wdata_o(data_host_wdata),
-    .data_host_be_o(data_host_be), .data_host_rdata_i(data_host_rdata)
+    .data_host_be_o(data_host_be), .data_host_rdata_i(data_host_rdata),
+    .job_active_o(job_active), .result_ack_o(result_ack)
   );
 
   task automatic tick;
@@ -102,6 +104,28 @@ module safe_host_control_tb;
     tick();
     assert (!avs_waitrequest && avs_readdata == 0);
     avs_read = 0;
+
+    // Enter resident mode: a doorbell transfers shared RAM to Snitch.
+    avs_address = 11; avs_writedata = 1; avs_byteenable = 4'hf;
+    avs_write = 1; settle();
+    assert (!job_active && result_ack);
+    tick();
+    avs_write = 0; settle();
+    assert (job_active && !result_ack);
+    avs_address = 16'h0802; avs_writedata = 32'ha5a5_5a5a;
+    avs_byteenable = 4'hf; avs_write = 1;
+    #1 assert (!data_host_write);
+    avs_write = 0; tick();
+
+    // Completion returns ownership to the host without resetting Snitch.
+    boot_result_valid = 1; tick();
+    boot_result_valid = 0; tick();
+    assert (!job_active);
+    avs_address = 16'h0802; avs_writedata = 32'ha5a5_5a5a;
+    avs_byteenable = 4'hf; avs_write = 1;
+    #1 assert (data_host_write);
+    avs_write = 0; tick();
+    $display("H7_RESIDENT_OWNERSHIP_PASS");
 
     avs_address = 16'h0403; avs_writedata = 32'hdead_beef; avs_byteenable = 4'b0101;
     avs_write = 1; settle();

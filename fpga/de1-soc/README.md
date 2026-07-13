@@ -63,7 +63,8 @@ Q direct Quartus path ── failed on upstream SystemVerilog frontend
                  H4 Linux job runtime        PASS / descriptor ABI
                  H5 reusable submissions     PASS / three jobs
                  H6 Linux job driver         PASS / UID 1000 client
-                 H7 resident worker          NEXT
+                 H7 resident worker          PASS / one start, three jobs
+                 H8 double-buffered jobs     NEXT
 ```
 
 ## Current Board State After microSD Boot
