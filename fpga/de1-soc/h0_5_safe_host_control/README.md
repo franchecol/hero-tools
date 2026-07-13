@@ -10,7 +10,8 @@ HPS lightweight bridge
           ▼
 safe_host_control
   ├── 0x0000-0x0fff local control/status
-  └── 0x1000+        forwarded cluster window
+  ├── 0x1000-0x1fff host-writable H2 boot memory
+  └── 0x2000+        forwarded cluster window
 ```
 
 ## Register Map
@@ -24,10 +25,12 @@ Offsets are bytes from the HPS lightweight bridge base:
 │ 0x00   │ ID           │ R      │ 0x48300005                         │
 │ 0x04   │ CONTROL      │ R/W    │ bit0=release cluster reset         │
 │ 0x08   │ STATUS       │ R      │ held, released, PLL, fetch, result │
-│ 0x0c   │ CLUSTER_BASE │ R      │ 0x00001000                         │
+│ 0x0c   │ CLUSTER_BASE │ R      │ 0x00002000                         │
 │ 0x10   │ BOOT_RESULT  │ R      │ H0.7 data-path signature           │
 │ 0x14   │ IRQ_ENABLE   │ R/W    │ bit0 enables completion IRQ        │
 │ 0x18   │ IRQ_PENDING  │ R/W1C  │ pending, enabled, asserted         │
+│ 0x1c   │ BOOT_BASE    │ R      │ host offset 0x00001000             │
+│ 0x20   │ BOOT_BYTES   │ R      │ 4096                               │
 └────────┴──────────────┴────────┴────────────────────────────────────┘
 ```
 
@@ -109,7 +112,7 @@ because `/dev/mem` is root-only:
 ID           = 0x48300005
 CONTROL      = 0x00000000
 STATUS       = 0x00000005
-CLUSTER_BASE = 0x00001000
+CLUSTER_BASE = 0x00002000
 H0.5_READ_ONLY_PASS
 TEST_RC=0
 ```

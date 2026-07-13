@@ -1,0 +1,9 @@
+H2 DE1-SoC physical verification, 2026-07-12
+
+PROGRAM0 STATUS = 0x0000001e
+PROGRAM0 RESULT = 0x000005a5
+PROGRAM1 STATUS = 0x0000001e
+PROGRAM1 RESULT = 0x000003c3
+
+The FPGA was not rebuilt or reprogrammed between programs.
+Result: H2_TWO_PROGRAMS_PASS

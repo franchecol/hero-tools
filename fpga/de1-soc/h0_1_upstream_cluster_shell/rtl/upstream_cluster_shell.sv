@@ -24,6 +24,10 @@ module h0_1_upstream_cluster_shell (
   input  logic [63:0] host_w_data_i,
   input  logic [7:0]  host_w_strb_i,
   input  logic        host_w_last_i,
+  input  logic        boot_host_write_i,
+  input  logic [9:0]  boot_host_word_addr_i,
+  input  logic [31:0] boot_host_wdata_i,
+  input  logic [3:0]  boot_host_be_i,
   output logic        host_w_ready_o,
   output logic        host_b_valid_o,
   output logic [1:0]  host_b_resp_o,
@@ -52,8 +56,10 @@ module h0_1_upstream_cluster_shell (
   logic [1:0] sink_b_resp;
   logic [3:0] sink_b_id;
 
-  axi_boot_rom #(.IdWidth(3)) i_boot_rom (
+  axi_boot_ram #(.IdWidth(3)) i_boot_ram (
     .clk_i(clk_i), .rst_ni(rst_ni),
+    .host_write_i(boot_host_write_i), .host_word_addr_i(boot_host_word_addr_i),
+    .host_wdata_i(boot_host_wdata_i), .host_be_i(boot_host_be_i),
     .ar_valid_i(wide_out_ar_valid), .ar_ready_o(boot_ar_ready),
     .ar_addr_i(wide_out_ar_addr), .ar_len_i(wide_out_ar_len),
     .ar_size_i(wide_out_ar_size), .ar_burst_i(wide_out_ar_burst),

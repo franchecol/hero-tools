@@ -33,7 +33,8 @@ Address    Instruction  Meaning
 ```
 
 The build script checks both the 16-byte size and the exact four generated
-words. The H0.6 ROM currently embeds these checked words.
+words. H2 now uploads these words into boot RAM instead of embedding them in
+the FPGA image.
 
 ```bash
 ./scripts/build_firmware.sh

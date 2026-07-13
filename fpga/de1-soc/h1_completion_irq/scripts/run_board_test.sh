@@ -32,6 +32,10 @@ test_lines = r'''
 rmmod snitch_lite_irq 2>/dev/null || true
 insmod /tmp/snitch_lite_irq.ko gic_spi=40 mmio_base=0xff200000 irq_pending_offset=0x18
 devmem2 0xff200004 w 0 >/dev/null
+devmem2 0xff201000 w 0x000022b7 >/dev/null
+devmem2 0xff201004 w 0x5a500313 >/dev/null
+devmem2 0xff201008 w 0x0062a023 >/dev/null
+devmem2 0xff20100c w 0x0000006f >/dev/null
 devmem2 0xff200018 w 1 >/dev/null
 devmem2 0xff200014 w 1 >/dev/null
 rm -f /tmp/h1_event

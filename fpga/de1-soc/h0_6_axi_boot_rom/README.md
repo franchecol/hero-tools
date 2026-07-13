@@ -18,7 +18,9 @@ Snitch instruction request
 The original H0.6 placeholder image contained `jal x0, 0` (`0x0000006f`) so
 releasing the cluster could not escape the ROM or touch an unimplemented
 external address. H0.7 later replaced the ROM contents with an observable
-four-instruction payload while preserving this AXI target.
+four-instruction payload while preserving this AXI target. H2 supersedes the
+fixed ROM with host-writable boot RAM while retaining the same Snitch-side AXI
+address and burst contract.
 
 ```bash
 ./scripts/test_boot_rom.sh

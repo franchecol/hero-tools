@@ -56,6 +56,7 @@ Q direct Quartus path ── failed on upstream SystemVerilog frontend
                  H0.6.3 Linux fetch proof    PASS
                  H0.7 boot store to Linux    PASS / result 0x5A5
                  H1 Linux completion IRQ     PASS / blocking wake
+                 H2 host-loaded boot RAM     PASS / two programs
                          │
                          ▼
                  H heterogeneous integration LATER

@@ -28,6 +28,10 @@ proc wrapper_text {output_name} {
     wire [31:0] boot_result_unused;
     h0_2_cluster_component_core u_core (
         .cluster_hold_reset (1'b0),
+        .boot_host_write    (1'b0),
+        .boot_host_word_addr('0),
+        .boot_host_wdata    ('0),
+        .boot_host_be       ('0),
         .boot_fetch_seen    (boot_fetch_seen_unused),
         .boot_result_valid  (boot_result_valid_unused),
         .boot_result        (boot_result_unused),
@@ -42,7 +46,7 @@ proc fileset_quartus_synth {output_name} {
     add_fileset_file h0_2_cluster_component.sv SYSTEM_VERILOG PATH ../../rtl/h0_2_cluster_component.sv
     add_fileset_file avalon_to_narrow_axi.sv SYSTEM_VERILOG PATH ../../rtl/avalon_to_narrow_axi.sv
     add_fileset_file upstream_cluster_shell.sv SYSTEM_VERILOG PATH ../../../h0_1_upstream_cluster_shell/rtl/upstream_cluster_shell.sv
-    add_fileset_file axi_boot_rom.sv SYSTEM_VERILOG PATH ../../../h0_6_axi_boot_rom/rtl/axi_boot_rom.sv
+    add_fileset_file axi_boot_ram.sv SYSTEM_VERILOG PATH ../../../h2_host_program_memory/rtl/axi_boot_ram.sv
     add_fileset_file axi_signature_sink.sv SYSTEM_VERILOG PATH ../../../h0_7_observable_boot/rtl/axi_signature_sink.sv
     add_fileset_file cyclone_sram_primitive.sv SYSTEM_VERILOG PATH ../../../u5_1_sram_retention/rtl/cyclone_sram_primitive.sv
     add_fileset_file de1_u4_cluster_quartus.v VERILOG PATH ../../../u4_cyclone_memory_boundary/generated/de1_u4_cluster_quartus.v

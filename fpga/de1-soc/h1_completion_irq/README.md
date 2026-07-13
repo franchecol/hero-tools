@@ -56,8 +56,8 @@ BOARD_SUDO_PASSWORD=temppwd ./scripts/run_board_test.sh
 ```
 
 The script rebuilds the driver for the LXDE kernel, transfers it over UART,
-loads it with `gic_spi=40`, starts a blocking eight-byte read, and only then
-releases Snitch reset.
+loads it with `gic_spi=40`, uploads the H0.7 program when running on H2 or
+later, starts a blocking eight-byte read, and only then releases Snitch reset.
 
 ## Build Result
 

@@ -103,7 +103,7 @@ static int run(void) {
   syscall1(SYS_CLOSE, fd);
 
   if (id != 0x48300005u || control != 0 || (status & 3u) != 1u ||
-      cluster_base != 0x1000u) {
+      cluster_base != 0x2000u) {
     write_text(2, "FAIL: unexpected H0.5 reset-held identity state\n");
     return 2;
   }
