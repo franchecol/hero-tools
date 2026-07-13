@@ -16,6 +16,10 @@ module safe_host_control_tb;
   logic [9:0] boot_host_word_addr;
   logic [31:0] boot_host_wdata;
   logic [3:0] boot_host_be;
+  logic data_host_write;
+  logic [9:0] data_host_word_addr;
+  logic [31:0] data_host_wdata, data_host_rdata;
+  logic [3:0] data_host_be;
 
   safe_host_control dut (
     .clk_i(clk), .rst_i(rst), .pll_locked_i(1'b1), .boot_fetch_seen_i(1'b0),
@@ -31,7 +35,10 @@ module safe_host_control_tb;
     .cluster_byteenable_o(cluster_byteenable),
     .cluster_waitrequest_i(cluster_waitrequest),
     .boot_host_write_o(boot_host_write), .boot_host_word_addr_o(boot_host_word_addr),
-    .boot_host_wdata_o(boot_host_wdata), .boot_host_be_o(boot_host_be), .irq_o(irq)
+    .boot_host_wdata_o(boot_host_wdata), .boot_host_be_o(boot_host_be), .irq_o(irq),
+    .data_host_write_o(data_host_write),
+    .data_host_word_addr_o(data_host_word_addr), .data_host_wdata_o(data_host_wdata),
+    .data_host_be_o(data_host_be), .data_host_rdata_i(data_host_rdata)
   );
 
   task automatic tick;
@@ -46,6 +53,7 @@ module safe_host_control_tb;
     avs_address = 0; avs_read = 0; avs_write = 0;
     avs_writedata = 0; avs_byteenable = 4'hf;
     cluster_readdata = 32'hcafe_f00d; cluster_waitrequest = 0;
+    data_host_rdata = 32'hface_1234;
     boot_result_valid = 0;
 
     repeat (2) tick();
@@ -58,9 +66,11 @@ module safe_host_control_tb;
     avs_address = 2; settle();
     assert (avs_readdata == 32'h0000_0005);
     avs_address = 3; settle();
-    assert (avs_readdata == 32'h0000_2000);
+    assert (avs_readdata == 32'h0000_3000);
     avs_address = 7; settle(); assert (avs_readdata == 32'h0000_1000);
     avs_address = 8; settle(); assert (avs_readdata == 32'd4096);
+    avs_address = 9; settle(); assert (avs_readdata == 32'h0000_2000);
+    avs_address = 10; settle(); assert (avs_readdata == 32'd4096);
     avs_read = 0;
 
     avs_address = 16'h0403; avs_writedata = 32'hdead_beef; avs_byteenable = 4'b0101;
@@ -69,18 +79,36 @@ module safe_host_control_tb;
             boot_host_wdata == 32'hdead_beef && boot_host_be == 4'b0101);
     tick(); avs_write = 0;
 
+    avs_address = 16'h0802; avs_writedata = 32'h0123_4567; avs_byteenable = 4'b1010;
+    avs_write = 1; settle();
+    assert (data_host_write && data_host_word_addr == 2 &&
+            data_host_wdata == 32'h0123_4567 && data_host_be == 4'b1010);
+    tick(); avs_write = 0; avs_read = 1; settle();
+    assert (avs_waitrequest);
+    tick();
+    assert (!avs_waitrequest && avs_readdata == 32'hface_1234);
+    avs_read = 0;
+
     avs_address = 1; avs_writedata = 1; avs_byteenable = 4'b0010;
     avs_write = 1; tick(); avs_write = 0;
     assert (cluster_hold_reset);
     avs_byteenable = 4'b0001; avs_write = 1; tick(); avs_write = 0;
     assert (!cluster_hold_reset);
 
+    avs_address = 16'h0802; avs_write = 1; settle();
+    assert (!data_host_write);
+    avs_write = 0; avs_read = 1; settle();
+    assert (avs_waitrequest);
+    tick();
+    assert (!avs_waitrequest && avs_readdata == 0);
+    avs_read = 0;
+
     avs_address = 16'h0403; avs_writedata = 32'hdead_beef; avs_byteenable = 4'b0101;
     avs_write = 1; settle();
     assert (!boot_host_write);
     tick(); avs_write = 0;
 
-    avs_address = 16'h0803; avs_read = 1; cluster_waitrequest = 1; settle();
+    avs_address = 16'h0c03; avs_read = 1; cluster_waitrequest = 1; settle();
     assert (cluster_read && cluster_address == 16'h0003);
     assert (avs_waitrequest && avs_readdata == 32'hcafe_f00d);
     avs_read = 0; avs_write = 1; avs_writedata = 32'h1234_5678;

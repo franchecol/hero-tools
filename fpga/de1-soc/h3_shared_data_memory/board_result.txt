@@ -1,0 +1,9 @@
+H3 DE1-SoC physical verification, 2026-07-13
+
+Input words:             3, 7, 16, 256
+Completion signature:    0x00004833
+Output words:            0x10, 0x1c, 0x37, 0x307
+Expected operation:      output[i] = input[i] * 3 + 7
+Linux completion path:   blocking FPGA-to-HPS interrupt
+
+Result: H3_SHARED_DATA_PASS

@@ -39,6 +39,11 @@ proc wrapper_text {output_name} {
     wire [9:0]  boot_host_word_addr;
     wire [31:0] boot_host_wdata;
     wire [3:0]  boot_host_be;
+    wire        data_host_write;
+    wire [9:0]  data_host_word_addr;
+    wire [31:0] data_host_wdata;
+    wire [3:0]  data_host_be;
+    wire [31:0] data_host_rdata;
 
     safe_host_control u_control (
         .clk_i                    (clk),
@@ -66,6 +71,11 @@ proc wrapper_text {output_name} {
         .boot_host_word_addr_o    (boot_host_word_addr),
         .boot_host_wdata_o        (boot_host_wdata),
         .boot_host_be_o           (boot_host_be),
+        .data_host_write_o        (data_host_write),
+        .data_host_word_addr_o    (data_host_word_addr),
+        .data_host_wdata_o        (data_host_wdata),
+        .data_host_be_o           (data_host_be),
+        .data_host_rdata_i        (data_host_rdata),
         .irq_o                    (irq)
     );
 
@@ -84,6 +94,11 @@ proc wrapper_text {output_name} {
         .boot_host_word_addr  (boot_host_word_addr),
         .boot_host_wdata      (boot_host_wdata),
         .boot_host_be         (boot_host_be),
+        .data_host_write      (data_host_write),
+        .data_host_word_addr  (data_host_word_addr),
+        .data_host_wdata      (data_host_wdata),
+        .data_host_be         (data_host_be),
+        .data_host_rdata      (data_host_rdata),
         .boot_fetch_seen      (boot_fetch_seen),
         .boot_result_valid    (boot_result_valid),
         .boot_result          (boot_result)
@@ -99,7 +114,7 @@ proc fileset_quartus_synth {output_name} {
     add_fileset_file avalon_to_narrow_axi.sv SYSTEM_VERILOG PATH ../../../h0_2_avalon_axi_bridge/rtl/avalon_to_narrow_axi.sv
     add_fileset_file upstream_cluster_shell.sv SYSTEM_VERILOG PATH ../../../h0_1_upstream_cluster_shell/rtl/upstream_cluster_shell.sv
     add_fileset_file axi_boot_ram.sv SYSTEM_VERILOG PATH ../../../h2_host_program_memory/rtl/axi_boot_ram.sv
-    add_fileset_file axi_signature_sink.sv SYSTEM_VERILOG PATH ../../../h0_7_observable_boot/rtl/axi_signature_sink.sv
+    add_fileset_file axi_shared_data_ram.sv SYSTEM_VERILOG PATH ../../../h3_shared_data_memory/rtl/axi_shared_data_ram.sv
     add_fileset_file cyclone_sram_primitive.sv SYSTEM_VERILOG PATH ../../../u5_1_sram_retention/rtl/cyclone_sram_primitive.sv
     add_fileset_file de1_u4_cluster_quartus.v VERILOG PATH ../../../u4_cyclone_memory_boundary/generated/de1_u4_cluster_quartus.v
 }

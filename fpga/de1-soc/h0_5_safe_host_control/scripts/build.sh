@@ -19,6 +19,8 @@ neutralize_hps_sdram_sdc() {
 "${h0_dir}/../h0_7_observable_boot/scripts/build_firmware.sh"
 "${h0_dir}/../h0_7_observable_boot/scripts/test_signature_sink.sh"
 "${h0_dir}/../h2_host_program_memory/scripts/test_boot_ram.sh"
+"${h0_dir}/../h3_shared_data_memory/scripts/test_shared_data_ram.sh"
+"${h0_dir}/../h3_shared_data_memory/scripts/build_firmware.sh"
 "${script_dir}/generate_qsys.sh"
 "${script_dir}/generate_pll.sh"
 

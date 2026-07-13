@@ -104,7 +104,9 @@ H0.6.3 Verify fetch-seen on ARM Linux after clean restart        PASS
 H0.7 Execute boot payload and observe data-side store on Linux   PASS
 H1  Completion interrupt and Linux blocking wait                 PASS
 H2  Replace fixed boot ROM with a host-selected program image    PASS
-H3  Add shared host/Snitch input and output data memory          NEXT
+H3  Add shared host/Snitch input and output data memory          PASS
+H4  Add a Linux host program and explicit job descriptor ABI     PASS
+H5  Reuse the runtime for multiple job submissions               NEXT
 ```
 
 U3 answered the frontend and generic-synthesis feasibility questions without

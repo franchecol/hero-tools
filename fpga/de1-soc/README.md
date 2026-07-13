@@ -18,7 +18,7 @@ for reproducing the complete VCU128-targeted Occamy platform.
 │ SL     │ Custom Snitch-Lite DE1 platform          │ Proven fallback     │
 │ X      │ External-synthesis bridge experiments    │ Tool-flow evidence  │
 │ U      │ Original upstream Snitch through Genus   │ Preferred path      │
-│ H      │ Future ARM/Linux + upstream Snitch       │ Deferred            │
+│ H      │ ARM/Linux + upstream Snitch integration  │ Current path        │
 └────────┴──────────────────────────────────────────┴─────────────────────┘
 ```
 
@@ -57,9 +57,11 @@ Q direct Quartus path ── failed on upstream SystemVerilog frontend
                  H0.7 boot store to Linux    PASS / result 0x5A5
                  H1 Linux completion IRQ     PASS / blocking wake
                  H2 host-loaded boot RAM     PASS / two programs
+                 H3 shared payload RAM       PASS / input-compute-output
                          │
                          ▼
-                 H heterogeneous integration LATER
+                 H4 Linux job runtime        PASS / descriptor ABI
+                 H5 reusable submissions     NEXT
 ```
 
 ## Current Board State After microSD Boot

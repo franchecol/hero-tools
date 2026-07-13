@@ -28,6 +28,11 @@ module h0_1_upstream_cluster_shell (
   input  logic [9:0]  boot_host_word_addr_i,
   input  logic [31:0] boot_host_wdata_i,
   input  logic [3:0]  boot_host_be_i,
+  input  logic        data_host_write_i,
+  input  logic [9:0]  data_host_word_addr_i,
+  input  logic [31:0] data_host_wdata_i,
+  input  logic [3:0]  data_host_be_i,
+  output logic [31:0] data_host_rdata_o,
   output logic        host_w_ready_o,
   output logic        host_b_valid_o,
   output logic [1:0]  host_b_resp_o,
@@ -46,15 +51,25 @@ module h0_1_upstream_cluster_shell (
   logic [63:0] boot_r_data;
   logic [1:0] boot_r_resp;
   logic [2:0] boot_r_id;
+  logic narrow_out_r_ready, narrow_out_ar_valid;
+  logic [31:0] narrow_out_ar_addr;
+  logic [7:0] narrow_out_ar_len;
+  logic [2:0] narrow_out_ar_size;
+  logic [1:0] narrow_out_ar_burst;
+  logic [3:0] narrow_out_ar_id;
+  logic data_ar_ready, data_r_valid, data_r_last;
+  logic [63:0] data_r_data;
+  logic [1:0] data_r_resp;
+  logic [3:0] data_r_id;
   logic narrow_out_b_ready, narrow_out_aw_valid, narrow_out_w_valid;
   logic [31:0] narrow_out_aw_addr;
   logic [3:0] narrow_out_aw_id;
   logic [63:0] narrow_out_w_data;
   logic [7:0] narrow_out_w_strb;
   logic narrow_out_w_last;
-  logic sink_aw_ready, sink_w_ready, sink_b_valid;
-  logic [1:0] sink_b_resp;
-  logic [3:0] sink_b_id;
+  logic data_aw_ready, data_w_ready, data_b_valid;
+  logic [1:0] data_b_resp;
+  logic [3:0] data_b_id;
 
   axi_boot_ram #(.IdWidth(3)) i_boot_ram (
     .clk_i(clk_i), .rst_ni(rst_ni),
@@ -69,15 +84,24 @@ module h0_1_upstream_cluster_shell (
     .fetch_seen_o(boot_fetch_seen_o)
   );
 
-  axi_signature_sink i_signature_sink (
+  axi_shared_data_ram i_shared_data_ram (
     .clk_i(clk_i), .rst_ni(rst_ni),
-    .aw_valid_i(narrow_out_aw_valid), .aw_ready_o(sink_aw_ready),
+    .host_write_i(data_host_write_i), .host_word_addr_i(data_host_word_addr_i),
+    .host_wdata_i(data_host_wdata_i), .host_be_i(data_host_be_i),
+    .host_rdata_o(data_host_rdata_o),
+    .ar_valid_i(narrow_out_ar_valid), .ar_ready_o(data_ar_ready),
+    .ar_addr_i(narrow_out_ar_addr), .ar_len_i(narrow_out_ar_len),
+    .ar_size_i(narrow_out_ar_size), .ar_burst_i(narrow_out_ar_burst),
+    .ar_id_i(narrow_out_ar_id), .r_valid_o(data_r_valid),
+    .r_ready_i(narrow_out_r_ready), .r_data_o(data_r_data),
+    .r_resp_o(data_r_resp), .r_last_o(data_r_last), .r_id_o(data_r_id),
+    .aw_valid_i(narrow_out_aw_valid), .aw_ready_o(data_aw_ready),
     .aw_addr_i(narrow_out_aw_addr), .aw_id_i(narrow_out_aw_id),
-    .w_valid_i(narrow_out_w_valid), .w_ready_o(sink_w_ready),
+    .w_valid_i(narrow_out_w_valid), .w_ready_o(data_w_ready),
     .w_data_i(narrow_out_w_data), .w_strb_i(narrow_out_w_strb),
-    .w_last_i(narrow_out_w_last), .b_valid_o(sink_b_valid),
-    .b_ready_i(narrow_out_b_ready), .b_resp_o(sink_b_resp),
-    .b_id_o(sink_b_id), .result_valid_o(boot_result_valid_o),
+    .w_last_i(narrow_out_w_last), .b_valid_o(data_b_valid),
+    .b_ready_i(narrow_out_b_ready), .b_resp_o(data_b_resp),
+    .b_id_o(data_b_id), .result_valid_o(boot_result_valid_o),
     .result_o(boot_result_o)
   );
 
@@ -133,11 +157,18 @@ module h0_1_upstream_cluster_shell (
     .narrow_in_resp_o_aw_ready     (host_aw_ready_o),
 
     .narrow_out_resp_i_r_user      ('0),
-    .narrow_out_resp_i_r_last      (1'b1),
-    .narrow_out_resp_i_r_resp      (2'b11),
-    .narrow_out_resp_i_r_data      ('0),
-    .narrow_out_resp_i_r_id        ('0),
-    .narrow_out_resp_i_r_valid     (1'b0),
+    .narrow_out_req_o_r_ready      (narrow_out_r_ready),
+    .narrow_out_req_o_ar_valid     (narrow_out_ar_valid),
+    .narrow_out_req_o_ar_addr      (narrow_out_ar_addr),
+    .narrow_out_req_o_ar_len       (narrow_out_ar_len),
+    .narrow_out_req_o_ar_size      (narrow_out_ar_size),
+    .narrow_out_req_o_ar_burst     (narrow_out_ar_burst),
+    .narrow_out_req_o_ar_id        (narrow_out_ar_id),
+    .narrow_out_resp_i_r_last      (data_r_last),
+    .narrow_out_resp_i_r_resp      (data_r_resp),
+    .narrow_out_resp_i_r_data      (data_r_data),
+    .narrow_out_resp_i_r_id        (data_r_id),
+    .narrow_out_resp_i_r_valid     (data_r_valid),
     .narrow_out_resp_i_b_user      ('0),
     .narrow_out_req_o_b_ready      (narrow_out_b_ready),
     .narrow_out_req_o_w_valid      (narrow_out_w_valid),
@@ -147,12 +178,12 @@ module h0_1_upstream_cluster_shell (
     .narrow_out_req_o_aw_valid     (narrow_out_aw_valid),
     .narrow_out_req_o_aw_addr      (narrow_out_aw_addr),
     .narrow_out_req_o_aw_id        (narrow_out_aw_id),
-    .narrow_out_resp_i_b_resp      (sink_b_resp),
-    .narrow_out_resp_i_b_id        (sink_b_id),
-    .narrow_out_resp_i_b_valid     (sink_b_valid),
-    .narrow_out_resp_i_w_ready     (sink_w_ready),
-    .narrow_out_resp_i_ar_ready    (1'b0),
-    .narrow_out_resp_i_aw_ready    (sink_aw_ready),
+    .narrow_out_resp_i_b_resp      (data_b_resp),
+    .narrow_out_resp_i_b_id        (data_b_id),
+    .narrow_out_resp_i_b_valid     (data_b_valid),
+    .narrow_out_resp_i_w_ready     (data_w_ready),
+    .narrow_out_resp_i_ar_ready    (data_ar_ready),
+    .narrow_out_resp_i_aw_ready    (data_aw_ready),
 
     .wide_out_resp_i_r_user        ('0),
     .wide_out_req_o_r_ready        (wide_out_r_ready),
